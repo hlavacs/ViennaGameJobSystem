@@ -19,15 +19,24 @@ public:
 	};
 };
 
+
+
+#include <stdlib.h>
+
 int main()
 {
 	A theA;
 
-	Job *pJob = JobMemory::getInstance()->allocateJob();
-	pJob->bindTask(&A::print, theA, 0.1f, 45, pJob);
-	ThreadPool::getInstance()->addJob(pJob);
+	for (uint32_t i = 0; i < 1000; i++) {
+		Job *pJob = JobMemory::getInstance()->allocatePermanentJob();
+		pJob->bindTask(&A::print, theA, 0.1f, i, pJob);
+		ThreadPool::getInstance()->addJob(pJob);
 
-	(*pJob)();
+		(*pJob)();
+
+		if( std::rand() % 100 < 50)
+			JobMemory::getInstance()->deallocatePermanentJob(pJob);
+	}
 
     return 0;
 }
