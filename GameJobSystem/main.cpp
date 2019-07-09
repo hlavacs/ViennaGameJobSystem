@@ -42,9 +42,6 @@ void case1( A& theA) {
 			ThreadPool::getInstance()->addJob(pJob);
 
 			(*pJob)();
-
-			if (i<10)
-				JobMemory::getInstance()->deallocatePermanentJob(pJob);
 		}
 		JobMemory::getInstance()->reset();
 	}
@@ -53,7 +50,7 @@ void case1( A& theA) {
 
 void case2(A& theA) {
 
-	for (uint32_t i = 0; i < 20; i++) {
+	for (uint32_t i = 0; i < 5000; i++) {
 
 		Job *pJob = JobMemory::getInstance()->allocateTransientJob();
 		pJob->bindTask(&A::spawn, theA, 0.1f, i, i, pJob);
@@ -68,8 +65,12 @@ void case2(A& theA) {
 
 int main()
 {
+	ThreadPool pool;
+
 	A theA;
 
+	case2(theA);
+	JobMemory::getInstance()->reset();
 	case2(theA);
 
     return 0;
