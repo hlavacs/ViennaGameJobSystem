@@ -1,5 +1,7 @@
 
 #include <iostream>
+#include <stdlib.h>
+#include <functional>
 
 
 #define IMPLEMENT_GAMEJOBSYSTEM
@@ -14,23 +16,29 @@ public:
 	A() {};
 	~A() {};
 
-	void print( float f1, int i1, int i2, Job *pJob ) {
-		cout << " " << f1 << " " << i1 << " " << i2 << " " << pJob << "\n";
+	void printA( float f1, int i1, int i2, Job *pJob ) {
+		cout << "print " << f1 << " " << i1 << " " << i2 << " " << pJob << "\n";
 	};
+
+	void spawn(float f1, int i1, int i2, Job *pJob) {
+		cout << "spawn " << f1 << " " << i1 << " " << i2 << " " << pJob << "\n";
+
+		Job *pChildJob = JobMemory::getInstance()->allocateTransientJob( pJob );
+		pChildJob->bindTask(&A::printA, this, 0.1f, i1, i1, pChildJob);
+		ThreadPool::getInstance()->addJob(pChildJob);
+
+		(*pChildJob)();
+	};
+
 };
 
 
-
-#include <stdlib.h>
-
-int main()
-{
-	A theA;
-
+void case1( A& theA) {
 	for (uint32_t j = 0; j < 2; j++) {
 		for (uint32_t i = 0; i < 20; i++) {
+
 			Job *pJob = JobMemory::getInstance()->allocatePermanentJob();
-			pJob->bindTask(&A::print, theA, 0.1f, j, i, pJob);
+			pJob->bindTask(&A::printA, theA, 0.1f, j, i, pJob);
 			ThreadPool::getInstance()->addJob(pJob);
 
 			(*pJob)();
@@ -40,6 +48,29 @@ int main()
 		}
 		JobMemory::getInstance()->reset();
 	}
+}
+
+
+void case2(A& theA) {
+
+	for (uint32_t i = 0; i < 20; i++) {
+
+		Job *pJob = JobMemory::getInstance()->allocateTransientJob();
+		pJob->bindTask(&A::spawn, theA, 0.1f, i, i, pJob);
+		ThreadPool::getInstance()->addJob(pJob);
+
+		(*pJob)();
+	}
+
+}
+
+
+
+int main()
+{
+	A theA;
+
+	case2(theA);
 
     return 0;
 }

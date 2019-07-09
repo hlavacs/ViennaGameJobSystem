@@ -34,13 +34,27 @@ namespace gjs {
 		Job *					m_parentJob = nullptr;			//parent job, called if this job finishes
 		std::atomic<uint32_t>	m_numUnfinishedChildren = 0;	//number of unfinished jobs
 		Job *					m_onFinishedJob;				//job to schedule once this job finshes
-
+		
 	public:
-		Job() : m_permanent(false) {};
+		Job() : m_permanent(false), m_onFinishedJob(nullptr) {};
 		~Job() {};
 
-		void setParentJob(Job *pJob) { m_parentJob = pJob; };		//set pointer to parent job
-		void setOnFinished(Job *pJob) { m_onFinishedJob = pJob; };	//set job to execute when this job has finished
+		void reset() {						//reset a fresh job taken from the JobMemory
+			m_permanent = false;
+			m_parentJob = nullptr;
+			m_numUnfinishedChildren = 0;
+			m_onFinishedJob = nullptr;
+		};
+
+		void setParentJob(Job *pJob) { 		//set pointer to parent job
+			if (pJob == nullptr) return;
+			m_parentJob = pJob; 
+			pJob->m_numUnfinishedChildren++;
+		};	
+
+		void setOnFinished(Job *pJob) { 	//set job to execute when this job has finished
+			m_onFinishedJob = pJob; 
+		};
 
 		// create a new job - do not schedule it yet
 		template<typename Func, typename... Args>
@@ -60,7 +74,10 @@ namespace gjs {
 
 		void operator()() {									//run the packaged task
 			if (m_packagedTask == nullptr) return;
+			m_numUnfinishedChildren = 1;					//number of children includes itself
 			(*m_packagedTask)();
+			uint32_t numLeft = m_numUnfinishedChildren.fetch_add(-1);
+			if (numLeft == 1) onFinished();					//this was the last child
 		};
 
 	};
@@ -75,11 +92,12 @@ namespace gjs {
 		const static std::uint32_t	m_listLength = 4096;		//length of a segment
 		std::atomic<uint32_t>		m_jobIndex = 0;				//current index (number of jobs so far)
 		using JobList = std::vector<Job>;
-		std::vector<JobList>		m_jobLists;					//list of transient segments
+		std::vector<JobList*>		m_jobLists;					//list of transient segments
 
 		static JobMemory *m_pJobMemory;							//pointer to singleton
 		JobMemory() : m_jobIndex(0) {							//private constructor
-			m_jobLists.emplace_back(JobList(m_listLength));		//init with 1 segment
+			m_jobLists.reserve(1000);
+			m_jobLists.emplace_back(new JobList(m_listLength));		//init with 1 segment
 		};
 	
 	public:
@@ -101,27 +119,29 @@ namespace gjs {
 				std::lock_guard<std::mutex> lock(lmutex);
 
 				if (index > m_jobLists.size() * m_listLength - 1) //might be beaten here by other thread so check again
-					m_jobLists.emplace_back(JobList(m_listLength));
+					m_jobLists.emplace_back(new JobList(m_listLength));
 			}
 
-			return &(m_jobLists.back())[index % m_listLength];		//get modulus of number of last job list
+			return &(*m_jobLists.back())[index % m_listLength];		//get modulus of number of last job list
 		}
 
 		//---------------------------------------------------------------------------
 		//get the first job that is available
-		Job* allocateTransientJob( ) {
+		Job* allocateTransientJob( Job *pParent = nullptr ) {
 			Job *pJob;
 			do {
 				pJob = getNextJob();
 			} while ( pJob->m_permanent );
+			pJob->reset();
+			if( pParent != nullptr ) pJob->setParentJob(pParent);
 			return pJob;
 		};
 
 
 		//---------------------------------------------------------------------------
 		//allocate a job that will not go out of context after the next reset
-		Job* allocatePermanentJob() {
-			Job *pJob = allocateTransientJob();
+		Job* allocatePermanentJob(Job *pParent = nullptr) {
+			Job *pJob = allocateTransientJob( pParent );
 			pJob->m_permanent = true;
 			return pJob;
 		};
