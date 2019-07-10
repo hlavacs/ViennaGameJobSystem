@@ -13,6 +13,7 @@
 #include <set>
 #include <iterator>
 #include <algorithm>
+#include <assert.h>
 
 
 namespace gjs {
@@ -30,21 +31,19 @@ namespace gjs {
 		friend ThreadPool;
 
 	private:
-		std::atomic<bool>		m_permanent;					//if true, do not reuse this job
+		std::atomic<bool>		m_available;					//is this job available after a pool reset?
+		std::atomic<uint32_t>	m_poolNumber;					//number of pool this job comes from
 
 		std::shared_ptr<Function> m_function;					//the function to carry out
-		Job *					m_parentJob = nullptr;			//parent job, called if this job finishes
-		std::atomic<uint32_t>	m_numUnfinishedChildren = 0;	//number of unfinished jobs
+		Job *					m_parentJob;					//parent job, called if this job finishes
+		std::atomic<uint32_t>	m_numUnfinishedChildren;		//number of unfinished jobs
 		Job *					m_onFinishedJob;				//job to schedule once this job finshes
 		
-	public:
-		Job() : m_permanent(false), m_onFinishedJob(nullptr) {};
-		~Job() {};
-
 		//---------------------------------------------------------------------------
 		//reset a fresh job taken from the JobMemory
-		void reset() {						
-			m_permanent = false;
+		void reset( uint32_t poolNumber ) {				
+			m_poolNumber = poolNumber;
+			m_available = false;
 			m_parentJob = nullptr;
 			m_numUnfinishedChildren = 0;
 			m_onFinishedJob = nullptr;
@@ -80,13 +79,17 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		//run the packaged task
-		void operator()() {									
+		void operator()() {
 			if (m_function == nullptr) return;
 			m_numUnfinishedChildren = 1;					//number of children includes itself
 			(*m_function)();								//call the function
 			uint32_t numLeft = m_numUnfinishedChildren.fetch_add(-1);
 			if (numLeft == 1) onFinished();					//this was the last child
 		};
+
+	public:
+		Job() : m_poolNumber(0), m_parentJob(nullptr), m_numUnfinishedChildren(0), m_onFinishedJob(nullptr) {};
+		~Job() {};
 
 	};
 
@@ -95,17 +98,28 @@ namespace gjs {
 	class JobMemory {
 		friend ThreadPool;
 
-	private:
 		//transient jobs, will be deleted for each new frame
 		const static std::uint32_t	m_listLength = 4096;		//length of a segment
-		std::atomic<uint32_t>		m_jobIndex = 0;				//current index (number of jobs so far)
+
 		using JobList = std::vector<Job>;
-		std::vector<JobList*>		m_jobLists;					//list of transient segments
+		struct JobPool {
+			std::atomic<uint32_t> jobIndex = 0;
+			std::vector<JobList*> jobLists;
+			std::mutex lmutex;							//only lock if appending the job list
+
+			JobPool() : jobIndex(0) {
+				jobLists.reserve(500);
+				jobLists.emplace_back(new JobList(m_listLength));
+			};
+		};
+
+	private:
+		std::vector<JobPool*> m_jobPools;						//a list with pointers to the job pools
 
 		static JobMemory *m_pJobMemory;							//pointer to singleton
-		JobMemory() : m_jobIndex(0) {							//private constructor
-			m_jobLists.reserve(1000);							//reserve enough that it will never be expanded
-			m_jobLists.emplace_back(new JobList(m_listLength));	//init with 1 segment
+		JobMemory() {											//private constructor
+			m_jobPools.reserve(10);
+			m_jobPools.emplace_back( new JobPool );
 		};
 	
 	public:
@@ -120,37 +134,52 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		//get a new empty job from the job memory - if necessary add another job list
-		Job * getNextJob() {
-			const uint32_t index = m_jobIndex.fetch_add(1);			
-			if (index > m_jobLists.size() * m_listLength - 1) {
-				static std::mutex lmutex;								//only lock if appending the job list
-				std::lock_guard<std::mutex> lock(lmutex);
+		Job * getNextJob( uint32_t poolNumber ) {
+			if (poolNumber > m_jobPools.size() - 1) {								//if pool does not exist yet
+				static std::mutex mutex;
+				std::lock_guard<std::mutex> lock(mutex);
 
-				if (index > m_jobLists.size() * m_listLength - 1)		//might be beaten here by other thread so check again
-					m_jobLists.emplace_back(new JobList(m_listLength));
+				if (poolNumber > m_jobPools.size() - 1) {							//could be beaten here by other thread
+					for (uint32_t i = m_jobPools.size(); i <= poolNumber; i++) {	//so check again
+						m_jobPools.push_back(new JobPool);
+					}
+				}
 			}
 
-			return &(*m_jobLists[index / m_listLength])[index % m_listLength];		//get modulus of number of last job list
+			JobPool *pPool = m_jobPools[poolNumber];
+			const uint32_t index = pPool->jobIndex.fetch_add(1);
+			if (index > pPool->jobLists.size() * m_listLength - 1) {
+				std::lock_guard<std::mutex> lock(pPool->lmutex);
+
+				if (index > pPool->jobLists.size() * m_listLength - 1)		//might be beaten here by other thread so check again
+					pPool->jobLists.emplace_back(new JobList(m_listLength));
+			}
+
+			return &(*pPool->jobLists[index / m_listLength])[index % m_listLength];		//get modulus of number of last job list
 		}
 
 		//---------------------------------------------------------------------------
 		//get the first job that is available
-		Job* allocateJob( Job *pParent = nullptr ) {
+		Job* allocateJob( Job *pParent = nullptr, uint32_t poolNumber = 0  ) {
 			Job *pJob;
 			do {
-				pJob = getNextJob();
-			} while ( pJob->m_permanent );
-			pJob->reset();
+				pJob = getNextJob(poolNumber);
+			} while ( !pJob->m_available );
+			pJob->reset( poolNumber );
 			if( pParent != nullptr ) pJob->setParentJob(pParent);
 			return pJob;
 		};
 
 		//---------------------------------------------------------------------------
 		//reset index for new frame, start with 0 again
-		void reset() { m_jobIndex = 0; };				
+		void reset( uint32_t poolNumber ) { 
+			if (poolNumber > m_jobPools.size() - 1) return;
+			m_jobPools[poolNumber]->jobIndex = 0;
+		};
 	};
 
 
+	//---------------------------------------------------------------------------
 	class JobQueue {
 	public:
 		JobQueue() {};
@@ -273,27 +302,21 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		//create a transient job
-		void addTransientJob(std::function<void()> func) {
-			Job *pJob = JobMemory::getInstance()->allocateJob(getJobPointer());
+		void addJob(std::function<void()> func, uint32_t poolNumber = 0) {
+			Job *pCurrentJob = getJobPointer();
+			Job *pParentJob = pCurrentJob!=nullptr && pCurrentJob->m_poolNumber == poolNumber ? pCurrentJob : nullptr;
+			Job *pJob = JobMemory::getInstance()->allocateJob( pParentJob, poolNumber );
 			pJob->setFunction(std::make_shared<Function>(func));
 			addJob(pJob);
 		};
 
 		//---------------------------------------------------------------------------
-		//create a permanent job
-		void addPermanentJob(std::function<void()> func) {
-			Job *pJob = JobMemory::getInstance()->allocateJob(getJobPointer());
-			pJob->setFunction( std::make_shared<Function>(func) );
-			pJob->m_permanent = true;
-			addJob(pJob);
-		};
-
+		//create a successor job for tlhis job, will be added to the queue after the current job finished -> wait
 		void onFinishedJob(std::function<void()> func) {
 			Job *pCurrentJob = getJobPointer();
-			Job *pJob = JobMemory::getInstance()->allocateJob(pCurrentJob->m_parentJob);
-			pJob->setFunction(std::make_shared<Function>(func));
-			pJob->m_permanent = pCurrentJob->m_permanent.load();
-			pCurrentJob->setOnFinished(pJob);
+			Job *pNewJob = JobMemory::getInstance()->allocateJob(pCurrentJob->m_parentJob, pCurrentJob->m_poolNumber ); //new job has the same parent as current job
+			pNewJob->setFunction(std::make_shared<Function>(func));
+			pCurrentJob->setOnFinished(pNewJob);
 		};
 
 	};
@@ -315,9 +338,9 @@ namespace gjs {
 			m_parentJob->childFinished();
 		}
 		if (m_onFinishedJob != nullptr) {
-			ThreadPool::getInstance()->addJob(m_onFinishedJob);
+			ThreadPool::getInstance()->addJob(m_onFinishedJob);	//Job does not know ThreadPool when it is declared
 		}
-		m_permanent = false;					//job is finished so it can be reused
+		m_available = true;		//job is available again (after a pool reset)
 	}
 }
 
