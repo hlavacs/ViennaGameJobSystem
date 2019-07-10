@@ -22,15 +22,17 @@ namespace gjs {
 	class ThreadPool;
 
 
+	using Function = std::function<void()>;
+
 	//-------------------------------------------------------------------------------
 	class Job {
 		friend JobMemory;
+		friend ThreadPool;
 
 	private:
 		std::atomic<bool>		m_permanent;					//if true, do not reuse this job
 
-		using PackedTask = std::packaged_task<void()>;
-		std::shared_ptr<PackedTask>	m_packagedTask;				//the packaged task to carry out
+		std::shared_ptr<Function> m_function;					//the function to carry out
 		Job *					m_parentJob = nullptr;			//parent job, called if this job finishes
 		std::atomic<uint32_t>	m_numUnfinishedChildren = 0;	//number of unfinished jobs
 		Job *					m_onFinishedJob;				//job to schedule once this job finshes
@@ -50,10 +52,10 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		//set pointer to parent job
-		void setParentJob(Job *pJob) { 		
-			if (pJob == nullptr) return;
-			m_parentJob = pJob; 
-			pJob->m_numUnfinishedChildren++;
+		void setParentJob(Job *parentJob) {
+			if (parentJob == nullptr) return;
+			m_parentJob = parentJob;
+			parentJob->m_numUnfinishedChildren++;
 		};	
 
 		//---------------------------------------------------------------------------
@@ -62,15 +64,9 @@ namespace gjs {
 			m_onFinishedJob = pJob; 
 		};
 
-		//---------------------------------------------------------------------------
-		// create a new job - do not schedule it yet
-		template<typename Func, typename... Args>
-		auto bindTask(Func&& func, Args&&... args) -> std::future<typename std::result_of<Func(Args...)>::type> {
-			using PackedTask = std::packaged_task<typename std::result_of<Func(Args...)>::type()>;
-			m_packagedTask = std::make_shared<PackedTask>(std::bind(std::forward<Func>(func), std::forward<Args>(args)...));
-			auto ret = m_packagedTask->get_future();
-			return ret;
-		}
+		void setFunction(std::shared_ptr<Function> func) {
+			m_function = func;
+		};
 
 		//---------------------------------------------------------------------------
 		//notify parent, or schedule the finished job, define later since do not know ThreadPool yet
@@ -85,9 +81,9 @@ namespace gjs {
 		//---------------------------------------------------------------------------
 		//run the packaged task
 		void operator()() {									
-			if (m_packagedTask == nullptr) return;
+			if (m_function == nullptr) return;
 			m_numUnfinishedChildren = 1;					//number of children includes itself
-			(*m_packagedTask)();
+			(*m_function)();								//call the function
 			uint32_t numLeft = m_numUnfinishedChildren.fetch_add(-1);
 			if (numLeft == 1) onFinished();					//this was the last child
 		};
@@ -139,21 +135,13 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		//get the first job that is available
-		Job* allocateTransientJob( Job *pParent = nullptr ) {
+		Job* allocateJob( Job *pParent = nullptr ) {
 			Job *pJob;
 			do {
 				pJob = getNextJob();
 			} while ( pJob->m_permanent );
 			pJob->reset();
 			if( pParent != nullptr ) pJob->setParentJob(pParent);
-			return pJob;
-		};
-
-		//---------------------------------------------------------------------------
-		//allocate a job that will not go out of context after the next reset
-		Job* allocatePermanentJob(Job *pParent = nullptr) {
-			Job *pJob = allocateTransientJob( pParent );
-			pJob->m_permanent = true;
 			return pJob;
 		};
 
@@ -184,12 +172,12 @@ namespace gjs {
 
 	private:
 		std::vector<std::thread> threads;
+		std::vector<Job*> jobPointers;
 		std::map<std::thread::id, uint32_t> threadIndexMap;
 		std::atomic<bool> terminate;
 
 		std::vector<JobQueue*> jobQueues;
 		std::condition_variable jobsAvailable;
-	
 
 
 	public:
@@ -206,6 +194,7 @@ namespace gjs {
 
 			threads.reserve(threadCount + 1);
 			jobQueues.resize(threadCount + 1);
+			jobPointers.resize(threadCount + 1);
 			for (uint32_t i = 0; i < threadCount; i++) {
 				threads.push_back( std::thread( &ThreadPool::threadTask, this ) );
 			}
@@ -231,6 +220,7 @@ namespace gjs {
 			uint32_t threadIndex = threadIndexCounter.fetch_add(1);
 			jobQueues[threadIndex] = new JobQueue();
 			threadIndexMap[std::thread::id()] = threadIndex;
+			jobPointers[threadIndex] = nullptr;
 
 			while (true) {
 
@@ -240,15 +230,18 @@ namespace gjs {
 
 				if (terminate) break;
 
-				if (pJob == nullptr && threads.size()>1) {
+				uint32_t max = 5;
+				while (pJob == nullptr && threads.size()>1) {
 					uint32_t idx = std::rand() % threads.size();
 					if (idx != threadIndex) pJob = jobQueues[idx]->steal();
+					if (!--max) break;
 				}
 
 				if (terminate) break;
 
 				if (pJob != nullptr) {
-					(*pJob)();
+					jobPointers[threadIndex] = pJob;	//make pointer to the Job structure accessible
+					(*pJob)();							//run the job
 				}
 				else {
 					std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -258,27 +251,49 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		// returns number of threads being used
-		std::size_t getThreadCount() const { return threads.size(); };	
-
-		//---------------------------------------------------------------------------
-		//return number of this thread
-		uint32_t getThreadNumber() {						
-			for (uint32_t i = 0; i < threads.size(); i++) {
-				if (std::thread::id() == threads[i].get_id()) return i;
-			}
-			return 0;
-		};
+		std::size_t getThreadCount() const { return threadIndexMap.size(); };
 
 		//---------------------------------------------------------------------------
 		//get index of the thread that is calling this function
-		uint32_t getThreadIndex() {
+		uint32_t getThreadNumber() {
 			return threadIndexMap[std::thread::id()];
 		};
 
 		//---------------------------------------------------------------------------
-		//add a job to the thread pool
-		void addJob( Job* pJob) {
+		//get a pointer to the job of the current task
+		Job *getJobPointer() {
+			return jobPointers[threadIndexMap[std::thread::id()]];
+		}
 
+		//---------------------------------------------------------------------------
+		//add the new job to the thread's queue
+		void addJob(Job* pJob) {
+			(*pJob)();
+		};
+
+		//---------------------------------------------------------------------------
+		//create a transient job
+		void addTransientJob(std::function<void()> func) {
+			Job *pJob = JobMemory::getInstance()->allocateJob(getJobPointer());
+			pJob->setFunction(std::make_shared<Function>(func));
+			addJob(pJob);
+		};
+
+		//---------------------------------------------------------------------------
+		//create a permanent job
+		void addPermanentJob(std::function<void()> func) {
+			Job *pJob = JobMemory::getInstance()->allocateJob(getJobPointer());
+			pJob->setFunction( std::make_shared<Function>(func) );
+			pJob->m_permanent = true;
+			addJob(pJob);
+		};
+
+		void onFinishedJob(std::function<void()> func) {
+			Job *pCurrentJob = getJobPointer();
+			Job *pJob = JobMemory::getInstance()->allocateJob(pCurrentJob->m_parentJob);
+			pJob->setFunction(std::make_shared<Function>(func));
+			pJob->m_permanent = pCurrentJob->m_permanent.load();
+			pCurrentJob->setOnFinished(pJob);
 		};
 
 	};
@@ -296,13 +311,13 @@ namespace gjs {
 
 
 	void Job::onFinished() {
-		m_permanent = false;					//job is finished so it can be reused
 		if (m_parentJob != nullptr) {
 			m_parentJob->childFinished();
 		}
 		if (m_onFinishedJob != nullptr) {
 			ThreadPool::getInstance()->addJob(m_onFinishedJob);
 		}
+		m_permanent = false;					//job is finished so it can be reused
 	}
 }
 
