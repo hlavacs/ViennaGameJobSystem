@@ -40,16 +40,6 @@ namespace gjs {
 		Job *					m_onFinishedJob;				//job to schedule once this job finshes
 		
 		//---------------------------------------------------------------------------
-		//reset a fresh job taken from the JobMemory
-		void reset( uint32_t poolNumber ) {				
-			m_poolNumber = poolNumber;
-			m_available = false;
-			m_parentJob = nullptr;
-			m_numUnfinishedChildren = 0;
-			m_onFinishedJob = nullptr;
-		};
-
-		//---------------------------------------------------------------------------
 		//set pointer to parent job
 		void setParentJob(Job *parentJob) {
 			if (parentJob == nullptr) return;
@@ -111,6 +101,12 @@ namespace gjs {
 				jobLists.reserve(500);
 				jobLists.emplace_back(new JobList(m_listLength));
 			};
+
+			~JobPool() {
+				for (uint32_t i = 0; i < jobLists.size(); i++) {
+					delete jobLists[i];
+				}
+			};
 		};
 
 	private:
@@ -121,6 +117,12 @@ namespace gjs {
 			m_jobPools.reserve(10);
 			m_jobPools.emplace_back( new JobPool );
 		};
+
+		~JobMemory() {
+			for (uint32_t i = 0; i < m_jobPools.size(); i++) {
+				delete m_jobPools[i];
+			}
+		}
 	
 	public:
 		//---------------------------------------------------------------------------
@@ -135,15 +137,8 @@ namespace gjs {
 		//---------------------------------------------------------------------------
 		//get a new empty job from the job memory - if necessary add another job list
 		Job * getNextJob( uint32_t poolNumber ) {
-			if (poolNumber > m_jobPools.size() - 1) {								//if pool does not exist yet
-				static std::mutex mutex;
-				std::lock_guard<std::mutex> lock(mutex);
-
-				if (poolNumber > m_jobPools.size() - 1) {							//could be beaten here by other thread
-					for (uint32_t i = m_jobPools.size(); i <= poolNumber; i++) {	//so check again
-						m_jobPools.push_back(new JobPool);
-					}
-				}
+			if (poolNumber > m_jobPools.size() - 1) {		//if pool does not exist yet
+				resetPool( poolNumber );					//create it
 			}
 
 			JobPool *pPool = m_jobPools[poolNumber];
@@ -165,15 +160,27 @@ namespace gjs {
 			do {
 				pJob = getNextJob(poolNumber);
 			} while ( !pJob->m_available );
-			pJob->reset( poolNumber );
+			pJob->m_available = false;
+			pJob->m_poolNumber = poolNumber;
+			pJob->m_onFinishedJob = nullptr;
+
 			if( pParent != nullptr ) pJob->setParentJob(pParent);
 			return pJob;
 		};
 
 		//---------------------------------------------------------------------------
 		//reset index for new frame, start with 0 again
-		void reset( uint32_t poolNumber ) { 
-			if (poolNumber > m_jobPools.size() - 1) return;
+		void resetPool( uint32_t poolNumber = 0 ) { 
+			if (poolNumber > m_jobPools.size() - 1) {
+				static std::mutex mutex;
+				std::lock_guard<std::mutex> lock(mutex);
+
+				if (poolNumber > m_jobPools.size() - 1) {							//could be beaten here by other thread
+					for (uint32_t i = m_jobPools.size(); i <= poolNumber; i++) {	//so check again
+						m_jobPools.push_back(new JobPool);
+					}
+				}
+			}
 			m_jobPools[poolNumber]->jobIndex = 0;
 		};
 	};
@@ -200,13 +207,13 @@ namespace gjs {
 		using Ids = std::vector<std::thread::id>;
 
 	private:
-		std::vector<std::thread> threads;
-		std::vector<Job*> jobPointers;
-		std::map<std::thread::id, uint32_t> threadIndexMap;
-		std::atomic<bool> terminate;
+		std::vector<std::thread> m_threads;
+		std::vector<Job*> m_jobPointers;
+		std::map<std::thread::id, uint32_t> m_threadIndexMap;
+		std::atomic<bool> m_terminate;
 
-		std::vector<JobQueue*> jobQueues;
-		std::condition_variable jobsAvailable;
+		std::vector<JobQueue*> m_jobQueues;
+		std::condition_variable m_jobsAvailable;
 
 
 	public:
@@ -214,24 +221,25 @@ namespace gjs {
 		//---------------------------------------------------------------------------
 		//instance and private constructor
 		static ThreadPool *pInstance;
-		ThreadPool(std::size_t threadCount = 0) : terminate(false) {
+		ThreadPool(std::size_t threadCount = 0) : m_terminate(false) {
 			pInstance = this;
 
 			if (threadCount == 0) {
 				threadCount = std::thread::hardware_concurrency() - 1;	//main thread is also running
 			}
 
-			threads.reserve(threadCount + 1);
-			jobQueues.resize(threadCount + 1);
-			jobPointers.resize(threadCount + 1);
+			m_threads.reserve(threadCount + 1);				//one more so that main thread can join the pool
+			m_jobQueues.resize(threadCount + 1);
+			m_jobPointers.resize(threadCount + 1);
 			for (uint32_t i = 0; i < threadCount; i++) {
-				threads.push_back( std::thread( &ThreadPool::threadTask, this ) );
+				m_threads.push_back( std::thread( &ThreadPool::threadTask, this ) );
 			}
 		};
 
+
 		//---------------------------------------------------------------------------
-		static ThreadPool * getInstance(std::size_t threadCount = 0) {
-			if (pInstance == nullptr) pInstance = new ThreadPool(threadCount);
+		static ThreadPool * getInstance() {
+			if (pInstance == nullptr) pInstance = new ThreadPool();
 			return pInstance;
 		};
 
@@ -239,7 +247,23 @@ namespace gjs {
 		ThreadPool& operator=(const ThreadPool&) = delete;
 		ThreadPool(ThreadPool&&) = default;					// but movable
 		ThreadPool& operator=(ThreadPool&&) = default;
-		~ThreadPool() {};
+		~ThreadPool() {
+			m_threads.clear();
+		};
+
+		//---------------------------------------------------------------------------
+		//will also let the main task exit the threadTask() function
+		void terminate() {
+			m_terminate = true;	
+		}
+
+		//---------------------------------------------------------------------------
+		//should be called by the main task
+		void wait() {
+			for (uint32_t i = 0; i < m_threads.size(); i++ ) {
+				m_threads[i].join();
+			}
+		}
 
 		//---------------------------------------------------------------------------
 		// function each thread performs
@@ -247,29 +271,29 @@ namespace gjs {
 			static std::atomic<uint32_t> threadIndexCounter = 0;
 
 			uint32_t threadIndex = threadIndexCounter.fetch_add(1);
-			jobQueues[threadIndex] = new JobQueue();
-			threadIndexMap[std::thread::id()] = threadIndex;
-			jobPointers[threadIndex] = nullptr;
+			m_jobQueues[threadIndex] = new JobQueue();				//work stealing queue
+			m_jobPointers[threadIndex] = nullptr;					//pointer to current Job structure
+			m_threadIndexMap[std::thread::id()] = threadIndex;		//use only the map to determine how many threads are in the pool
 
 			while (true) {
 
-				if (terminate) break;
+				if (m_terminate) break;
 
-				Job * pJob = jobQueues[threadIndex]->pop();
+				Job * pJob = m_jobQueues[threadIndex]->pop();
 
-				if (terminate) break;
+				if (m_terminate) break;
 
 				uint32_t max = 5;
-				while (pJob == nullptr && threads.size()>1) {
-					uint32_t idx = std::rand() % threads.size();
-					if (idx != threadIndex) pJob = jobQueues[idx]->steal();
+				while (pJob == nullptr && m_threadIndexMap.size()>1) {
+					uint32_t idx = std::rand() % m_threadIndexMap.size();
+					if (idx != threadIndex) pJob = m_jobQueues[idx]->steal();
 					if (!--max) break;
 				}
 
-				if (terminate) break;
+				if (m_terminate) break;
 
 				if (pJob != nullptr) {
-					jobPointers[threadIndex] = pJob;	//make pointer to the Job structure accessible
+					m_jobPointers[threadIndex] = pJob;	//make pointer to the Job structure accessible!
 					(*pJob)();							//run the job
 				}
 				else {
@@ -280,18 +304,18 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		// returns number of threads being used
-		std::size_t getThreadCount() const { return threadIndexMap.size(); };
+		std::size_t getThreadCount() const { return m_threadIndexMap.size(); };
 
 		//---------------------------------------------------------------------------
 		//get index of the thread that is calling this function
 		uint32_t getThreadNumber() {
-			return threadIndexMap[std::thread::id()];
+			return m_threadIndexMap[std::thread::id()];
 		};
 
 		//---------------------------------------------------------------------------
 		//get a pointer to the job of the current task
 		Job *getJobPointer() {
-			return jobPointers[threadIndexMap[std::thread::id()]];
+			return m_jobPointers[m_threadIndexMap[std::thread::id()]];
 		}
 
 		//---------------------------------------------------------------------------
