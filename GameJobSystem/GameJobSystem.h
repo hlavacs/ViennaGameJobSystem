@@ -199,15 +199,15 @@ namespace gjs {
 			m_queue.push(pJob);
 		};
 		Job * pop() {
-			if (m_queue.size() == 0) return nullptr;
 			std::lock_guard<std::mutex> lock(m_mutex);
+			if (m_queue.size() == 0) return nullptr;
 			Job* pJob = m_queue.front();
 			m_queue.pop();
 			return pJob;
 		};
 		Job *steal() {
-			if (m_queue.size() == 0) return nullptr;
 			std::lock_guard<std::mutex> lock(m_mutex);
+			if (m_queue.size() == 0) return nullptr;
 			Job* pJob = m_queue.front();
 			m_queue.pop();
 			return pJob;
@@ -288,7 +288,7 @@ namespace gjs {
 			uint32_t threadIndex = threadIndexCounter.fetch_add(1);
 			m_jobQueues[threadIndex] = new JobQueue();				//work stealing queue
 			m_jobPointers[threadIndex] = nullptr;					//pointer to current Job structure
-			m_threadIndexMap[std::thread::id()] = threadIndex;		//use only the map to determine how many threads are in the pool
+			m_threadIndexMap[std::this_thread::get_id()] = threadIndex;		//use only the map to determine how many threads are in the pool
 
 			while (true) {
 
@@ -299,8 +299,8 @@ namespace gjs {
 				if (m_terminate) break;
 
 				uint32_t max = 5;
-				while (pJob == nullptr && m_threadIndexMap.size()>1) {
-					uint32_t idx = std::rand() % m_threadIndexMap.size();
+				while (pJob == nullptr && m_threads.size()>1) {
+					uint32_t idx = std::rand() % m_threads.size();
 					if (idx != threadIndex) pJob = m_jobQueues[idx]->steal();
 					if (!--max) break;
 				}
@@ -308,6 +308,7 @@ namespace gjs {
 				if (m_terminate) break;
 
 				if (pJob != nullptr) {
+					printDebug("Thread " + std::to_string(threadIndex) + " runs " + pJob->id + "\n");
 					m_jobPointers[threadIndex] = pJob;	//make pointer to the Job structure accessible!
 					(*pJob)();							//run the job
 				}
@@ -324,17 +325,19 @@ namespace gjs {
 		//---------------------------------------------------------------------------
 		//get index of the thread that is calling this function
 		uint32_t getThreadNumber() {
-			return m_threadIndexMap[std::thread::id()];
+			return m_threadIndexMap[std::this_thread::get_id()];
 		};
 
 		//---------------------------------------------------------------------------
 		//get a pointer to the job of the current task
 		Job *getJobPointer() {
-			return m_jobPointers[m_threadIndexMap[std::thread::id()]];
+			return m_jobPointers[getThreadNumber()];
 		}
 
+		//---------------------------------------------------------------------------
+		//add a task to a random queue
 		void addJob( Job *pJob ) {
-			m_jobQueues[m_threadIndexMap[std::thread::id()]]->push(pJob);
+			m_jobQueues[std::rand() % m_threads.size()]->push(pJob);
 		}
 
 		//---------------------------------------------------------------------------
@@ -344,7 +347,6 @@ namespace gjs {
 			if (pCurrentJob == nullptr) {
 				pCurrentJob = JobMemory::getInstance()->allocateJob(nullptr, poolNumber, id);
 				pCurrentJob->setFunction(std::make_shared<Function>(func));
-				m_jobPointers[m_threadIndexMap[std::thread::id()]] = pCurrentJob;
 				addJob(pCurrentJob);
 				return;
 			}
@@ -364,6 +366,13 @@ namespace gjs {
 			Job *pNewJob = JobMemory::getInstance()->allocateJob(pParentJob, poolNumber, id ); //new job has the same parent as current job
 			pNewJob->setFunction(std::make_shared<Function>(func));
 			pCurrentJob->setOnFinished(pNewJob);
+		};
+
+		void printDebug(std::string s) {
+			static std::mutex lmutex;
+			std::lock_guard<std::mutex> lock(lmutex);
+
+			//std::cout << s;
 		};
 
 	};
