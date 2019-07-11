@@ -73,7 +73,7 @@ int main()
 
 	A theA;
 
-	pool.addJob( std::bind( &case2, theA, 0 ), 0, "case2 0" );
+	pool.addJob( std::bind( &case1, theA, 50 ), 0, "case2 0" );
 	pool.wait();
 
     return 0;
