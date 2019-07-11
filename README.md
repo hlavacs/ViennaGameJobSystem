@@ -32,9 +32,9 @@ VGJS runs a number of n worker threads, each having its own work queue. Each thr
 	  };
 
     int main() {
-	      JobSystem pool(0);
-	      A theA;
-	      pool.addJob( std::bind( &A::printA, theA, 50 ), 1, "printA" );
+        JobSystem pool(0);
+        A theA;
+        pool.addJob( std::bind( &A::printA, theA, 50 ), 1, "printA" );
         pool.waitForTermination();
     }
 
