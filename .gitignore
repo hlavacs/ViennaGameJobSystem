@@ -1,3 +1,9 @@
-Debug/
+/.vs/*
+/Debug/*
+/Release/*
+/x64/*
+/GameJobSystem/Debug/*
+/GameJobSystem/Release/*
+/GameJobSystem/x64/*
 GameJobSystem.VC.db
 GameJobSystem.VC.VC.opendb
