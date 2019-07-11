@@ -2,7 +2,7 @@
 The Vienna Game Job System (VGJS) is a C++11 library for parallelizing arbitrary tasks, as for example are typically found in game engines. It was designed and implemented by Prof. Helmut Hlavacs from the University of Vienna, Faculty of Computer Science. Important features are:
 * Work stealing paradigm (lock-free queues are planned to be included soon)
 * Directed acyclic graphs (DAGs) are created automatically and implicitly
-* Recorded DAGs can be re-played, respecting parent-child dependencies, but fully in parallel 
+* Recorded DAGs can be re-played, respecting parent-child dependencies, but fully in parallel
 * Intended as partner project of the Vienna Vulkan Engine (https://github.com/hlavacs/ViennaVulkanEngine), which will be ported to run on VGJS.
 
 VGJS is a single header library that should be included in C++ source files where it is needed:
@@ -20,7 +20,7 @@ VGJS runs a number of n worker threads, each having its own work queue. Each thr
 	     ~A() {};
 
 	      void printA( uint32_t number ) {
-		        JobSystem::getInstance()->printDebug( std::to_string(number) );
+            JobSystem::getInstance()->printDebug( std::to_string(number) );
             JobSystem::getInstance()->onFinishedAddJob( std::bind( &printB, this, number*2), "printB" );
         };
 
