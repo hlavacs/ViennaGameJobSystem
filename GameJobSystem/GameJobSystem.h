@@ -103,7 +103,7 @@ namespace gjs {
 			std::mutex lmutex;							//only lock if appending the job list
 
 			JobPool() : jobIndex(0) {
-				jobLists.reserve(500);
+				jobLists.reserve(100);
 				jobLists.emplace_back(new JobList(m_listLength));
 			};
 
@@ -179,7 +179,7 @@ namespace gjs {
 				std::lock_guard<std::mutex> lock(mutex);
 
 				if (poolNumber > m_jobPools.size() - 1) {							//could be beaten here by other thread so check again
-					for (uint32_t i = m_jobPools.size(); i <= poolNumber; i++) {	//create missing pools
+					for (uint32_t i = (uint32_t)m_jobPools.size(); i <= poolNumber; i++) {	//create missing pools
 						m_jobPools.push_back(new JobPool);							//enough memory should be reserved -> no reallocate
 					}
 				}
@@ -357,6 +357,15 @@ namespace gjs {
 		}
 
 		//---------------------------------------------------------------------------
+		//this replays all jobs recorded into a pool
+		void playBackPool( uint32_t poolNumber ) {
+			JobMemory::JobPool *pPool = JobMemory::getInstance()->m_jobPools[poolNumber];
+			for (uint32_t index = 0; index < pPool->jobIndex; index++) {
+				addJob(&(*pPool->jobLists[index / JobMemory::m_listLength])[index % JobMemory::m_listLength]);
+			}
+		}
+
+		//---------------------------------------------------------------------------
 		//add a task to a random queue
 		void addJob( Job *pJob ) {
 			m_jobQueues[std::rand() % m_threads.size()]->push(pJob);
@@ -409,7 +418,7 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		//create a successor job for tlhis job, will be added to the queue after the current job finished -> wait
-		void onFinishedJob(Function func, std::string id ) {
+		void onFinishedAddJob(Function func, std::string id ) {
 			Job *pCurrentJob = getJobPointer();			//can be nullptr if called from main thread
 			Job *pParentJob = pCurrentJob != nullptr ? pCurrentJob->m_parentJob : nullptr;			//inherit parent to onFinish Job
 			uint32_t poolNumber = pCurrentJob != nullptr ? pCurrentJob->m_poolNumber.load() : 0;	//stay in the same pool
@@ -419,6 +428,12 @@ namespace gjs {
 #endif
 			pNewJob->setFunction(std::make_shared<Function>(func));
 			pCurrentJob->setOnFinished(pNewJob);
+		};
+
+		//---------------------------------------------------------------------------
+		//wait for all children to finish and then terminate the pool
+		void onFinishedTerminatePool() {
+			onFinishedAddJob( std::bind(&ThreadPool::terminate, this), "terminate");
 		};
 
 		//---------------------------------------------------------------------------
