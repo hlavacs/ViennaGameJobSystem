@@ -1,5 +1,12 @@
 #pragma once
 
+/*
+The Vienna Game Job System (VGJS)
+Designed and implemented by Prof. Helmut Hlavacs, Faculty of Computer Science, University of Vienna
+See documentation on how to use it at https://github.com/hlavacs/GameJobSystem
+The library is a single include file, and can be used under MIT license.
+*/
+
 #include <cstdint>
 #include <atomic>
 #include <mutex>
@@ -16,7 +23,7 @@
 #include <assert.h>
 
 
-namespace gjs {
+namespace vgjs {
 
 	class JobMemory;
 	class Job;
@@ -478,7 +485,7 @@ namespace gjs {
 
 #ifdef IMPLEMENT_GAMEJOBSYSTEM
 
-namespace gjs {
+namespace vgjs {
 
 	JobMemory * JobMemory::m_pJobMemory = nullptr;
 	JobSystem * JobSystem::pInstance = nullptr;

@@ -9,7 +9,7 @@
 #include "GameJobSystem.h"
 
 
-using namespace gjs;
+using namespace vgjs;
 using namespace std;
 
 class A {
