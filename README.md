@@ -6,9 +6,11 @@ The Vienna Game Job System (VGJS) is a C++11 library for parallelizing arbitrary
 * Intended as partner project of the Vienna Vulkan Engine (https://github.com/hlavacs/ViennaVulkanEngine), which will be ported to run on VGJS.
 
 VGJS is a single header library that should be included in C++ source files where it is needed:
+
     #include "GameJobSystem.h"
 
 In one of the C++ files, additionally the following statement should precede the include directive:
+
     #define IMPLEMENT_GAMEJOBSYSTEM
     #include "GameJobSystem.h"
 
