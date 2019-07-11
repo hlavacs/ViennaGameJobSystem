@@ -20,7 +20,7 @@ namespace gjs {
 
 	class JobMemory;
 	class Job;
-	class ThreadPool;
+	class JobSystem;
 
 
 	using Function = std::function<void()>;
@@ -28,7 +28,7 @@ namespace gjs {
 	//-------------------------------------------------------------------------------
 	class Job {
 		friend JobMemory;
-		friend ThreadPool;
+		friend JobSystem;
 
 	private:
 		std::atomic<bool>		m_available;					//is this job available after a pool reset?
@@ -70,7 +70,7 @@ namespace gjs {
 		};
 
 		//---------------------------------------------------------------------------
-		//notify parent, or schedule the finished job, define later since do not know ThreadPool yet
+		//notify parent, or schedule the finished job, define later since do not know JobSystem yet
 		void onFinished();	
 
 		//---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ namespace gjs {
 
 	//---------------------------------------------------------------------------
 	class JobMemory {
-		friend ThreadPool;
+		friend JobSystem;
 		friend Job;
 
 		//transient jobs, will be deleted for each new frame
@@ -248,7 +248,7 @@ namespace gjs {
 
 
 	//---------------------------------------------------------------------------
-	class ThreadPool {
+	class JobSystem {
 		friend Job;
 
 	private:
@@ -258,58 +258,7 @@ namespace gjs {
 		std::atomic<bool>					m_terminate;		//Flag for terminating the pool
 		std::vector<JobQueue*>				m_jobQueues;		//Each thread has its own Job queue
 		std::atomic<uint32_t>				m_uniqueID;			//a unique ID that is counted up
-
-	public:
-
-		//---------------------------------------------------------------------------
-		//instance and private constructor
-		static ThreadPool *pInstance;
-		ThreadPool(std::size_t threadCount = 0, uint32_t numPools = 1) : m_terminate(false), m_uniqueID(0) {
-			pInstance = this;
-
-			if (threadCount == 0) {
-				threadCount = std::thread::hardware_concurrency();		//main thread is also running
-			}
-
-			m_threads.reserve(threadCount);								//reserve mem for the threads
-			m_jobQueues.resize(threadCount);							//reserve mem for job queue pointers
-			m_jobPointers.resize(threadCount);							//rerve mem for Job pointers
-			for (uint32_t i = 0; i < threadCount; i++) {
-				m_threads.push_back( std::thread( &ThreadPool::threadTask, this ) );	//spawn the pool threads
-			}
-
-			JobMemory::getInstance()->resetPool(numPools-1);	//pre-allocate job pools
-		};
-
-
-		//---------------------------------------------------------------------------
-		//singleton access through class
-		static ThreadPool * getInstance() {
-			if (pInstance == nullptr) pInstance = new ThreadPool();
-			return pInstance;
-		};
-
-		ThreadPool(const ThreadPool&) = delete;				// non-copyable,
-		ThreadPool& operator=(const ThreadPool&) = delete;
-		ThreadPool(ThreadPool&&) = default;					// but movable
-		ThreadPool& operator=(ThreadPool&&) = default;
-		~ThreadPool() {
-			m_threads.clear();
-		};
-
-		//---------------------------------------------------------------------------
-		//will also let the main task exit the threadTask() function
-		void terminate() {
-			m_terminate = true;	
-		}
-
-		//---------------------------------------------------------------------------
-		//should be called by the main task
-		void wait() {
-			for (uint32_t i = 0; i < m_threads.size(); i++ ) {
-				m_threads[i].join();
-			}
-		}
+		static JobSystem *					pInstance;			//ponter to singleton
 
 		//---------------------------------------------------------------------------
 		// function each thread performs
@@ -352,9 +301,59 @@ namespace gjs {
 			}
 		};
 
+	public:
+
+		//---------------------------------------------------------------------------
+		//instance and private constructor
+		JobSystem(std::size_t threadCount = 0, uint32_t numPools = 1) : m_terminate(false), m_uniqueID(0) {
+			pInstance = this;
+
+			if (threadCount == 0) {
+				threadCount = std::thread::hardware_concurrency();		//main thread is also running
+			}
+
+			m_threads.reserve(threadCount);								//reserve mem for the threads
+			m_jobQueues.resize(threadCount);							//reserve mem for job queue pointers
+			m_jobPointers.resize(threadCount);							//rerve mem for Job pointers
+			for (uint32_t i = 0; i < threadCount; i++) {
+				m_threads.push_back(std::thread(&JobSystem::threadTask, this));	//spawn the pool threads
+			}
+
+			JobMemory::getInstance()->resetPool(numPools - 1);	//pre-allocate job pools
+		};
+
+		//---------------------------------------------------------------------------
+		//singleton access through class
+		static JobSystem * getInstance() {
+			if (pInstance == nullptr) pInstance = new JobSystem();
+			return pInstance;
+		};
+
+		JobSystem(const JobSystem&) = delete;				// non-copyable,
+		JobSystem& operator=(const JobSystem&) = delete;
+		JobSystem(JobSystem&&) = default;					// but movable
+		JobSystem& operator=(JobSystem&&) = default;
+		~JobSystem() {
+			m_threads.clear();
+		};
+
+		//---------------------------------------------------------------------------
+		//will also let the main task exit the threadTask() function
+		void terminate() {
+			m_terminate = true;	
+		}
+
+		//---------------------------------------------------------------------------
+		//should be called by the main task
+		void waitForTermination() {
+			for (uint32_t i = 0; i < m_threads.size(); i++ ) {
+				m_threads[i].join();
+			}
+		}
+
 		//---------------------------------------------------------------------------
 		// returns number of threads being used
-		std::size_t getThreadCount() const { return m_threadIndexMap.size(); };
+		std::size_t getThreadCount() const { return m_threads.size(); };
 
 		//---------------------------------------------------------------------------
 		//get index of the thread that is calling this function
@@ -442,7 +441,7 @@ namespace gjs {
 		};
 
 		//---------------------------------------------------------------------------
-		//create a successor job for tlhis job, will be added to the queue after the current job finished -> wait
+		//create a successor job for tlhis job, will be added to the queue after the current job finished (i.e. all children have finished)
 		void onFinishedAddJob(Function func, std::string id ) {
 			Job *pCurrentJob = getJobPointer();			//can be nullptr if called from main thread
 			if (JobMemory::getInstance()->m_jobPools[pCurrentJob->m_poolNumber]->isPlayedBack) return; //in playback mode no sucessors are recorded
@@ -459,7 +458,7 @@ namespace gjs {
 		//---------------------------------------------------------------------------
 		//wait for all children to finish and then terminate the pool
 		void onFinishedTerminatePool() {
-			onFinishedAddJob( std::bind(&ThreadPool::terminate, this), "terminate");
+			onFinishedAddJob( std::bind(&JobSystem::terminate, this), "terminate");
 		};
 
 		//---------------------------------------------------------------------------
@@ -482,7 +481,7 @@ namespace gjs {
 namespace gjs {
 
 	JobMemory * JobMemory::m_pJobMemory = nullptr;
-	ThreadPool * ThreadPool::pInstance = nullptr;
+	JobSystem * JobSystem::pInstance = nullptr;
 
 	//---------------------------------------------------------------------------
 	//This is run if the job is executed
@@ -496,14 +495,14 @@ namespace gjs {
 			Job *pChild = m_pFirstChild;					//if pool is played back
 			while (pChild != nullptr) {
 				m_numUnfinishedChildren++;
-				ThreadPool::getInstance()->addJob(pChild);	//run all children
+				JobSystem::getInstance()->addJob(pChild);	//run all children
 				pChild = pChild->m_pNextSibling;
 			}
 
 			uint32_t numLeft = pPool->numJobsLeftToPlay.fetch_sub(1);
 			if (numLeft == 1) {
 				pPool->isPlayedBack = false;										//playback stops
-				ThreadPool::getInstance()->addJob(pPool->pOnPlaybackFinishedJob);	//schedule onPlayBackFinished Job
+				JobSystem::getInstance()->addJob(pPool->pOnPlaybackFinishedJob);	//schedule onPlayBackFinished Job
 			}
 		}
 
@@ -519,7 +518,7 @@ namespace gjs {
 			m_parentJob->childFinished();	//if this is the last child job then the parent will also finish
 		}
 		if (m_onFinishedJob != nullptr) {	//is there a successor Job?
-			ThreadPool::getInstance()->addJob(m_onFinishedJob);	//schedule it for running
+			JobSystem::getInstance()->addJob(m_onFinishedJob);	//schedule it for running
 		}
 		m_available = true;					//job is available again (after a pool reset)
 	}
@@ -528,7 +527,7 @@ namespace gjs {
 #elif
 
 extern JobMemory * JobMemory::m_pJobMemory = nullptr;
-extern ThreadPool * ThreadPool::pInstance = nullptr;
+extern JobSystem * JobSystem::pInstance = nullptr;
 
 
 #endif
