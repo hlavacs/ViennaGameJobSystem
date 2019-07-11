@@ -382,11 +382,11 @@ namespace gjs {
 				addJob(ponFinishedJob);			//the pool is empty, so run the finished job immediately
 				return;
 			}
-			pPool->isPlayedBack = true;
-			pPool->numJobsLeftToPlay = pPool->jobIndex.load();
-			pPool->pOnPlaybackFinishedJob = ponFinishedJob;
+			pPool->isPlayedBack = true;							//set flag to indicate that the pool is in playback mode
+			pPool->numJobsLeftToPlay = pPool->jobIndex.load();	//number of jobs to run
+			pPool->pOnPlaybackFinishedJob = ponFinishedJob;		//set job that is called after playback is over
 				
-			addJob(&(*pPool->jobLists[0])[0]);		//start the playback
+			addJob(&(*pPool->jobLists[0])[0]);					//start the playback
 		}
 
 		//---------------------------------------------------------------------------
@@ -432,7 +432,7 @@ namespace gjs {
 		}
 
 		void addChildJob(Function func, uint32_t poolNumber, std::string id ) {
-			if (JobMemory::getInstance()->m_jobPools[poolNumber]->isPlayedBack) return;
+			if (JobMemory::getInstance()->m_jobPools[poolNumber]->isPlayedBack) return;			//in playback no children are created
 			Job *pJob = JobMemory::getInstance()->allocateJob(getJobPointer(), poolNumber );
 #ifdef _DEBUG			
 			pJob->id = id;							//copy Job id, can be removed in production code
@@ -445,8 +445,7 @@ namespace gjs {
 		//create a successor job for tlhis job, will be added to the queue after the current job finished -> wait
 		void onFinishedAddJob(Function func, std::string id ) {
 			Job *pCurrentJob = getJobPointer();			//can be nullptr if called from main thread
-			if (JobMemory::getInstance()->m_jobPools[pCurrentJob->m_poolNumber]->isPlayedBack) return;
-
+			if (JobMemory::getInstance()->m_jobPools[pCurrentJob->m_poolNumber]->isPlayedBack) return; //in playback mode no sucessors are recorded
 			Job *pParentJob = pCurrentJob != nullptr ? pCurrentJob->m_parentJob : nullptr;			//inherit parent to onFinish Job
 			uint32_t poolNumber = pCurrentJob != nullptr ? pCurrentJob->m_poolNumber.load() : 0;	//stay in the same pool
 			Job *pNewJob = JobMemory::getInstance()->allocateJob(pParentJob, poolNumber);			//new job has the same parent as current job
@@ -496,6 +495,7 @@ namespace gjs {
 		if( pPool->isPlayedBack) {
 			Job *pChild = m_pFirstChild;					//if pool is played back
 			while (pChild != nullptr) {
+				m_numUnfinishedChildren++;
 				ThreadPool::getInstance()->addJob(pChild);	//run all children
 				pChild = pChild->m_pNextSibling;
 			}
@@ -505,11 +505,10 @@ namespace gjs {
 				pPool->isPlayedBack = false;										//playback stops
 				ThreadPool::getInstance()->addJob(pPool->pOnPlaybackFinishedJob);	//schedule onPlayBackFinished Job
 			}
-			return;
 		}
 
-		uint32_t numLeft = m_numUnfinishedChildren.fetch_add(-1);
-		if (numLeft == 1) onFinished();					//this was the last child
+		uint32_t numLeft = m_numUnfinishedChildren.fetch_sub(1);	//reduce number of running children by 1 (includes itself)
+		if (numLeft == 1) onFinished();								//this was the last child
 	};
 
 
@@ -522,7 +521,7 @@ namespace gjs {
 		if (m_onFinishedJob != nullptr) {	//is there a successor Job?
 			ThreadPool::getInstance()->addJob(m_onFinishedJob);	//schedule it for running
 		}
-		m_available = true;		//job is available again (after a pool reset)
+		m_available = true;					//job is available again (after a pool reset)
 	}
 }
 
