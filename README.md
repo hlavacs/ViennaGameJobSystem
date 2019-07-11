@@ -16,23 +16,22 @@ VGJS runs a number of n worker threads, each having its own work queue. Each thr
 
     class A {
     public:
-	      A() {};
-	     ~A() {};
+        A() {};
+        ~A() {};
 
-	      void printA( uint32_t number ) {
+        void printA( uint32_t number ) {
             JobSystem::getInstance()->printDebug( std::to_string(number) );
-            JobSystem::getInstance()->onFinishedAddJob( std::bind( &printB, this, number*2), "printB" );
+            JobSystem::getInstance()->onFinishedAddJob( std::bind( &A::printB, this, number*2), "printB" );
         };
 
         void printB( uint32_t number ) {
             JobSystem::getInstance()->printDebug( std::to_string(number) );
             JobSystem::getInstance()->onFinishedTerminatePool();
         };
-
-	  };
+    };
 
     int main() {
-        JobSystem pool(0);
+        JobSystem pool(0);    //0 threads means that number of threads = number of CPU supperted threads
         A theA;
         pool.addJob( std::bind( &A::printA, theA, 50 ), 1, "printA" );
         pool.waitForTermination();
