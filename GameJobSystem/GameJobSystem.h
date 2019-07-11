@@ -43,8 +43,8 @@ namespace gjs {
 		//set pointer to parent job
 		void setParentJob(Job *parentJob) {
 			if (parentJob == nullptr) return;
-			m_parentJob = parentJob;
-			parentJob->m_numUnfinishedChildren++;
+			m_parentJob = parentJob;				//set the pointer
+			parentJob->m_numUnfinishedChildren++;	//tell parent that there is one more child
 		};	
 
 		//---------------------------------------------------------------------------
@@ -53,6 +53,8 @@ namespace gjs {
 			m_onFinishedJob = pJob; 
 		};
 
+		//---------------------------------------------------------------------------
+		//set the Job's function
 		void setFunction(std::shared_ptr<Function> func) {
 			m_function = func;
 		};
@@ -80,7 +82,10 @@ namespace gjs {
 	public:
 		Job() : m_poolNumber(0), m_parentJob(nullptr), m_numUnfinishedChildren(0), m_onFinishedJob(nullptr) {};
 		~Job() {};
+
+#ifdef _DEBUG
 		std::string id;
+#endif
 	};
 
 
@@ -114,8 +119,8 @@ namespace gjs {
 
 		static JobMemory *m_pJobMemory;							//pointer to singleton
 		JobMemory() {											//private constructor
-			m_jobPools.reserve(10);
-			m_jobPools.emplace_back( new JobPool );
+			m_jobPools.reserve(50);								//reserve enough mem so that vector is never reallocated
+			m_jobPools.emplace_back( new JobPool );				//start with 1 job pool
 		};
 
 		~JobMemory() {
@@ -129,7 +134,7 @@ namespace gjs {
 		//get instance of singleton
 		static JobMemory *getInstance() {						
 			if (m_pJobMemory == nullptr) {
-				m_pJobMemory = new JobMemory();					//create the singleton
+				m_pJobMemory = new JobMemory();		//create the singleton
 			}
 			return m_pJobMemory;
 		};
@@ -141,13 +146,13 @@ namespace gjs {
 				resetPool( poolNumber );					//create it
 			}
 
-			JobPool *pPool = m_jobPools[poolNumber];
-			const uint32_t index = pPool->jobIndex.fetch_add(1);
-			if (index > pPool->jobLists.size() * m_listLength - 1) {
-				std::lock_guard<std::mutex> lock(pPool->lmutex);
+			JobPool *pPool = m_jobPools[poolNumber];						//pointer to the pool
+			const uint32_t index = pPool->jobIndex.fetch_add(1);			//increase counter by 1
+			if (index > pPool->jobLists.size() * m_listLength - 1) {		//do we need a new segment?
+				std::lock_guard<std::mutex> lock(pPool->lmutex);			//lock the pool
 
 				if (index > pPool->jobLists.size() * m_listLength - 1)		//might be beaten here by other thread so check again
-					pPool->jobLists.emplace_back(new JobList(m_listLength));
+					pPool->jobLists.emplace_back(new JobList(m_listLength));	//create a new segment
 			}
 
 			return &(*pPool->jobLists[index / m_listLength])[index % m_listLength];		//get modulus of number of last job list
@@ -155,30 +160,27 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		//get the first job that is available
-		Job* allocateJob( Job *pParent = nullptr, uint32_t poolNumber = 0, std::string id = ""  ) {
+		Job* allocateJob( Job *pParent = nullptr, uint32_t poolNumber = 0 ) {
 			Job *pJob;
 			do {
-				pJob = getNextJob(poolNumber);
-			} while ( !pJob->m_available );
-			pJob->m_available = false;
-			pJob->m_poolNumber = poolNumber;
-			pJob->m_onFinishedJob = nullptr;
-			pJob->id = id;
-
-			if( pParent != nullptr ) pJob->setParentJob(pParent);
+				pJob = getNextJob(poolNumber);		//get the next Job in the pool
+			} while ( !pJob->m_available );			//check whether it is available
+			pJob->m_poolNumber = poolNumber;		//make sure the job knows its own pool number
+			pJob->m_onFinishedJob = nullptr;		//no successor Job yet
+			if( pParent != nullptr ) pJob->setParentJob(pParent);	//set parent Job and notify parent
 			return pJob;
 		};
 
 		//---------------------------------------------------------------------------
 		//reset index for new frame, start with 0 again
 		void resetPool( uint32_t poolNumber = 0 ) { 
-			if (poolNumber > m_jobPools.size() - 1) {
-				static std::mutex mutex;
+			if (poolNumber > m_jobPools.size() - 1) {		//if pool does not yet exist
+				static std::mutex mutex;					//lock this function
 				std::lock_guard<std::mutex> lock(mutex);
 
-				if (poolNumber > m_jobPools.size() - 1) {							//could be beaten here by other thread
-					for (uint32_t i = m_jobPools.size(); i <= poolNumber; i++) {	//so check again
-						m_jobPools.push_back(new JobPool);
+				if (poolNumber > m_jobPools.size() - 1) {							//could be beaten here by other thread so check again
+					for (uint32_t i = m_jobPools.size(); i <= poolNumber; i++) {	//create missing pools
+						m_jobPools.push_back(new JobPool);							//enough memory should be reserved -> no reallocate
 					}
 				}
 			}
@@ -188,28 +190,46 @@ namespace gjs {
 
 
 	//---------------------------------------------------------------------------
+	//queue class
+	//will be changed for lock free queues
 	class JobQueue {
 		std::mutex m_mutex;
-		std::queue<Job*> m_queue;
+		std::queue<Job*> m_queue;	//conventional queue by now
 
 	public:
+		//---------------------------------------------------------------------------
 		JobQueue() {};
+
+		//---------------------------------------------------------------------------
 		void push( Job * pJob) {
-			std::lock_guard<std::mutex> lock(m_mutex);
+			m_mutex.lock();
 			m_queue.push(pJob);
+			m_mutex.unlock();
 		};
+
+		//---------------------------------------------------------------------------
 		Job * pop() {
-			std::lock_guard<std::mutex> lock(m_mutex);
-			if (m_queue.size() == 0) return nullptr;
+			m_mutex.lock();
+			if (m_queue.size() == 0) {
+				m_mutex.unlock();
+				return nullptr;
+			};
 			Job* pJob = m_queue.front();
 			m_queue.pop();
+			m_mutex.unlock();
 			return pJob;
 		};
+
+		//---------------------------------------------------------------------------
 		Job *steal() {
-			std::lock_guard<std::mutex> lock(m_mutex);
-			if (m_queue.size() == 0) return nullptr;
+			m_mutex.lock();
+			if (m_queue.size() == 0) {
+				m_mutex.unlock();
+				return nullptr;
+			};
 			Job* pJob = m_queue.front();
 			m_queue.pop();
+			m_mutex.unlock();
 			return pJob;
 		};
 	};
@@ -219,40 +239,39 @@ namespace gjs {
 	class ThreadPool {
 		friend Job;
 
-		using Ids = std::vector<std::thread::id>;
-
 	private:
-		std::vector<std::thread> m_threads;
-		std::vector<Job*> m_jobPointers;
-		std::map<std::thread::id, uint32_t> m_threadIndexMap;
-		std::atomic<bool> m_terminate;
-
-		std::vector<JobQueue*> m_jobQueues;
-		std::condition_variable m_jobsAvailable;
-
+		std::vector<std::thread>			m_threads;			//array of thread structures
+		std::vector<Job*>					m_jobPointers;		//each thread has a current Job that it may run, pointers point to them
+		std::map<std::thread::id, uint32_t> m_threadIndexMap;	//Each thread has an index number 0...Num Threads
+		std::atomic<bool>					m_terminate;		//Flag for terminating the pool
+		std::vector<JobQueue*>				m_jobQueues;		//Each thread has its own Job queue
+		std::atomic<uint32_t>				m_uniqueID;			//a unique ID that is counted up
 
 	public:
 
 		//---------------------------------------------------------------------------
 		//instance and private constructor
 		static ThreadPool *pInstance;
-		ThreadPool(std::size_t threadCount = 0) : m_terminate(false) {
+		ThreadPool(std::size_t threadCount = 0, uint32_t numPools = 1) : m_terminate(false), m_uniqueID(0) {
 			pInstance = this;
 
 			if (threadCount == 0) {
 				threadCount = std::thread::hardware_concurrency();		//main thread is also running
 			}
 
-			m_threads.reserve(threadCount);	
-			m_jobQueues.resize(threadCount);
-			m_jobPointers.resize(threadCount);
+			m_threads.reserve(threadCount);								//reserve mem for the threads
+			m_jobQueues.resize(threadCount);							//reserve mem for job queue pointers
+			m_jobPointers.resize(threadCount);							//rerve mem for Job pointers
 			for (uint32_t i = 0; i < threadCount; i++) {
-				m_threads.push_back( std::thread( &ThreadPool::threadTask, this ) );
+				m_threads.push_back( std::thread( &ThreadPool::threadTask, this ) );	//spawn the pool threads
 			}
+
+			JobMemory::getInstance()->resetPool(numPools-1);	//pre-allocate job pools
 		};
 
 
 		//---------------------------------------------------------------------------
+		//singleton access through class
 		static ThreadPool * getInstance() {
 			if (pInstance == nullptr) pInstance = new ThreadPool();
 			return pInstance;
@@ -308,7 +327,10 @@ namespace gjs {
 				if (m_terminate) break;
 
 				if (pJob != nullptr) {
+
+#ifdef _DEBUG
 					printDebug("Thread " + std::to_string(threadIndex) + " runs " + pJob->id + "\n");
+#endif
 					m_jobPointers[threadIndex] = pJob;	//make pointer to the Job structure accessible!
 					(*pJob)();							//run the job
 				}
@@ -342,37 +364,70 @@ namespace gjs {
 
 		//---------------------------------------------------------------------------
 		//create a new job in a job pool
-		void addJob(std::function<void()> func, uint32_t poolNumber = 0, std::string id = "") {
+		void addJob(Function func, uint32_t poolNumber = 0) {
+			addJob(func, poolNumber, "");
+		}
+
+		void addJob(Function func, uint32_t poolNumber, std::string id ) {
 			Job *pCurrentJob = getJobPointer();
-			if (pCurrentJob == nullptr) {
-				pCurrentJob = JobMemory::getInstance()->allocateJob(nullptr, poolNumber, id);
+			if (pCurrentJob == nullptr) {		//called from main thread -> need a Job 
+				pCurrentJob = JobMemory::getInstance()->allocateJob(nullptr, poolNumber );	
 				pCurrentJob->setFunction(std::make_shared<Function>(func));
+#ifdef _DEBUG
+				pCurrentJob->id = id;
+#endif
 				addJob(pCurrentJob);
 				return;
 			}
 
-			Job *pParentJob = pCurrentJob->m_poolNumber == poolNumber ? pCurrentJob : nullptr;	//either current job or nullptr if called from the main thread
-			Job *pJob = JobMemory::getInstance()->allocateJob( pParentJob, poolNumber, id );
+			Job *pJob = JobMemory::getInstance()->allocateJob( nullptr, poolNumber );	//no parent, so do not wait for its completion
+			pJob->setFunction(std::make_shared<Function>(func));
+#ifdef _DEBUG
+			pJob->id = id;
+#endif
+			addJob(pJob);
+		};
+
+		//---------------------------------------------------------------------------
+		//create a new child job in a job pool
+		void addChildJob(Function func ) {
+			addChildJob(func, getJobPointer()->m_poolNumber, "");
+		}
+
+		void addChildJob( Function func, std::string id) {
+			addChildJob(func, getJobPointer()->m_poolNumber, id);
+		}
+
+		void addChildJob(Function func, uint32_t poolNumber, std::string id ) {
+			Job *pJob = JobMemory::getInstance()->allocateJob(getJobPointer(), poolNumber );
+#ifdef _DEBUG			
+			pJob->id = id;							//copy Job id, can be removed in production code
+#endif
 			pJob->setFunction(std::make_shared<Function>(func));
 			addJob(pJob);
 		};
 
 		//---------------------------------------------------------------------------
 		//create a successor job for tlhis job, will be added to the queue after the current job finished -> wait
-		void onFinishedJob(std::function<void()> func, std::string id ="") {
-			Job *pCurrentJob = getJobPointer();
-			Job *pParentJob = pCurrentJob != nullptr ? pCurrentJob->m_parentJob : nullptr;
-			uint32_t poolNumber = pCurrentJob != nullptr ? pCurrentJob->m_poolNumber.load() : 0;
-			Job *pNewJob = JobMemory::getInstance()->allocateJob(pParentJob, poolNumber, id ); //new job has the same parent as current job
+		void onFinishedJob(Function func, std::string id ) {
+			Job *pCurrentJob = getJobPointer();			//can be nullptr if called from main thread
+			Job *pParentJob = pCurrentJob != nullptr ? pCurrentJob->m_parentJob : nullptr;			//inherit parent to onFinish Job
+			uint32_t poolNumber = pCurrentJob != nullptr ? pCurrentJob->m_poolNumber.load() : 0;	//stay in the same pool
+			Job *pNewJob = JobMemory::getInstance()->allocateJob(pParentJob, poolNumber);			//new job has the same parent as current job
+#ifdef _DEBUG			
+			pNewJob->id = id;
+#endif
 			pNewJob->setFunction(std::make_shared<Function>(func));
 			pCurrentJob->setOnFinished(pNewJob);
 		};
 
+		//---------------------------------------------------------------------------
+		//Print deubg information, this is synchronized so that text is not confused on the console
 		void printDebug(std::string s) {
 			static std::mutex lmutex;
 			std::lock_guard<std::mutex> lock(lmutex);
 
-			//std::cout << s;
+			std::cout << s;
 		};
 
 	};
@@ -389,12 +444,14 @@ namespace gjs {
 	ThreadPool * ThreadPool::pInstance = nullptr;
 
 
+	//---------------------------------------------------------------------------
+	//This call back is called once a Job and all its children are finished
 	void Job::onFinished() {
-		if (m_parentJob != nullptr) {
-			m_parentJob->childFinished();
+		if (m_parentJob != nullptr) {		//if there is parent then inform it
+			m_parentJob->childFinished();	//if this is the last child job then the parent will also finish
 		}
-		if (m_onFinishedJob != nullptr) {
-			ThreadPool::getInstance()->addJob(m_onFinishedJob);	//Job does not know ThreadPool when it is declared
+		if (m_onFinishedJob != nullptr) {	//is there a successor Job?
+			ThreadPool::getInstance()->addJob(m_onFinishedJob);	//schedule it for running
 		}
 		m_available = true;		//job is available again (after a pool reset)
 	}
