@@ -86,4 +86,88 @@ init1() additionally schedule jobs in pools 1 and 2. There is a dependency betwe
 After a pool is initialized (either after start or after calling resetPool()), it will start recording job DAGs automatically that are scheduled in it. At any time, the jobs of a pool can be replayed by calling playBackPool(). Since recording preserves the parent-child relationships and follow-up jobs, this will schedule the recorded jobs to the thread pool, but preserving dependencies. Playback means that the very first job in the pool is scheduled, and that this job is a child of the calling job. So once it finishes, the parent job will be notified and can also finish. Therefore, playback can only work correctly if there is one and only one starting job, that subsequently schedules child jobs in the same (!) pool. In the above example, both pool 1 and 2 can be replayed, whereas pool 0 cannot because it has scheduled jobs in other pools. Note that this is not queried, and playing a pool like pool 0 might result in unexpected behavior, since jobs in the other pools in the mean time could be reused and do something completely different.
 
 ## Library Functions
-The system supports the following functions:
+The system supports the following functions API.
+
+    //class constructor
+    //threadCount Number of threads to start. If 0 then the number of hardware threads is used.
+    //numPools Number of job pools to create upfront
+    JobSystem::JobSystem(std::size_t threadCount = 0, uint32_t numPools = 1);
+
+    //returns a pointer to the only instance of the class
+    static JobSystem * getInstance();
+
+    //sets a flag to terminate all running threads
+    void terminate();
+
+    //returns total number of jobs in the system
+    uint32_t getNumberJobs();
+
+    //can be called by the main thread to wait for the completion of all jobs in the system
+    //returns as soon as there are no more jobs in the job queues
+    void wait();
+
+    //can be called by the main thread to wait for all threads to terminate
+    //returns as soon as all threads have exited
+    void waitForTermination();
+
+    // returns number of threads in the thread pool
+    std::size_t getThreadCount();
+
+    //each thread has a unique index between 0 and numThreads - 1
+    //returns index of the thread that is calling this function
+    //can e.g. be used for allocating command buffers from command buffer pools in Vulkan
+    uint32_t getThreadNumber();
+
+    //wrapper for resetting a job pool in the job memory
+    //poolNumber Number of the pool to reset
+    void resetPool( uint32_t poolNumber );
+
+    //returns a pointer to the job of the current task
+    Job * getJobPointer();
+
+    //this replays all jobs recorded into a pool
+    //playPoolNumber Number of the job pool that should be replayed
+    void playBackPool( uint32_t playPoolNumber );
+
+    //add a job to a queue
+    //pJob Pointer to the job to schedule
+    void addJob( Job * pJob );
+
+    //create a new job in a job pool
+    //func The function to schedule
+    //poolNumber Optional number of the pool, or 0
+    void addJob(Function func, uint32_t poolNumber = 0);
+
+    //func The function to schedule
+    //id A name for the job for debugging
+    void addJob(Function func, std::string id);
+
+    //func The function to schedule
+    //poolNumber Optional number of the pool, or 0
+    //id A name for the job for debugging
+    void addJob(Function func, uint32_t poolNumber, std::string id );
+
+    //create a new child job in a job pool
+    //func The function to schedule
+    void addChildJob(Function func );
+
+    //func The function to schedule
+    //id A name for the job for debugging
+    void addChildJob( Function func, std::string id);
+
+    //func The function to schedule
+    //poolNumber Number of the pool
+    //id A name for the job for debugging
+    void addChildJob(Function func, uint32_t poolNumber, std::string id );
+
+    //create a successor job for tlhis job, will be added to the queue after the current job finished (i.e. all children have finished)
+    //func The function to schedule
+    //id A name for the job for debugging
+    void onFinishedAddJob(Function func, std::string id );
+
+    //wait for all children to finish and then terminate the pool
+    void onFinishedTerminatePool();
+
+    //Print deubg information, this is synchronized so that text is not confused on the console
+    //s The string to print to the console
+    void printDebug(std::string s);

@@ -312,7 +312,7 @@ namespace vgjs {
 	public:
 
 		//---------------------------------------------------------------------------
-		//instance and private constructor
+		//class constructor
 		//threadCount Number of threads to start. If 0 then the number of hardware threads is used.
 		//numPools Number of job pools to create upfront
 		//
