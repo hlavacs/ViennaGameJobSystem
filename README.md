@@ -66,7 +66,7 @@ When started VGJS by default contains one pool, but pools are automatically crea
 In the onFinished() function, the job can also schedule a follow-up job to be executed. This established a wait-operation, since this follow-up job will be scheduled only of all children have finished.
 
 ## Directed Acyclic Graph (DAG)
-![](dag.tif "Example DAG")
+![](dag.jpg "Example DAG")
 
 ## Recording and Replaying Pools
 
