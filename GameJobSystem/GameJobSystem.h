@@ -264,8 +264,11 @@ namespace vgjs {
 		std::map<std::thread::id, uint32_t> m_threadIndexMap;	//Each thread has an index number 0...Num Threads
 		std::atomic<bool>					m_terminate;		//Flag for terminating the pool
 		std::vector<JobQueue*>				m_jobQueues;		//Each thread has its own Job queue
+		std::atomic<uint32_t>				m_numJobs;			//total number of jobs in the system
 		std::atomic<uint32_t>				m_uniqueID;			//a unique ID that is counted up
 		static JobSystem *					pInstance;			//ponter to singleton
+		std::mutex							m_mainThreadMutex;	//used for syncing with main thread
+		std::condition_variable				m_mainThreadCondVar;//used for waking up main tread
 
 		//---------------------------------------------------------------------------
 		// function each thread performs
@@ -312,7 +315,7 @@ namespace vgjs {
 
 		//---------------------------------------------------------------------------
 		//instance and private constructor
-		JobSystem(std::size_t threadCount = 0, uint32_t numPools = 1) : m_terminate(false), m_uniqueID(0) {
+		JobSystem(std::size_t threadCount = 0, uint32_t numPools = 1) : m_terminate(false), m_uniqueID(0), m_numJobs(0) {
 			pInstance = this;
 
 			if (threadCount == 0) {
@@ -348,6 +351,21 @@ namespace vgjs {
 		//will also let the main task exit the threadTask() function
 		void terminate() {
 			m_terminate = true;	
+		}
+
+		//---------------------------------------------------------------------------
+		//return total number of jobs in the system
+		uint32_t getNumberJobs() {
+			return m_numJobs;
+		}
+
+		//---------------------------------------------------------------------------
+		//can be called by the main thread to wait for the completion of all tasks
+		void wait() {
+			while (getNumberJobs() > 0) {
+				std::unique_lock<std::mutex> lock(m_mainThreadMutex);
+				m_mainThreadCondVar.wait(lock);
+			}
 		}
 
 		//---------------------------------------------------------------------------
@@ -398,6 +416,7 @@ namespace vgjs {
 		//---------------------------------------------------------------------------
 		//add a task to a random queue
 		void addJob( Job *pJob ) {
+			m_numJobs++;
 			m_jobQueues[std::rand() % m_threads.size()]->push(pJob);
 		}
 
@@ -476,10 +495,7 @@ namespace vgjs {
 
 			std::cout << s;
 		};
-
 	};
-
-
 }
 
 
@@ -526,6 +542,12 @@ namespace vgjs {
 		}
 		if (m_onFinishedJob != nullptr) {	//is there a successor Job?
 			JobSystem::getInstance()->addJob(m_onFinishedJob);	//schedule it for running
+		}
+
+		JobSystem *js = JobSystem::getInstance();
+		uint32_t numLeft = js->m_numJobs.fetch_sub(1); //one less job in the system
+		if (numLeft == 1) {							//if this was the last job in ths system 
+			js->m_mainThreadCondVar.notify_all();	//notify main thread that might be waiting
 		}
 		m_available = true;					//job is available again (after a pool reset)
 	}

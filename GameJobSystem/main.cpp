@@ -83,7 +83,10 @@ int main()
 	A theA;
 
 	pool.addJob( std::bind( &case1, theA, 50 ), 1, "case2 0" );
+	pool.wait();
+
+	pool.terminate();
 	pool.waitForTermination();
 
-  return 0;
+	return 0;
 }
