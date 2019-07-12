@@ -60,15 +60,15 @@ In the above code the main threads runs member function printA() of instance the
 
 Each job internally is shadowed by an instance of the Job class. Instances are allocated from job pools. A job pool has a unique index and a list of memory segments holding Job structures. Each pool has its own job index pointing to the next Job structure to allocate, and is simply increased by one upon allocation. A pool theoretically can by made arbitrarily large, but since games and other systems typically have time periods like 1 frame, after one such period each pool can simply be reset so that jobIndex points to 0, and job structures are reused in the next run. This is done by
 
-    JobSystem::getInstance()->reset( poolNumber );
+    JobSystem::getInstance()->resetPool( poolNumber );
 
 When started VGJS by default contains one pool, but pools are automatically created if they are referred to. Each function that is added is internally represented by a Job structure from one of the pools. Jobs scheduling other jobs using addChildJob() establish a parent-child relationship. The parent can finish only if all its children have finished. A job that finishes automatically calls its own onFinished() function. In this function, the job calls its own parent's childFinished() function to notify the parent that one of its children has finished. If this was the last child, the parent job will also finish.
 In the onFinished() function, the job can also schedule a follow-up job to be executed. This established a wait-operation, since this follow-up job will be scheduled only of all children have finished.
 
 ## Directed Acyclic Graph (DAG)
+![](dag.tif "Example DAG")
 
-
-## Recording and replaying pools
+## Recording and Replaying Pools
 
 
 ## Library Functions

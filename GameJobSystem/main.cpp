@@ -26,24 +26,26 @@ public:
 		std::string s = std::string(depth, ' ') + "spawn " + std::to_string(f1) + " depth " + std::to_string(depth) + " " + std::to_string(i2) + " " + std::to_string((uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
 		JobSystem::getInstance()->printDebug(s);
 
-		if ( depth<2 ) { //std::rand() % 100 < 50) {
+		if ( depth<5 ) { //std::rand() % 100 < 50) {
 			uint32_t n = 2; // std::rand() % 2;
 			for (uint32_t i = 0; i < n; i++) {
-				JobSystem::getInstance()->addChildJob(std::bind(&A::spawn, this, 0.1f, depth + 1, i2), 0, "spawn" );
+				JobSystem::getInstance()->addChildJob(std::bind(&A::spawn, this, 0.1f, depth + 1, i2), "spawn " + std::to_string(depth+1));
 			}
 		}
 		else {
-			JobSystem::getInstance()->addChildJob(std::bind(&A::printA, this, 0.1f, depth + 1, i2), 0, "printA" );
+			JobSystem::getInstance()->addChildJob(std::bind(&A::printA, this, 0.1f, depth + 1, i2), "printA " + std::to_string(depth+1));
 		}
 
 	};
 
 };
 
+//-----------------------------------------------
+
 void case1( A& theA, uint32_t loopNumbers) {
 	for (uint32_t j = 0; j < 2; j++) {
 		for (uint32_t i = 0; i < loopNumbers; i++) {
-			JobSystem::getInstance()->addChildJob( std::bind( &A::printA, theA, 0.1f, 0, i), 0, "printA" );
+			JobSystem::getInstance()->addChildJob( std::bind( &A::printA, theA, 0.1f, 0, i), 0, "printA " );
 		}
 	}
 	JobSystem::getInstance()->onFinishedTerminatePool();
@@ -53,7 +55,7 @@ void case2( A& theA, uint32_t loopNumber ) {
 	JobSystem::getInstance()->printDebug("case 2 " + std::to_string(loopNumber) + "\n");
 
 	for (uint32_t i = 0; i < 1; i++) {
-		JobSystem::getInstance()->addChildJob( std::bind( &A::spawn, theA, 0.1f, 0, i), "spawn" );
+		JobSystem::getInstance()->addChildJob( std::bind( &A::spawn, theA, 0.1f, 0, i), "spawn " );
 	}
 
 	if (loopNumber > 5) {
@@ -64,29 +66,42 @@ void case2( A& theA, uint32_t loopNumber ) {
 }
 
 
+//-----------------------------------------------
+
+
 void playBack(A& theA, uint32_t loopNumber) {
-	JobSystem::getInstance()->playBackPool(1, std::bind(&JobSystem::terminate, JobSystem::getInstance() ) );
+
+	if (loopNumber < 2) {
+		JobSystem::getInstance()->playBackPool(1);
+	}
+
+	if (loopNumber < 1) {
+		JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber + 1), "playBack " + std::to_string(loopNumber + 1));
+	}
 }
 
 
 void record(A& theA, uint32_t loopNumber) {
-	JobSystem::getInstance()->addChildJob( std::bind(&case1, theA, loopNumber), 1, "case1" + std::to_string(loopNumber+1) );
+	JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0.1f, loopNumber, 0 ), 1, "spawn " + std::to_string(loopNumber) );	
 
-	JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, loopNumber), "playBack 2 " + std::to_string(loopNumber+1) );
+	JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, loopNumber), "playBack " + std::to_string(loopNumber) );
 }
+
+
 
 
 int main()
 {
-	JobSystem pool(0);
+	JobSystem jobsystem(1);
 
 	A theA;
 
-	pool.addJob( std::bind( &case1, theA, 50 ), 1, "case2 0" );
-	pool.wait();
+	jobsystem.resetPool(1);
+	jobsystem.addJob( std::bind( &record, theA, 0 ), "record" );
+	jobsystem.wait();
 
-	pool.terminate();
-	pool.waitForTermination();
+	jobsystem.terminate();
+	jobsystem.waitForTermination();
 
 	return 0;
 }
