@@ -133,15 +133,18 @@ The system supports the following functions API.
     //pJob Pointer to the job to schedule
     void addJob( Job * pJob );
 
+    //add a job to a queue
     //create a new job in a job pool
     //func The function to schedule
     //poolNumber Optional number of the pool, or 0
     void addJob(Function func, uint32_t poolNumber = 0);
 
+    //add a job to a queue
     //func The function to schedule
     //id A name for the job for debugging
     void addJob(Function func, std::string id);
 
+    //add a job to a queue
     //func The function to schedule
     //poolNumber Optional number of the pool, or 0
     //id A name for the job for debugging
@@ -151,16 +154,19 @@ The system supports the following functions API.
     //func The function to schedule
     void addChildJob(Function func );
 
+    //create a new child job in a job pool
     //func The function to schedule
     //id A name for the job for debugging
     void addChildJob( Function func, std::string id);
 
+    //create a new child job in a job pool
     //func The function to schedule
     //poolNumber Number of the pool
     //id A name for the job for debugging
     void addChildJob(Function func, uint32_t poolNumber, std::string id );
 
-    //create a successor job for tlhis job, will be added to the queue after the current job finished (i.e. all children have finished)
+    //create a successor job for this job, will be added to the queue after
+    //the current job finished (i.e. all children have finished)
     //func The function to schedule
     //id A name for the job for debugging
     void onFinishedAddJob(Function func, std::string id );
@@ -168,6 +174,6 @@ The system supports the following functions API.
     //wait for all children to finish and then terminate the pool
     void onFinishedTerminatePool();
 
-    //Print deubg information, this is synchronized so that text is not confused on the console
+    //Print debug information, this is synchronized so that text is not confused on the console
     //s The string to print to the console
     void printDebug(std::string s);

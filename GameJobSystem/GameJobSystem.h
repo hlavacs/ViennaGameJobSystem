@@ -513,7 +513,8 @@ namespace vgjs {
 		};
 
 		//---------------------------------------------------------------------------
-		//create a successor job for tlhis job, will be added to the queue after the current job finished (i.e. all children have finished)
+		//create a successor job for this job, will be added to the queue after 
+		//the current job finished (i.e. all children have finished)
 		//func The function to schedule
 		//id A name for the job for debugging
 		//
