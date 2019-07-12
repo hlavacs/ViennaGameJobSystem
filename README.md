@@ -58,19 +58,32 @@ VGJS runs a number of n worker threads, each having its own work queue. Each thr
 
 In the above code the main threads runs member function printA() of instance theA in pool 1, then waits for the termination of the pool. Memberfunction printA() first prints out some information on the console (printing is serialized by the job system), then schedules a job printB() that is run after the printA() job is finished. printB() also outputs some information and schedules the function end() of the pool after it is finished. end() schedules a termination of the pool afteer it finishes. After end() is finished, the pool is terminated, and the main thread continues and ends the program.
 
-Each job internally is shadowed by an instance of the Job class. Instances are allocated from job pools. A job pool has a unique index and a list of memory segments holding Job structures. Each pool has its own job index pointing to the next Job structure to allocate, and is simply increased by one upon allocation. A pool theoretically can by made arbitrarily large, but since games and other systems typically have time periods like 1 frame, after one such period each pool can simply be reset so that jobIndex points to 0, and job structures are reused in the next run. This is done by
+## Job pools
+The efficiency of the system depends on the peculiar way of how Job structures are allocated from pools.
+Each scheduled function internally is shadowed by an instance of the Job class. Instances are allocated from job pools. A job pool has a unique index and a list of memory segments holding Job structures. Each pool has its own job index pointing to the next Job structure to allocate, and is simply increased by one upon allocation. A pool theoretically can by made arbitrarily large, but since games and other systems typically have time periods like 1 frame, after one such period each pool should simply be reset so that jobIndex points to 0 again, and job structures are reused in the next run. This is done by
 
     JobSystem::getInstance()->resetPool( poolNumber );
 
-When started VGJS by default contains one pool, but pools are automatically created if they are referred to. Each function that is added is internally represented by a Job structure from one of the pools. Jobs scheduling other jobs using addChildJob() establish a parent-child relationship. The parent can finish only if all its children have finished. A job that finishes automatically calls its own onFinished() function. In this function, the job calls its own parent's childFinished() function to notify the parent that one of its children has finished. If this was the last child, the parent job will also finish.
-In the onFinished() function, the job can also schedule a follow-up job to be executed. This established a wait-operation, since this follow-up job will be scheduled only of all children have finished.
+When started VGJS by default contains only pool 0, but pools are automatically created if they are referred to.
+
+## Adding Jobs
+Functions can be scheduled by calling addJob() or addChildJob(). As described above, each function that is scheduled is internally represented by a Job structure from one of the pools, pointing also to the function that it represents. Jobs creating other jobs using addChildJob() establish a parent-child relationship. The exception being the main thread. If the main thread calls addChildJob(), then this is equivalent to addJob(), i.e., no parent-child relationship is established for the main thread.
+
+The parent can finish only if all its children have finished. A job that finishes automatically notifies its own parent (if there is one) that one of its children has finished. If this is the last child that finishes, the parent job also finishes. A job can schedule a follow-up job to be executed upon finishing. This establishes a wait-operation, since this follow-up job will be scheduled only of all children have finished. Follow-up jobs are set by calling the onFinishedAddJob() function, and have the same parent as the job that scheduled them.
 
 ## Directed Acyclic Graph (DAG)
+A DAG describes dependencies amongst jobs. There is a dependency between func1() and func2(), if func1() must run before func2(). However, since all children have to finish before the parent, the finishing order is reverse. First all children finish, then the parent.
+
 ![](dag.jpg "Example DAG")
 
-## Recording and Replaying Pools
+The diagram shows dependencies between function calls. A solid fat line denotes calling addJob() or addChildJob(). For instance main() calls addJob() to schedule init1(). init1() calls addChildJob() to schedule func2_1(), ..., funcX(), establishing a parent-child relationship. init1() also calls onFinishedAddJob() to schedule final5(). func2_1() also creates two children, and also calls onFinishedAddJob() to schedule func4_1() as its follow-up job.
 
+After func3_1() and func3_2() have finished, they notify func2_1(), which schedules its follow-up job func4_1() and then finishes. Note that the parent of func4_1() is the parent of func2_1(), i.e. init1(). After func4_1() finishes, it notifies init1().
+
+init1() additionally schedule jobs in pools 1 and 2. There is a dependency between init1() and funcX_1(), so only after funcX_2() and funcX_1() have finished, init1() finally finishes and schedules final5(). The main thread can wait either for explicit system termination, or until there are no more active jobs in the queues.
+
+## Recording and Replaying Pools
+After a pool is initialized (either after start or after calling resetPool()), it will start recording job DAGs automatically that are scheduled in it. At any time, the jobs of a pool can be replayed by calling playBackPool(). Since recording preserves the parent-child relationships and follow-up jobs, this will schedule the recorded jobs to the thread pool, but preserving dependencies. Playback means that the very first job in the pool is scheduled, and that this job is a child of the calling job. So once it finishes, the parent job will be notified and can also finish. Therefore, playback can only work correctly if there is one and only one starting job, that subsequently schedules child jobs in the same (!) pool. In the above example, both pool 1 and 2 can be replayed, whereas pool 0 cannot because it has scheduled jobs in other pools. Note that this is not queried, and playing a pool like pool 0 might result in unexpected behavior, since jobs in the other pools in the mean time could be reused and do something completely different.
 
 ## Library Functions
 The system supports the following functions:
-....
