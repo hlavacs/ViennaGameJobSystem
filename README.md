@@ -72,11 +72,12 @@ Functions can be scheduled by calling addJob() or addChildJob(). As described ab
 The parent can finish only if all its children have finished. A job that finishes automatically notifies its own parent (if there is one) that one of its children has finished. If this is the last child that finishes, the parent job also finishes. A job can schedule a follow-up job to be executed upon finishing. This establishes a wait-operation, since this follow-up job will be scheduled only of all children have finished. Follow-up jobs are set by calling the onFinishedAddJob() function, and have the same parent as the job that scheduled them.
 
 ## Directed Acyclic Graph (DAG)
-A DAG describes dependencies amongst jobs. There is a dependency between func1() and func2(), if func1() must run before func2(). However, since all children have to finish before the parent, the finishing order is reverse. First all children finish, then the parent.
+A DAG describes dependencies amongst jobs. There is a dependency between init1() and func2_1(), if init1() must start running before func2_1(). Even though init1() eventually returns and stops running, it is not automatically said to have finished. A job finishes only if it stopped running ad all children have finished.
+As a consequence, since all children have to finish before the parent, the finishing order is reverse to the running order. First all children finish, then the parent.
 
 ![](dag.jpg "Example DAG")
 
-The diagram shows dependencies between function calls. A solid fat line denotes calling addJob() or addChildJob(). For instance main() calls addJob() to schedule init1(). init1() calls addChildJob() to schedule func2_1(), ..., funcX(), establishing a parent-child relationship. init1() also calls onFinishedAddJob() to schedule final5(). func2_1() also creates two children, and also calls onFinishedAddJob() to schedule func4_1() as its follow-up job.
+The diagram shows dependencies (all solid lines) between function calls. A solid fat line means calling addJob() or addChildJob(). For instance main() calls addJob() to schedule init1(). init1() is thus the first function to actually run. init1() calls addChildJob() to schedule func2_1(), ..., funcX_1(), establishing a parent-child relationship. init1() also calls onFinishedAddJob() (repersented by a dotted line) to schedule final5(). At this moment, all child functions of init1() can run in parallel to init1()! For example, when func2_1() runs it also creates two children func3_1() and func3_2(), and also calls onFinishedAddJob() to schedule func4_1() as its follow-up job.
 
 After func3_1() and func3_2() have finished, they notify func2_1(), which schedules its follow-up job func4_1() and then finishes. Note that the parent of func4_1() is the parent of func2_1(), i.e. init1(). After func4_1() finishes, it notifies init1().
 
