@@ -316,6 +316,8 @@ namespace vgjs {
 					std::this_thread::sleep_for(std::chrono::microseconds(100));
 				};
 			}
+			m_numJobs = 0;
+			m_mainThreadCondVar.notify_all();		//make sure to wake up a waiting main thread
 		};
 
 	public:
@@ -364,7 +366,6 @@ namespace vgjs {
 		//
 		void terminate() {
 			m_terminate = true;					//let threads terminate
-			m_mainThreadCondVar.notify_all();	//wake up main thread if its waiting
 		};
 
 		//---------------------------------------------------------------------------
@@ -381,7 +382,7 @@ namespace vgjs {
 		void wait() {
 			while (getNumberJobs() > 0) {
 				std::unique_lock<std::mutex> lock(m_mainThreadMutex);
-				m_mainThreadCondVar.wait(lock);
+				m_mainThreadCondVar.wait(lock);							//wait to be awakened
 			}
 		};
 
