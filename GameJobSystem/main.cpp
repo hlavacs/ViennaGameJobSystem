@@ -31,7 +31,7 @@ public:
 		JobSystem::getInstance()->printDebug(s);
 
 		if (loopNumber == 0) {
-			JobSystem::getInstance()->addChildJob(std::bind(&printA, depth + 1, loopNumber), "printA " + std::to_string(depth + 1));
+			JobSystem::getInstance()->onFinishedAddJob(std::bind(&printA, depth + 1, loopNumber), "printA " + std::to_string(depth + 1));
 			return;
 		}
 

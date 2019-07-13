@@ -97,7 +97,7 @@ The parent can finish only if all its children have finished. A job that finishe
             JobSystem::getInstance()->printDebug(s);
 
             if (loopNumber == 0) {
-                JobSystem::getInstance()->addChildJob(std::bind(&printA, depth + 1, loopNumber),
+                JobSystem::getInstance()->onFinishedAddJob(std::bind(&printA, depth + 1, loopNumber),
                     "printA " + std::to_string(depth + 1));
                 return;
             }
@@ -126,7 +126,7 @@ The parent can finish only if all its children have finished. A job that finishe
         return 0;
     }
 
-The above program schedules the global function case2(), which itself schedules a member function of class A called spawn(). Each invokation of spawn schedules two more spawn() functions, until a max depth of 3 is reached. In this case, spawn() schedules printA to print some info. The output looks like this:
+The above program schedules the global function case2(), which itself schedules a member function of class A called spawn(). Each invokation of spawn schedules two more spawn() functions, until a max depth of 3 is reached. In this case, spawn() schedules a follow-up job printA() to print some info, here using onFinishedAddJob(). The follow-up job is scheduled once spawn() finishes. The output looks like this:
 
     case 2 number of loops left 3
     spawn  depth 0 loops left 3 1983852512
@@ -179,15 +179,14 @@ It also must be noted that the function calls in playback are exactly the same a
 The following shows an example of how pools can be replayed. The main thread schedules the function record(), which first starts a Job in pool 1 calling the memberfunction A::spawn(). On finishing, record() then schedules function playBack(), which plays back pool 1, then reschedules itself for three more times.
 
     void playBack(A& theA, uint32_t loopNumber) {
-        if (loopNumber > 3) return;
+        if (loopNumber == 0) return;
         JobSystem::getInstance()->playBackPool(1);
-
-        JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber + 1),
-            "playBack " + std::to_string(loopNumber + 1));
+        JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber - 1),
+            "playBack " + std::to_string(loopNumber - 1));
     }
 
     void record(A& theA, uint32_t loopNumber) {
-        JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0.1f, loopNumber, 0 ),
+        JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0, loopNumber ),
             1, "spawn " + std::to_string(loopNumber) );
 
         JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, loopNumber),
@@ -198,14 +197,11 @@ The following shows an example of how pools can be replayed. The main thread sch
     {
         JobSystem jobsystem(0);
         A theA;
-
         jobsystem.resetPool(1);
         jobsystem.addJob( std::bind( &record, theA, 0 ), "record" );
         jobsystem.wait();
-
         jobsystem.terminate();
         jobsystem.waitForTermination();
-
         return 0;
     }
 
