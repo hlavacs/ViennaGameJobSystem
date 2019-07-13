@@ -95,6 +95,35 @@ Playback means that the very first job job[0] in the pool is scheduled, and that
 
 It also must be noted that the function calls in playback are exactly the same as at recording time. This is especially true for the function parameters. Any call to addJob(), addChildJob() or onFinishedAddJob() during playback is simply ignored. So in order to make new work instead of just recomputing the old work, functions must deal with pointers to data structures that they work upon. One example is the updating of a scene graph of a scene in a computer game, if the graph has not changed since the last frame. This involves the multiplication of transform matrices in a hierarchical data structure. Transforms of parent objects are multiplied onto the transforms of their children. This can be recorded by calling a function for each object, with a pointer to the object and the object's parent. Replaying then will run the same sequence, and using a pointer to a (global) boolean flag the calls to addChildJob() can even be prevented during plabyack since they would be ignored anyways.
 
+The following shows an example of how pools can be replayed. The main thread schedules the function record(), which first starts a Job in pool 1 calling the memberfunction A::spawn(). On finishing, record() then schedules function playBack(), which plays back pool 1, then reschedules itself for three more times.
+
+    void playBack(A& theA, uint32_t loopNumber) {
+        if (loopNumber > 3) return;
+        JobSystem::getInstance()->playBackPool(1);
+        JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber + 1), "playBack " + std::to_string(loopNumber + 1));
+    }
+
+    void record(A& theA, uint32_t loopNumber) {
+        JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0.1f, loopNumber, 0 ), 1, "spawn " + std::to_string(loopNumber) );
+        JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, loopNumber), "playBack " + std::to_string(loopNumber) );
+    }
+
+    int main()
+    {
+        JobSystem jobsystem(0);
+        A theA;
+
+        jobsystem.resetPool(1);
+        jobsystem.addJob( std::bind( &record, theA, 0 ), "record" );
+        jobsystem.wait();
+
+        jobsystem.terminate();
+        jobsystem.waitForTermination();
+
+        return 0;
+    }
+
+
 ## Never use Pointers and References to Local Variables!
 It is important to notice that running functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parents should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in a DAG, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures. The only exception here is the main thread, which may pass pointers/references to its own local variables to functions, since they will not go out of context while running.
 

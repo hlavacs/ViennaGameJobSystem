@@ -70,14 +70,11 @@ void case2( A& theA, uint32_t loopNumber ) {
 
 
 void playBack(A& theA, uint32_t loopNumber) {
+	if (loopNumber > 3) return;
 
-	if (loopNumber < 2) {
-		JobSystem::getInstance()->playBackPool(1);
-	}
+	JobSystem::getInstance()->playBackPool(1);
 
-	if (loopNumber < 1) {
-		JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber + 1), "playBack " + std::to_string(loopNumber + 1));
-	}
+	JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber + 1), "playBack " + std::to_string(loopNumber + 1));
 }
 
 
@@ -92,7 +89,7 @@ void record(A& theA, uint32_t loopNumber) {
 
 int main()
 {
-	JobSystem jobsystem(1);
+	JobSystem jobsystem(0);
 
 	A theA;
 
