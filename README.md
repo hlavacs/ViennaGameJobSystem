@@ -1,11 +1,12 @@
 # Vienna Game Job System
 The Vienna Game Job System (VGJS) is a C++11 library for parallelizing arbitrary tasks, as for example are typically found in game engines. It was designed and implemented by Prof. Helmut Hlavacs from the University of Vienna, Faculty of Computer Science. Important features are:
 * Work stealing paradigm (lock-free queues are planned to be included soon)
-* Directed acyclic graphs (DAGs) are created automatically and implicitly
+* Directed acyclic graphs (DAGs) are created automatically and implicitly recorded
 * Recorded DAGs can be re-played, respecting parent-child dependencies, but fully in parallel
+* Enables a data parallel paradigm
 * Intended as partner project of the Vienna Vulkan Engine (https://github.com/hlavacs/ViennaVulkanEngine), which will be ported to run on VGJS.
 
-## Libaray Usage
+## Library Usage
 VGJS is a single header library that should be included in C++ source files where it is needed:
 
     #include "GameJobSystem.h"
@@ -58,35 +59,47 @@ VGJS runs a number of n worker threads, each having its own work queue. Each thr
 
 In the above code the main threads runs member function printA() of instance theA in pool 1, then waits for the termination of the pool. Memberfunction printA() first prints out some information on the console (printing is serialized by the job system), then schedules a job printB() that is run after the printA() job is finished. printB() also outputs some information and schedules the function end() of the pool after it is finished. end() schedules a termination of the pool afteer it finishes. After end() is finished, the pool is terminated, and the main thread continues and ends the program.
 
-## Job pools
+## Job Pools
 The efficiency of the system depends on the peculiar way of how Job structures are allocated from pools.
-Each scheduled function internally is shadowed by an instance of the Job class. Instances are allocated from job pools. A job pool has a unique index and a list of memory segments holding Job structures. Each pool has its own job index pointing to the next Job structure to allocate, and is simply increased by one upon allocation. A pool theoretically can by made arbitrarily large, but since games and other systems typically have time periods like 1 frame, after one such period each pool should simply be reset so that jobIndex points to 0 again, and job structures are reused in the next run. This is done by
+Each scheduled function internally is shadowed by an instance of the Job class. Instances are allocated from job pools. A job pool has a unique index and a list of memory segments holding Job structures. Each pool has its own index number jobIndex pointing to the next Job structure to allocate, and is simply increased by one upon allocation. A pool theoretically can by made arbitrarily large, but since games and other systems typically have time periods like one frame, one simulation epoch, one physics step, etc., after one such period each pool should simply be reset so that jobIndex points to 0 again, and job structures are reused in the next run. This is done by
 
     JobSystem::getInstance()->resetPool( poolNumber );
 
-When started VGJS by default contains only pool 0, but pools are automatically created if they are referred to.
+When started VGJS by default contains only pool 0, but pools are automatically created if they are referred to. Pools can be used to handle different tasks like basic management, physics simulation, AI, handling certain data structures etc.
 
-## Adding Jobs
+## Adding and Finishing Jobs
 Functions can be scheduled by calling addJob() or addChildJob(). As described above, each function that is scheduled is internally represented by a Job structure from one of the pools, pointing also to the function that it represents. Jobs creating other jobs using addChildJob() establish a parent-child relationship. The exception being the main thread. If the main thread calls addChildJob(), then this is equivalent to addJob(), i.e., no parent-child relationship is established for the main thread.
 
 The parent can finish only if all its children have finished. A job that finishes automatically notifies its own parent (if there is one) that one of its children has finished. If this is the last child that finishes, the parent job also finishes. A job can schedule a follow-up job to be executed upon finishing. This establishes a wait-operation, since this follow-up job will be scheduled only of all children have finished. Follow-up jobs are set by calling the onFinishedAddJob() function, and have the same parent as the job that scheduled them.
 
 ## Directed Acyclic Graph (DAG)
-A DAG describes dependencies amongst jobs. There is a dependency between init1() and func2_1(), if init1() must start running before func2_1(). In fact init1() decides when to start func2_1(), and can carry out work before starting it, and afterwards. However, when starting a child, the child is immediately runnable and does not have to wait for the parent to finish running. Even though init1() eventually returns and stops running, it is not automatically said to have finished. A job finishes only if it stopped running and all children have finished.
-As a consequence, since all children have to finish before the parent, the finishing order is reverse to the running order. First all children finish, then the parent.
+A DAG describes dependencies amongst jobs. There is a dependency between init1() and func2_1(), if init1() must start running before func2_1(). In fact init1() decides when to start func2_1(), and can carry out work before starting it, and afterwards. However, when starting a child, the child is immediately runnable and does not have to wait for the parent to stop running. Even though init1() eventually returns and stops running, it is not automatically said to have finished. As described above, a job finishes only if it stopped running and all of its children have finished.
+As a consequence, in a DAG, since all children have to finish before the parent, the finishing order is reverse to the running order. First all children finish, then the parent.
 
 ![](dag.jpg "Example DAG")
 
-The diagram shows dependencies (all solid lines) between function calls. A solid fat line means calling addJob() or addChildJob(). For instance main() calls addJob() to schedule init1(). init1() is thus the first function to actually run. init1() calls addChildJob() to schedule func2_1(), ..., funcX_1(), establishing a parent-child relationship. init1() also calls onFinishedAddJob() (repersented by a dotted line) to schedule final5(). At this moment, all child functions of init1() can run in parallel to init1()! For example, when func2_1() runs it also creates two children func3_1() and func3_2(), and also calls onFinishedAddJob() to schedule func4_1() as its follow-up job.
+The diagram shows dependencies (solid lines) between function calls. A solid fat line means calling addJob() or addChildJob(). For instance main() calls addJob() to schedule init1(). init1() is thus the first function to actually run. init1() calls addChildJob() to schedule func2_1(), ..., funcX_1(), establishing a parent-child relationship. init1() also calls onFinishedAddJob() (represented by a dotted line) to schedule final5(). At this moment, all child functions of init1() can run in parallel to init1()! For example, when func2_1() runs it also creates two children func3_1() and func3_2(), and also calls onFinishedAddJob() to schedule func4_1() as its follow-up job.
 
-After func3_1() and func3_2() have finished, they notify func2_1(), which schedules its follow-up job func4_1() and then finishes. Note that the parent of func4_1() is the parent of func2_1(), i.e. init1(). After func4_1() finishes, it notifies init1().
+After func3_1() and func3_2() have finished, they notify func2_1(), which schedules its follow-up job func4_1() and then finishes. Note that the parent of func4_1() is the same as the one of func2_1(), i.e. init1(). After func4_1() finishes, it therefore notifies init1() that is has finished.
 
-init1() additionally schedule jobs in pools 1 and 2. There is a dependency between init1() and funcX_1(), so only after funcX_2() and funcX_1() have finished, init1() finally finishes and schedules final5(). The main thread can wait either for explicit system termination, or until there are no more active jobs in the queues.
+init1() additionally schedule jobs in pools 1 and 2. There is a dependency between init1() and funcX_1(), so only after funcX_2() and funcX_1() have finished, init1() finally finishes and schedules final5(). The main thread can wait either for explicit system termination by calling waitForTermination(), or until there are no more active jobs in the queues by calling wait().
 
 ## Recording and Replaying Pools
-After a pool is initialized (either after start or after calling resetPool()), it will start recording job DAGs automatically that are scheduled in it. At any time, the jobs of a pool can be replayed by calling playBackPool(). Since recording preserves the parent-child relationships and follow-up jobs, this will schedule the recorded jobs to the thread pool, but preserving dependencies. In fact, when replaying a pool, a parent must actually stop running before its children are started.
+After a pool is initialized (either after start or after calling resetPool()), it will start recording job DAGs automatically that are scheduled in it. At any time, the jobs of a pool can be replayed by calling playBackPool(), which might result in faster computation since many management tasks will not be redone by VGJS during playback.
 
-Playback means that the very first job job[0] in the pool is scheduled, and that this job[0] is a child of the calling job parentJob. So once job[0] finishes, the parent job parentJob will be notified and can also finish. Therefore, playback can only work correctly if there is one and only one starting job job[0], that subsequently schedules child jobs in the same (!) pool. In the above example, both pool 1 and 2 can be replayed, whereas pool 0 cannot because it has scheduled jobs in other pools. Note that this is not queried, and playing a pool like pool 0 might result in unexpected behavior, since jobs in the other pools in the mean time could be reused and do something completely different.
+Since recording preserves the parent-child relationships and follow-up jobs, this will schedule the recorded jobs to the thread pool, but preserving dependencies. In fact, when replaying a pool, a parent must actually stop running before its children are started.
+
+Playback means that the very first job job[0] in the pool is scheduled, and that this job[0] is a child of the calling job parentJob. So once job[0] finishes, the parent job parentJob will be notified and can also finish. Therefore, playback can only work correctly if there is one and only one starting job job[0], that subsequently schedules child jobs. Scheduling of child jobs can be done across pools, but care must be taken that none of the involved pools is reset during playback, since this might result in unexpected behavior.
+
+It also must be noted that the function calls in playback are exactly the same as at recording time. This is especially true for the function parameters. Any call to addJob(), addChildJob() or onFinishedAddJob() during playback is simply ignored. So in order to make new work instead of just recomputing the old work, functions must deal with pointers to data structures that they work upon. One example is the updating of a scene graph of a scene in a computer game, if the graph has not changed since the last frame. This involves the multiplication of transform matrices in a hierarchical data structure. Transforms of parent objects are multiplied onto the transforms of their children. This can be recorded by calling a function for each object, with a pointer to the object and the object's parent. Replaying then will run the same sequence, and using a pointer to a (global) boolean flag the calls to addChildJob() can even be prevented during plabyack since they would be ignored anyways.
+
+## Never use Pointers and References to Local Variables!
+It is important to notice that running functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parents should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in a DAG, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures. The only exception here is the main thread, which may pass pointers/references to its own local variables to functions, since they will not go out of context while running.
+
+When sharing global variables that might be changed by several jobs in parallel, e.g. counters counting something up or down, you should consider using std::atomic<> or std::mutex, in order to avoid unpredictable runtime behavior. In a job, never wait for anything for long, use polling instead and finally return. Waiting will block the thread that runs the job and take away overall processing efficiency.
+
+## Data Parallelism instead of Task Parallelism
+VGJS enables data parallel thinking since it enables focusing on data structures rather than tasks. The system assumes the use of many global data structures that might or might not need computation. So one use case would be to create a job for each data structure, using the mechanisms of VGJS to honor dependencies between computations. Everything that can run in parallel eventually will, and if the STRUCTURE of the data structures does not change (the VALUES might and should change though), previous computations can be simply replayed, thus speeding up the computations significantly.
 
 ## Library Functions
 The system supports the following functions API.
