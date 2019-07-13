@@ -100,12 +100,17 @@ The following shows an example of how pools can be replayed. The main thread sch
     void playBack(A& theA, uint32_t loopNumber) {
         if (loopNumber > 3) return;
         JobSystem::getInstance()->playBackPool(1);
-        JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber + 1), "playBack " + std::to_string(loopNumber + 1));
+        
+        JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber + 1),
+            "playBack " + std::to_string(loopNumber + 1));
     }
 
     void record(A& theA, uint32_t loopNumber) {
-        JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0.1f, loopNumber, 0 ), 1, "spawn " + std::to_string(loopNumber) );
-        JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, loopNumber), "playBack " + std::to_string(loopNumber) );
+        JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0.1f, loopNumber, 0 ),
+            1, "spawn " + std::to_string(loopNumber) );
+
+        JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, loopNumber),
+            "playBack " + std::to_string(loopNumber) );
     }
 
     int main()
