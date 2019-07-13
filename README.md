@@ -180,16 +180,18 @@ The following shows an example of how pools can be replayed. The main thread sch
 
     void playBack(A& theA, uint32_t loopNumber) {
         if (loopNumber == 0) return;
+        JobSystem::getInstance()->printDebug("\nplaying loop " + std::to_string(loopNumber) + "\n");
         JobSystem::getInstance()->playBackPool(1);
         JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber - 1),
             "playBack " + std::to_string(loopNumber - 1));
     }
 
     void record(A& theA, uint32_t loopNumber) {
+        JobSystem::getInstance()->printDebug("recording number of loops " + std::to_string(loopNumber) + "\n");
+        JobSystem::getInstance()->resetPool(1);
         JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0, loopNumber ),
             1, "spawn " + std::to_string(loopNumber) );
-
-        JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, loopNumber),
+        JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, 3),
             "playBack " + std::to_string(loopNumber) );
     }
 
@@ -204,6 +206,109 @@ The following shows an example of how pools can be replayed. The main thread sch
         jobsystem.waitForTermination();
         return 0;
     }
+
+The output of the above code is
+
+    recording number of loops 3
+    spawn  depth 0 loops left 3 2713563520
+     spawn  depth 1 loops left 2 2713563680
+     spawn  depth 1 loops left 2 2713563600
+      spawn  depth 2 loops left 1 2713563760
+       spawn  depth 3 loops left 0 2713564080
+      spawn  depth 2 loops left 1 2713563920
+       spawn  depth 3 loops left 0 2713564400
+        print  depth 4 0 2713564480
+       spawn  depth 3 loops left 0 2713564160
+        print  depth 4 0 2713564560
+      spawn  depth 2 loops left 1 2713564000
+       spawn  depth 3 loops left 0 2713564640
+        print  depth 4 0 2713564800
+        print  depth 4 0 2713564240
+      spawn  depth 2 loops left 1 2713563840
+       spawn  depth 3 loops left 0 2713564720
+        print  depth 4 0 2713565040
+       spawn  depth 3 loops left 0 2713564880
+        print  depth 4 0 2713565120
+       spawn  depth 3 loops left 0 2713564320
+       spawn  depth 3 loops left 0 2713564960
+        print  depth 4 0 2713565200
+        print  depth 4 0 2713565280
+
+    playing loop 3
+    spawn  depth 0 loops left 3 2713563520
+     spawn  depth 1 loops left 2 2713563600
+     spawn  depth 1 loops left 2 2713563680
+      spawn  depth 2 loops left 1 2713563840
+       spawn  depth 3 loops left 0 2713564960
+      spawn  depth 2 loops left 1 2713564000
+      spawn  depth 2 loops left 1 2713563760
+       spawn  depth 3 loops left 0 2713564720
+        print  depth 4 0 2713565040
+        print  depth 4 0 2713565280
+       spawn  depth 3 loops left 0 2713564640
+        print  depth 4 0 2713564800
+      spawn  depth 2 loops left 1 2713563920
+       spawn  depth 3 loops left 0 2713564160
+       spawn  depth 3 loops left 0 2713564880
+       spawn  depth 3 loops left 0 2713564080
+       spawn  depth 3 loops left 0 2713564320
+        print  depth 4 0 2713565200
+        print  depth 4 0 2713564560
+        print  depth 4 0 2713565120
+        print  depth 4 0 2713564240
+       spawn  depth 3 loops left 0 2713564400
+        print  depth 4 0 2713564480
+
+    playing loop 2
+    spawn  depth 0 loops left 3 2713563520
+     spawn  depth 1 loops left 2 2713563600
+     spawn  depth 1 loops left 2 2713563680
+      spawn  depth 2 loops left 1 2713564000
+       spawn  depth 3 loops left 0 2713564640
+      spawn  depth 2 loops left 1 2713563760
+       spawn  depth 3 loops left 0 2713564160
+      spawn  depth 2 loops left 1 2713563920
+       spawn  depth 3 loops left 0 2713564720
+        print  depth 4 0 2713564800
+      spawn  depth 2 loops left 1 2713563840
+       spawn  depth 3 loops left 0 2713564080
+       spawn  depth 3 loops left 0 2713564320
+        print  depth 4 0 2713565200
+       spawn  depth 3 loops left 0 2713564400
+        print  depth 4 0 2713565040
+        print  depth 4 0 2713564480
+       spawn  depth 3 loops left 0 2713564960
+        print  depth 4 0 2713564240
+        print  depth 4 0 2713564560
+       spawn  depth 3 loops left 0 2713564880
+        print  depth 4 0 2713565280
+        print  depth 4 0 2713565120
+
+    playing loop 1
+    spawn  depth 0 loops left 3 2713563520
+     spawn  depth 1 loops left 2 2713563600
+     spawn  depth 1 loops left 2 2713563680
+      spawn  depth 2 loops left 1 2713563840
+      spawn  depth 2 loops left 1 2713563920
+       spawn  depth 3 loops left 0 2713564400
+        print  depth 4 0 2713564480
+       spawn  depth 3 loops left 0 2713564880
+       spawn  depth 3 loops left 0 2713564960
+        print  depth 4 0 2713565280
+       spawn  depth 3 loops left 0 2713564320
+      spawn  depth 2 loops left 1 2713563760
+        print  depth 4 0 2713565120
+      spawn  depth 2 loops left 1 2713564000
+        print  depth 4 0 2713565200
+       spawn  depth 3 loops left 0 2713564080
+        print  depth 4 0 2713564240
+       spawn  depth 3 loops left 0 2713564640
+        print  depth 4 0 2713564800
+       spawn  depth 3 loops left 0 2713564160
+       spawn  depth 3 loops left 0 2713564720
+        print  depth 4 0 2713565040
+        print  depth 4 0 2713564560
+
 
 
 ## Never use Pointers and References to Local Variables!

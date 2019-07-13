@@ -51,16 +51,18 @@ namespace vgjs {
 	
 		//---------------------------------------------------------------------------
 		//set pointer to parent job
-		void setParentJob(Job *parentJob) {
+		void setParentJob(Job *parentJob, bool addToChildren ) {
 			m_parentJob = parentJob;				//set the pointer
 			parentJob->m_numUnfinishedChildren++;	//tell parent that there is one more child
-			if (parentJob->m_pFirstChild != nullptr) {				//there are already children
-				parentJob->m_pLastChild->m_pNextSibling = this;		//remember me as sibling
-				parentJob->m_pLastChild = this;						//set me as last child
-			}
-			else {
-				parentJob->m_pFirstChild = this;	//no children yet, set first child
-				parentJob->m_pLastChild = this;		//is also the last child
+			if (addToChildren) {
+				if (parentJob->m_pFirstChild != nullptr) {				//there are already children
+					parentJob->m_pLastChild->m_pNextSibling = this;		//remember me as sibling
+					parentJob->m_pLastChild = this;						//set me as last child
+				}
+				else {
+					parentJob->m_pFirstChild = this;	//no children yet, set first child
+					parentJob->m_pLastChild = this;		//is also the last child
+				}
 			}
 		};	
 
@@ -92,7 +94,7 @@ namespace vgjs {
 
 	public:
 		Job() : m_poolNumber(0), m_parentJob(nullptr), m_numUnfinishedChildren(0), m_onFinishedJob(nullptr),
-				m_pFirstChild(nullptr), m_pNextSibling(nullptr) {};
+				m_pFirstChild(nullptr), m_pNextSibling(nullptr), m_available(true) {};
 		~Job() {};
 
 #ifdef _DEBUG
@@ -111,7 +113,7 @@ namespace vgjs {
 
 		using JobList = std::vector<Job>;
 		struct JobPool {
-			std::atomic<uint32_t> jobIndex = 0;			//index of next job to allocate, or number of jobs to playback
+			std::atomic<uint32_t> jobIndex;				//index of next job to allocate, or number of jobs to playback
 			std::vector<JobList*> jobLists;				//list of Job structures
 			std::mutex lmutex;							//only lock if appending the job list
 			std::atomic<bool> isPlayedBack = false;		//if true then the pool is currently played back
@@ -155,9 +157,9 @@ namespace vgjs {
 
 		//---------------------------------------------------------------------------
 		//get a new empty job from the job memory - if necessary add another job list
-		Job * getNextJob( uint32_t poolNumber ) {
+		Job * JobMemory::getNextJob(uint32_t poolNumber) {
 			if (poolNumber > m_jobPools.size() - 1) {		//if pool does not exist yet
-				resetPool( poolNumber );					//create it
+				resetPool(poolNumber);					//create it
 			}
 
 			JobPool *pPool = m_jobPools[poolNumber];						//pointer to the pool
@@ -170,21 +172,22 @@ namespace vgjs {
 			}
 
 			return &(*pPool->jobLists[index / m_listLength])[index % m_listLength];		//get modulus of number of last job list
-		}
+		};
 
 		//---------------------------------------------------------------------------
 		//get the first job that is available
-		Job* allocateJob( Job *pParent = nullptr, uint32_t poolNumber = 0 ) {
+		Job* allocateJob( uint32_t poolNumber = 0 ) {
 			Job *pJob;
 			do {
 				pJob = getNextJob(poolNumber);		//get the next Job in the pool
 			} while ( !pJob->m_available );			//check whether it is available
 			pJob->m_poolNumber = poolNumber;		//make sure the job knows its own pool number
 			pJob->m_onFinishedJob = nullptr;		//no successor Job yet
+			pJob->m_endPlayback = false;			//should not end playback
 			pJob->m_pFirstChild = nullptr;			//no children yet
 			pJob->m_pLastChild = nullptr;			//no children yet
 			pJob->m_pNextSibling = nullptr;			//no sibling yet
-			if( pParent != nullptr ) pJob->setParentJob(pParent);	//set parent Job and notify parent
+			pJob->m_parentJob = nullptr;			//default is no parent
 			return pJob;
 		};
 
@@ -201,7 +204,14 @@ namespace vgjs {
 					}
 				}
 			}
-			m_jobPools[poolNumber]->jobIndex = 0;
+			m_jobPools[poolNumber]->jobIndex.store(0);
+		};
+
+		JobPool *getPoolPointer( uint32_t poolNumber) {
+			if (poolNumber > m_jobPools.size() - 1) {		//if pool does not yet exist
+				resetPool(poolNumber);
+			}
+			return m_jobPools[poolNumber];
 		};
 	};
 
@@ -296,7 +306,6 @@ namespace vgjs {
 				if (m_terminate) break;
 
 				if (pJob != nullptr) {
-
 #ifdef _DEBUG
 					printDebug("Thread " + std::to_string(threadIndex) + " runs " + pJob->id + "\n");
 #endif
@@ -355,14 +364,14 @@ namespace vgjs {
 		//
 		void terminate() {
 			m_terminate = true;	
-		}
+		};
 
 		//---------------------------------------------------------------------------
 		//returns total number of jobs in the system
 		//
 		uint32_t getNumberJobs() {
 			return m_numJobs;
-		}
+		};
 
 		//---------------------------------------------------------------------------
 		//can be called by the main thread to wait for the completion of all jobs in the system
@@ -373,7 +382,7 @@ namespace vgjs {
 				std::unique_lock<std::mutex> lock(m_mainThreadMutex);
 				m_mainThreadCondVar.wait(lock);
 			}
-		}
+		};
 
 		//---------------------------------------------------------------------------
 		//can be called by the main thread to wait for all threads to terminate
@@ -383,7 +392,7 @@ namespace vgjs {
 			for (uint32_t i = 0; i < m_threads.size(); i++ ) {
 				m_threads[i].join();
 			}
-		}
+		};
 
 		//---------------------------------------------------------------------------
 		// returns number of threads in the thread pool
@@ -405,34 +414,29 @@ namespace vgjs {
 		//
 		void resetPool( uint32_t poolNumber ) {
 			JobMemory::getInstance()->resetPool(poolNumber);
-		}
+		};
 		
 		//---------------------------------------------------------------------------
 		//returns a pointer to the job of the current task
 		//
 		Job *getJobPointer() {
 			return m_jobPointers[getThreadNumber()];
-		}
+		};
 
 		//---------------------------------------------------------------------------
 		//this replays all jobs recorded into a pool
 		//playPoolNumber Number of the job pool that should be replayed
 		//
 		void playBackPool( uint32_t playPoolNumber ) {
-			Job *pCurrentJob = getJobPointer();			//can be nullptr if called from main thread
-			Job *pParentJob = pCurrentJob != nullptr ? pCurrentJob->m_parentJob : nullptr;			//inherit parent to onFinish Job
-			uint32_t poolNumber = pCurrentJob != nullptr ? pCurrentJob->m_poolNumber.load() : 0;	//stay in the same pool
-			Job *ponFinishedJob = JobMemory::getInstance()->allocateJob(pParentJob, poolNumber);			//new job has the same parent as current job
-
-			JobMemory::JobPool *pPool = JobMemory::getInstance()->m_jobPools[playPoolNumber];
+			JobMemory::JobPool *pPool = JobMemory::getInstance()->getPoolPointer( playPoolNumber );
 			if (pPool->jobIndex == 0) return;						//if empty simply return
 			pPool->isPlayedBack = true;								//set flag to indicate that the pool is in playback mode
 			
 			Job * pJob = &(*pPool->jobLists[0])[0];					//get pointer to the first job in the pool
-			pJob->setParentJob(getJobPointer());					//parent's childFinished() will be called when die playback ended
+			pJob->setParentJob(getJobPointer(), true);					//parent's childFinished() will be called when die playback ended
 			pJob->m_endPlayback = true;								//this is the last job that will finish, so end playback for the pool
 			addJob( pJob );											//start the playback
-		}
+		};
 
 		//---------------------------------------------------------------------------
 		//add a job to a queue
@@ -446,7 +450,7 @@ namespace vgjs {
 				return;
 			}
 			m_jobQueues[getThreadNumber()]->push(pJob);			//keep jobs local
-		}
+		};
 
 		//---------------------------------------------------------------------------
 		//create a new job in a job pool
@@ -455,13 +459,13 @@ namespace vgjs {
 		//
 		void addJob(Function func, uint32_t poolNumber = 0) {
 			addJob(func, poolNumber, "");
-		}
+		};
 
 		//func The function to schedule
 		//id A name for the job for debugging
 		void addJob(Function func, std::string id) {
 			addJob(func, 0, id);
-		}
+		};
 
 		//func The function to schedule
 		//poolNumber Optional number of the pool, or 0
@@ -469,7 +473,7 @@ namespace vgjs {
 		void addJob(Function func, uint32_t poolNumber, std::string id ) {
 			Job *pCurrentJob = getJobPointer();
 			if (pCurrentJob == nullptr) {		//called from main thread -> need a Job 
-				pCurrentJob = JobMemory::getInstance()->allocateJob(nullptr, poolNumber );	
+				pCurrentJob = JobMemory::getInstance()->allocateJob( poolNumber );
 				pCurrentJob->setFunction(std::make_shared<Function>(func));
 #ifdef _DEBUG
 				pCurrentJob->id = id;
@@ -478,7 +482,7 @@ namespace vgjs {
 				return;
 			}
 
-			Job *pJob = JobMemory::getInstance()->allocateJob( nullptr, poolNumber );	//no parent, so do not wait for its completion
+			Job *pJob = JobMemory::getInstance()->allocateJob( poolNumber );	//no parent, so do not wait for its completion
 			pJob->setFunction(std::make_shared<Function>(func));
 #ifdef _DEBUG
 			pJob->id = id;
@@ -491,20 +495,22 @@ namespace vgjs {
 		//func The function to schedule
 		void addChildJob(Function func ) {
 			addChildJob(func, getJobPointer()->m_poolNumber, "");
-		}
+		};
 
 		//func The function to schedule
 		//id A name for the job for debugging
 		void addChildJob( Function func, std::string id) {
 			addChildJob(func, getJobPointer()->m_poolNumber, id);
-		}
+		};
 
 		//func The function to schedule
 		//poolNumber Number of the pool
 		//id A name for the job for debugging
 		void addChildJob(Function func, uint32_t poolNumber, std::string id ) {
-			if (JobMemory::getInstance()->m_jobPools[poolNumber]->isPlayedBack) return;			//in playback no children are created
-			Job *pJob = JobMemory::getInstance()->allocateJob(getJobPointer(), poolNumber );
+			if (JobMemory::getInstance()->getPoolPointer(poolNumber)->isPlayedBack) return;			//in playback no children are created
+			Job *pJob = JobMemory::getInstance()->allocateJob( poolNumber );
+			pJob->setParentJob(getJobPointer(), true);	//set parent Job and notify parent
+
 #ifdef _DEBUG			
 			pJob->id = id;							//copy Job id, can be removed in production code
 #endif
@@ -520,10 +526,9 @@ namespace vgjs {
 		//
 		void onFinishedAddJob(Function func, std::string id ) {
 			Job *pCurrentJob = getJobPointer();			//can be nullptr if called from main thread
-			if (JobMemory::getInstance()->m_jobPools[pCurrentJob->m_poolNumber]->isPlayedBack) return; //in playback mode no sucessors are recorded
-			Job *pParentJob = pCurrentJob != nullptr ? pCurrentJob->m_parentJob : nullptr;			//inherit parent to onFinish Job
+			if (JobMemory::getInstance()->getPoolPointer(pCurrentJob->m_poolNumber)->isPlayedBack) return; //in playback mode no sucessors are recorded
 			uint32_t poolNumber = pCurrentJob != nullptr ? pCurrentJob->m_poolNumber.load() : 0;	//stay in the same pool
-			Job *pNewJob = JobMemory::getInstance()->allocateJob(pParentJob, poolNumber);			//new job has the same parent as current job
+			Job *pNewJob = JobMemory::getInstance()->allocateJob( poolNumber);			//new job has the same parent as current job
 #ifdef _DEBUG			
 			pNewJob->id = id;
 #endif
@@ -564,7 +569,7 @@ namespace vgjs {
 		m_numUnfinishedChildren = 1;					//number of children includes itself
 		(*m_function)();								//call the function
 
-		JobMemory::JobPool *pPool = JobMemory::getInstance()->m_jobPools[m_poolNumber];
+		JobMemory::JobPool *pPool = JobMemory::getInstance()->getPoolPointer(m_poolNumber);
 		if( pPool->isPlayedBack) {
 			Job *pChild = m_pFirstChild;					//if pool is played back
 			while (pChild != nullptr) {
@@ -582,11 +587,17 @@ namespace vgjs {
 	//---------------------------------------------------------------------------
 	//This call back is called once a Job and all its children are finished
 	void Job::onFinished() {
-		if (m_parentJob != nullptr) {		//if there is parent then inform it
-			m_parentJob->childFinished();	//if this is the last child job then the parent will also finish
-		}
+#ifdef _DEBUG
+		JobSystem::getInstance()->printDebug( "Job " + id + " finishes\n" );
+#endif
 		if (m_onFinishedJob != nullptr) {						//is there a successor Job?
+			if (m_parentJob != nullptr) 
+				m_onFinishedJob->setParentJob(  m_parentJob, false );
 			JobSystem::getInstance()->addJob(m_onFinishedJob);	//schedule it for running
+		}
+
+		if (m_parentJob != nullptr) {		//if there is parent then inform it	
+			m_parentJob->childFinished();	//if this is the last child job then the parent will also finish
 		}
 
 		//synchronize with the main thread
@@ -598,10 +609,12 @@ namespace vgjs {
 		//if pool is played back, and this is the last job to finish, then end the playback
 		if (m_endPlayback) {						//on playback the first job is the last to finish
 			m_endPlayback = false;
-			JobMemory::getInstance()->m_jobPools[m_poolNumber]->isPlayedBack = false;
+			JobMemory::getInstance()->getPoolPointer(m_poolNumber)->isPlayedBack = false;
 		}
 		m_available = true;					//job is available again (after a pool reset)
-	}
+	};
+
+
 }
 
 #elif

@@ -61,14 +61,17 @@ void case2( A& theA, uint32_t loopNumber ) {
 //-----------------------------------------------
 
 void playBack(A& theA, uint32_t loopNumber) {
-	if (loopNumber == 0) return;
+	if (loopNumber == 0) return; 
+	JobSystem::getInstance()->printDebug("\nplaying loop " + std::to_string(loopNumber) + "\n");
 	JobSystem::getInstance()->playBackPool(1);
 	JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber - 1), "playBack " + std::to_string(loopNumber - 1));
 }
 
 void record(A& theA, uint32_t loopNumber) {
-	JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0, loopNumber ), 1, "spawn " + std::to_string(loopNumber) );	
-	JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, loopNumber), "playBack " + std::to_string(loopNumber) );
+	JobSystem::getInstance()->printDebug("recording number of loops " + std::to_string(loopNumber) + "\n");
+	JobSystem::getInstance()->resetPool(1);
+	JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0, loopNumber ), 1, "spawn " + std::to_string(loopNumber) );
+	JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, 3), "playBack " + std::to_string(loopNumber) );
 }
 
 
@@ -79,10 +82,9 @@ int main()
 
 	A theA;
 
-	jobsystem.resetPool(1);
 	//jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
-	jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
-	//jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
+	//jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
+	jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
 	jobsystem.wait();
 
 	jobsystem.terminate();
