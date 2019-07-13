@@ -363,7 +363,8 @@ namespace vgjs {
 		//sets a flag to terminate all running threads
 		//
 		void terminate() {
-			m_terminate = true;	
+			m_terminate = true;					//let threads terminate
+			m_mainThreadCondVar.notify_all();	//wake up main thread if its waiting
 		};
 
 		//---------------------------------------------------------------------------
