@@ -1,5 +1,5 @@
-# Vienna Game Job System
-The Vienna Game Job System (VGJS) is a C++11 library for parallelizing arbitrary tasks, as for example are typically found in game engines. It was designed and implemented by Prof. Helmut Hlavacs from the University of Vienna, Faculty of Computer Science. Important features are:
+# Vienna Game Engine Job System
+The Vienna Game Engine Job System (VGJS) is a C++11 library for parallelizing arbitrary tasks, as for example are typically found in game engines. It was designed and implemented by Prof. Helmut Hlavacs from the University of Vienna, Faculty of Computer Science. Important features are:
 * Work stealing paradigm (lock-free queues are planned to be included soon)
 * Directed acyclic graphs (DAGs) are automatically created and recorded
 * Recorded DAGs can be replayed, respecting parent-child dependencies, but fully in parallel
@@ -18,48 +18,54 @@ In one of the C++ files, additionally the following statement should precede the
 
 VGJS runs a number of n worker threads, each having its own work queue. Each thread grabs jobs entered into its queue and runs them. If a thread runs out of jobs it will start stealing jobs from other queues (aka work stealing). The library can be run as tool for the main thread that continuously calls the library for running tasks and then waits for the result. However, the main intention is to have a job only system, i.e. there is no main thread, and the whole program is a sequence of jobs that are run, and create other jobs. Typically a program might look like this:
 
-    class A {
-    public:
-        A() {};
-        ~A() {};
+    #include <iostream>
+    #include <stdlib.h>
+    #include <functional>
+    #include <string>
 
-        //a class member function requires reference/pointer to the instance when scheduled
-        void printA( uint32_t number ) {
-            JobSystem::getInstance()->printDebug( std::to_string(number) );
+    #define IMPLEMENT_GAMEJOBSYSTEM
+    #include "GameJobSystem.h"
 
-            //run a child in the same pool - could also specify a different pool
-            //std::bind() parameters for global function: address of the function, function parameters
-            JobSystem::addChildJob( std::bind( &printB, number*2 ) );
+    using namespace vgjs;
+    using namespace std;
 
-            //call this after all children have finished
-            //std::bind() parameters for memberfunction: address of the function, class instance, function parameters
-            JobSystem::getInstance()->onFinishedAddJob( std::bind( &A::end, this, 0 ), "end" );
-        };
-
-        //a class member function requires reference/pointer to the instance when scheduled
-        void end( uint32_t param ) {
-            JobSystem::getInstance()->onFinishedTerminatePool();  
-        }
+    //a global function does not require a class instance when scheduled
+    void printA(int depth, int loopNumber) {
+        std::string s = std::string(depth, ' ') + "print " + " depth " + std::to_string(depth) + " " +
+            std::to_string(loopNumber) + " " + std::to_string((uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
+        JobSystem::getInstance()->printDebug(s);
     };
 
     //a global function does not require a class instance when scheduled
-    void printB( uint32_t number ) {
-        JobSystem::getInstance()->printDebug( std::to_string(number) );
-    };
-
-    //the main thread starts a child and waits for termination of the pools calling waitForTermination()
-    //it could also run in a loop and start children each loop, and wait for finishing of all tasks calling wait()
-    int main() {
-        JobSystem pool(0); //0 threads means that number of threads = number of CPU supported threads
-        A theA;
-
-        //std::bind() parameters for memberfunction: address of the function, class instance, function parameters
-        //addJob() parameters: function, number of pool, description of the task as string
-        pool.addJob( std::bind( &A::printA, theA, 50 ), 1, "printA" );  
-        pool.waitForTermination();
+    void case1( A& theA, uint32_t loopNumber) {
+        JobSystem::getInstance()->printDebug("case 1 number of loops left " + std::to_string(loopNumber) + "\n");
+        for (uint32_t i = 0; i < loopNumber; i++) {
+            JobSystem::getInstance()->addChildJob(std::bind(&printA, 0, loopNumber), "printA " + std::to_string(i));
+        }
     }
 
-In the above code the main threads runs member function printA() of instance theA in pool 1, then waits for the termination of the pool. Memberfunction printA() first prints out some information on the console (printing is serialized by the job system), then schedules a job printB() that is run after the printA() job is finished. printB() also outputs some information and schedules the function end() of the pool after it is finished. end() schedules a termination of the pool afteer it finishes. After end() is finished, the pool is terminated, and the main thread continues and ends the program.
+    //the main thread starts a child and waits forall jobs to finish by calling wait()
+    int main() {
+        JobSystem jobsystem(0);
+
+        A theA;
+
+        jobsystem.resetPool(1);
+        jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
+        jobsystem.wait();
+
+        jobsystem.terminate();
+        jobsystem.waitForTermination();
+
+        return 0;
+    }
+
+In the above code the main threads schedules the global function case1(), which calls a second global function printA() for loopNumber times. printA() prints out some debug information on the console (printing is serialized by the job system). The main thread waits until all jobs have finished, then terminates the system. This results in the output:
+
+    case 1 number of loops left 3
+    print  depth 0 3 2387627984
+    print  depth 0 3 2387959776
+    print  depth 0 3 2386964448
 
 ## Job Pools
 The efficiency of the system depends on the peculiar way of how Job structures are allocated from pools.
@@ -100,7 +106,7 @@ The following shows an example of how pools can be replayed. The main thread sch
     void playBack(A& theA, uint32_t loopNumber) {
         if (loopNumber > 3) return;
         JobSystem::getInstance()->playBackPool(1);
-        
+
         JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber + 1),
             "playBack " + std::to_string(loopNumber + 1));
     }

@@ -12,81 +12,67 @@
 using namespace vgjs;
 using namespace std;
 
+
+//a global function does not require a class instance when scheduled
+void printA(int depth, int loopNumber) {
+	std::string s = std::string(depth, ' ') + "print " + " depth " + std::to_string(depth) + " " + std::to_string(loopNumber) + " " + std::to_string((uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
+	JobSystem::getInstance()->printDebug(s);
+};
+
+
 class A {
 public:
 	A() {};
 	~A() {};
 
-	void printA( float f1, int depth, int i2 ) {
-		std::string s = std::string(depth, ' ') + "print " + std::to_string(f1) + " depth " + std::to_string(depth) + " " + std::to_string(i2) + " " + std::to_string( (uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
-		JobSystem::getInstance()->printDebug(s);
-	};
-
-	void spawn(float f1, int depth, int i2 ) {
-		std::string s = std::string(depth, ' ') + "spawn " + std::to_string(f1) + " depth " + std::to_string(depth) + " " + std::to_string(i2) + " " + std::to_string((uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
+	//a class member function requires reference/pointer to the instance when scheduled
+	void spawn( int depth, int loopNumber ) {
+		std::string s = std::string(depth, ' ') + "spawn " + " depth " + std::to_string(depth) + " loops left " + std::to_string(loopNumber) + " " + std::to_string((uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
 		JobSystem::getInstance()->printDebug(s);
 
-		if ( depth<5 ) { //std::rand() % 100 < 50) {
-			uint32_t n = 2; // std::rand() % 2;
-			for (uint32_t i = 0; i < n; i++) {
-				JobSystem::getInstance()->addChildJob(std::bind(&A::spawn, this, 0.1f, depth + 1, i2), "spawn " + std::to_string(depth+1));
-			}
-		}
-		else {
-			JobSystem::getInstance()->addChildJob(std::bind(&A::printA, this, 0.1f, depth + 1, i2), "printA " + std::to_string(depth+1));
+		if (loopNumber == 0) {
+			JobSystem::getInstance()->addChildJob(std::bind(&printA, depth + 1, loopNumber), "printA " + std::to_string(depth + 1));
+			return;
 		}
 
+		JobSystem::getInstance()->addChildJob(std::bind(&A::spawn, this, depth + 1, loopNumber - 1), "spawn " + std::to_string(depth + 1));
+		JobSystem::getInstance()->addChildJob(std::bind(&A::spawn, this, depth + 1, loopNumber - 1), "spawn " + std::to_string(depth + 1));
 	};
-
 };
 
 //-----------------------------------------------
 
-void case1( A& theA, uint32_t loopNumbers) {
-	for (uint32_t j = 0; j < 2; j++) {
-		for (uint32_t i = 0; i < loopNumbers; i++) {
-			JobSystem::getInstance()->addChildJob( std::bind( &A::printA, theA, 0.1f, 0, i), 0, "printA " );
-		}
+//a global function does not require a class instance when scheduled
+void case1( A& theA, uint32_t loopNumber) {
+	JobSystem::getInstance()->printDebug("case 1 number of loops left " + std::to_string(loopNumber) + "\n");
+
+	for (uint32_t i = 0; i < loopNumber; i++) {
+		JobSystem::getInstance()->addChildJob(std::bind(&printA, 0, loopNumber), "printA " + std::to_string(i));
 	}
-	JobSystem::getInstance()->onFinishedTerminatePool();
 }
 
+//a global function does not require a class instance when scheduled
 void case2( A& theA, uint32_t loopNumber ) {
-	JobSystem::getInstance()->printDebug("case 2 " + std::to_string(loopNumber) + "\n");
-
-	for (uint32_t i = 0; i < 1; i++) {
-		JobSystem::getInstance()->addChildJob( std::bind( &A::spawn, theA, 0.1f, 0, i), "spawn " );
-	}
-
-	if (loopNumber > 5) {
-		JobSystem::getInstance()->onFinishedTerminatePool();
-		return;
-	}
-	JobSystem::getInstance()->onFinishedAddJob( std::bind( &case2, theA, loopNumber+1), "case 2 " + std::to_string(loopNumber+1) );
+	JobSystem::getInstance()->printDebug("case 2 number of loops left " + std::to_string(loopNumber) + "\n");
+	JobSystem::getInstance()->addChildJob( std::bind( &A::spawn, theA, 0, loopNumber), "spawn " );
 }
 
 
 //-----------------------------------------------
 
-
 void playBack(A& theA, uint32_t loopNumber) {
-	if (loopNumber > 3) return;
-
+	if (loopNumber == 0) return;
 	JobSystem::getInstance()->playBackPool(1);
-
-	JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber + 1), "playBack " + std::to_string(loopNumber + 1));
+	JobSystem::getInstance()->onFinishedAddJob(std::bind(&playBack, theA, loopNumber - 1), "playBack " + std::to_string(loopNumber - 1));
 }
 
-
 void record(A& theA, uint32_t loopNumber) {
-	JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0.1f, loopNumber, 0 ), 1, "spawn " + std::to_string(loopNumber) );	
-
+	JobSystem::getInstance()->addChildJob( std::bind(&A::spawn, theA, 0, loopNumber ), 1, "spawn " + std::to_string(loopNumber) );	
 	JobSystem::getInstance()->onFinishedAddJob( std::bind( &playBack, theA, loopNumber), "playBack " + std::to_string(loopNumber) );
 }
 
 
-
-
+//the main thread starts a child and waits forall jobs to finish by calling wait()
 int main()
 {
 	JobSystem jobsystem(0);
@@ -94,7 +80,9 @@ int main()
 	A theA;
 
 	jobsystem.resetPool(1);
-	jobsystem.addJob( std::bind( &record, theA, 0 ), "record" );
+	jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
+	//jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
+	//jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
 	jobsystem.wait();
 
 	jobsystem.terminate();
