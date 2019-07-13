@@ -80,8 +80,8 @@ int main()
 	A theA;
 
 	jobsystem.resetPool(1);
-	jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
-	//jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
+	//jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
+	jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
 	//jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
 	jobsystem.wait();
 

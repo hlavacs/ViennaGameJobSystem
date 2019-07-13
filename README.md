@@ -32,7 +32,8 @@ VGJS runs a number of n worker threads, each having its own work queue. Each thr
     //a global function does not require a class instance when scheduled
     void printA(int depth, int loopNumber) {
         std::string s = std::string(depth, ' ') + "print " + " depth " + std::to_string(depth) + " " +
-            std::to_string(loopNumber) + " " + std::to_string((uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
+            std::to_string(loopNumber) + " " +
+            std::to_string((uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
         JobSystem::getInstance()->printDebug(s);
     };
 
@@ -47,16 +48,11 @@ VGJS runs a number of n worker threads, each having its own work queue. Each thr
     //the main thread starts a child and waits forall jobs to finish by calling wait()
     int main() {
         JobSystem jobsystem(0);
-
         A theA;
-
-        jobsystem.resetPool(1);
         jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
         jobsystem.wait();
-
         jobsystem.terminate();
         jobsystem.waitForTermination();
-
         return 0;
     }
 
@@ -79,6 +75,85 @@ When started VGJS by default contains only pool 0, but pools are automatically c
 Functions can be scheduled by calling addJob() or addChildJob(). As described above, each function that is scheduled is internally represented by a Job structure from one of the pools, pointing also to the function that it represents. Jobs creating other jobs using addChildJob() establish a parent-child relationship. The exception being the main thread. If the main thread calls addChildJob(), then this is equivalent to addJob(), i.e., no parent-child relationship is established for the main thread.
 
 The parent can finish only if all its children have finished. A job that finishes automatically notifies its own parent (if there is one) that one of its children has finished. If this is the last child that finishes, the parent job also finishes. A job can schedule a follow-up job to be executed upon finishing. This establishes a wait-operation, since this follow-up job will be scheduled only of all children have finished. Follow-up jobs are set by calling the onFinishedAddJob() function, and have the same parent as the job that scheduled them.
+
+    //a global function does not require a class instance when scheduled
+    void printA(int depth, int loopNumber) {
+        std::string s = std::string(depth, ' ') + "print " + " depth " + std::to_string(depth) + " " +
+            std::to_string(loopNumber) + " " +
+            std::to_string((uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
+        JobSystem::getInstance()->printDebug(s);
+    };
+
+    class A {
+    public:
+        A() {};
+        ~A() {};
+
+        //a class member function requires reference/pointer to the instance when scheduled
+        void spawn( int depth, int loopNumber ) {
+            std::string s = std::string(depth, ' ') + "spawn " + " depth " + std::to_string(depth) +
+                " loops left " + std::to_string(loopNumber) + " " +
+                std::to_string((uint32_t)JobSystem::getInstance()->getJobPointer()) + "\n";
+            JobSystem::getInstance()->printDebug(s);
+
+            if (loopNumber == 0) {
+                JobSystem::getInstance()->addChildJob(std::bind(&printA, depth + 1, loopNumber),
+                    "printA " + std::to_string(depth + 1));
+                return;
+            }
+
+            JobSystem::getInstance()->addChildJob(std::bind(&A::spawn, this, depth + 1, loopNumber - 1),
+                "spawn " + std::to_string(depth + 1));
+            JobSystem::getInstance()->addChildJob(std::bind(&A::spawn, this, depth + 1, loopNumber - 1),
+                "spawn " + std::to_string(depth + 1));
+        };
+    };
+
+    //a global function does not require a class instance when scheduled
+    void case2( A& theA, uint32_t loopNumber ) {
+        JobSystem::getInstance()->printDebug("case 2 number of loops left " + std::to_string(loopNumber) + "\n");
+        JobSystem::getInstance()->addChildJob( std::bind( &A::spawn, theA, 0, loopNumber), "spawn " );
+    }
+
+    //the main thread starts a child and waits forall jobs to finish by calling wait()
+    int main() {
+        JobSystem jobsystem(0);
+        A theA;
+        jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
+        jobsystem.wait();
+        jobsystem.terminate();
+        jobsystem.waitForTermination();
+        return 0;
+    }
+
+The above program schedules the global function case2(), which itself schedules a member function of class A called spawn(). Each invokation of spawn schedules two more spawn() functions, until a max depth of 3 is reached. In this case, spawn() schedules printA to print some info. The output looks like this:
+
+    case 2 number of loops left 3
+    spawn  depth 0 loops left 3 1983852512
+     spawn  depth 1 loops left 2 1985564624
+     spawn  depth 1 loops left 2 1984901088
+      spawn  depth 2 loops left 1 1985896416
+      spawn  depth 2 loops left 1 1987993568
+      spawn  depth 2 loops left 1 1987661776
+       spawn  depth 3 loops left 0 1988657104
+      spawn  depth 2 loops left 1 1986998240
+       spawn  depth 3 loops left 0 1991192544
+       spawn  depth 3 loops left 0 1991856080
+        print  depth 4 0 1992187872
+       spawn  depth 3 loops left 0 1995173840
+       spawn  depth 3 loops left 0 1995505632
+       spawn  depth 3 loops left 0 1992851408
+       spawn  depth 3 loops left 0 1996169168
+       spawn  depth 3 loops left 0 1994510304
+        print  depth 4 0 1997828064
+        print  depth 4 0 1998491600
+        print  depth 4 0 1999581152
+        print  depth 4 0 2000244688
+        print  depth 4 0 2000576480
+        print  depth 4 0 2001240016
+        print  depth 4 0 2002898912
+
+Note how the call order can be mixed up due to rasce conditions since functions run in parallel.
 
 ## Directed Acyclic Graph (DAG)
 A DAG describes dependencies amongst jobs. There is a dependency between init1() and func2_1(), if init1() must start running before func2_1(). In fact init1() decides when to start func2_1(), and can carry out work before starting it, and afterwards. However, when starting a child, the child is immediately runnable and does not have to wait for the parent to stop running. Even though init1() eventually returns and stops running, it is not automatically said to have finished. As described above, a job finishes only if it stopped running and all of its children have finished.
