@@ -38,15 +38,15 @@ namespace vgjs {
 		friend JobSystem;
 
 	private:
-		std::atomic<bool>		m_available;					//is this job available after a pool reset?
-		std::atomic<uint32_t>	m_poolNumber;					//number of pool this job comes from
-		std::shared_ptr<Function> m_function;					//the function to carry out
 		Job *					m_parentJob;					//parent job, called if this job finishes
-		std::atomic<uint32_t>	m_numUnfinishedChildren;		//number of unfinished jobs
 		Job *					m_onFinishedJob;				//job to schedule once this job finshes
 		Job *					m_pFirstChild;					//pointer to first child, needed for recording/playback
 		Job *					m_pLastChild;					//pointer to last child created, needed for recording
 		Job *					m_pNextSibling;					//pointer to next sibling, needed for playback
+		std::atomic<uint32_t>	m_poolNumber;					//number of pool this job comes from
+		std::shared_ptr<Function> m_function;					//the function to carry out
+		std::atomic<uint32_t>	m_numUnfinishedChildren;		//number of unfinished jobs
+		std::atomic<bool>		m_available;					//is this job available after a pool reset?
 		bool					m_endPlayback;					//true then end pool playback after this job is finished
 	
 		//---------------------------------------------------------------------------
@@ -357,10 +357,7 @@ namespace vgjs {
 		// function each thread performs
 		void threadTask() {
 			static std::atomic<uint32_t> threadIndexCounter = 0;
-
 			uint32_t threadIndex = threadIndexCounter.fetch_add(1);
-			m_jobQueues[threadIndex] = new JobQueue();				//work stealing queue
-			m_jobPointers[threadIndex] = nullptr;					//pointer to current Job structure
 			m_threadIndexMap[std::this_thread::get_id()] = threadIndex;		//use only the map to determine how many threads are in the pool
 
 			while (true) {
@@ -412,9 +409,14 @@ namespace vgjs {
 				threadCount = std::thread::hardware_concurrency();		//main thread is also running
 			}
 
-			m_threads.reserve(threadCount);								//reserve mem for the threads
 			m_jobQueues.resize(threadCount);							//reserve mem for job queue pointers
 			m_jobPointers.resize(threadCount);							//rerve mem for Job pointers
+			for (uint32_t i = 0; i < threadCount; i++) {
+				m_jobQueues[i] = new JobQueue();						//job queue
+				m_jobPointers[i] = nullptr;								//pointer to current Job structure
+			}
+
+			m_threads.reserve(threadCount);								//reserve mem for the threads
 			for (uint32_t i = 0; i < threadCount; i++) {
 				m_threads.push_back(std::thread(&JobSystem::threadTask, this));	//spawn the pool threads
 			}
@@ -553,9 +555,6 @@ namespace vgjs {
 				threadNumber = threadNumber < 0 ? std::rand() % tsize : threadNumber;
 			}
 
-			//while (m_jobQueues[threadNumber] == nullptr) {	//queue might not exist yet
-			//	std::this_thread::sleep_for(std::chrono::nanoseconds(100));
-			//}
 			m_jobQueues[threadNumber]->push(pJob);			//keep jobs local
 		};
 
@@ -721,10 +720,9 @@ namespace vgjs {
 		}
 
 		//synchronize with the main thread
-		JobSystem *js = JobSystem::pInstance;
-		uint32_t numLeft = js->m_numJobs.fetch_sub(1); //one less job in the system
+		uint32_t numLeft = JobSystem::pInstance->m_numJobs.fetch_sub(1); //one less job in the system
 		if (numLeft == 1) {							//if this was the last job in ths system 
-			js->m_mainThreadCondVar.notify_all();	//notify main thread that might be waiting
+			JobSystem::pInstance->m_mainThreadCondVar.notify_all();	//notify main thread that might be waiting
 		}
 		//if pool is played back, and this is the last job to finish, then end the playback
 		if (m_endPlayback) {						//on playback the first job is the last to finish

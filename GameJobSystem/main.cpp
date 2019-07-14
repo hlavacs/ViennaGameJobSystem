@@ -134,7 +134,7 @@ int main()
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
 
-	uint32_t loopNumber = 6;
+	uint32_t loopNumber = 10;
 	uint32_t depth = 7;
 
 	//---------------------------------------------------------------------
