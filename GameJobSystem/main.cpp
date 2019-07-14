@@ -92,11 +92,19 @@ void spawn( uint32_t depth) {
 	JobSystem::pInstance->addChildJob(std::bind(&spawn, depth - 1));
 	JobSystem::pInstance->addChildJob(std::bind(&spawn, depth - 1));
 	JobSystem::pInstance->addChildJob(std::bind(&spawn, depth - 1));
+	JobSystem::pInstance->addChildJob(std::bind(&spawn, depth - 1));
+	JobSystem::pInstance->addChildJob(std::bind(&spawn, depth - 1));
+	JobSystem::pInstance->addChildJob(std::bind(&spawn, depth - 1));
+	JobSystem::pInstance->addChildJob(std::bind(&spawn, depth - 1));
 }
 
 void spawn2(uint32_t depth) {
 	counter++;
 	if (depth == 0) return;
+	spawn2(depth - 1);
+	spawn2(depth - 1);
+	spawn2(depth - 1);
+	spawn2(depth - 1);
 	spawn2(depth - 1);
 	spawn2(depth - 1);
 	spawn2(depth - 1);
@@ -126,8 +134,8 @@ int main()
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
 
-	uint32_t loopNumber = 5;
-	uint32_t depth = 11;
+	uint32_t loopNumber = 6;
+	uint32_t depth = 7;
 
 	//---------------------------------------------------------------------
 	counter = 0;

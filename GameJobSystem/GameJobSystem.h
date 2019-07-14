@@ -250,15 +250,7 @@ namespace vgjs {
 
 		//---------------------------------------------------------------------------
 		Job *steal() {
-			m_mutex.lock();
-			if (m_queue.size() == 0) {
-				m_mutex.unlock();
-				return nullptr;
-			};
-			Job* pJob = m_queue.front();
-			m_queue.pop();
-			m_mutex.unlock();
-			return pJob;
+			return pop();
 		};
 	};
 
@@ -286,8 +278,8 @@ namespace vgjs {
 
 		//---------------------------------------------------------------------------
 		void push(Job * pJob) {
-			//uint32_t t = m_top;
-			//uint32_t b = m_bottom;
+			uint32_t t = m_top;
+			uint32_t b = m_bottom;
 
 			//if (b - t == NUMBER_OF_JOBS) {
 			//	std::lock_guard<std::mutex> lock(m_mutex);
@@ -295,7 +287,7 @@ namespace vgjs {
 			//	}
 			//}
 
-			uint32_t b = m_bottom;
+			b = m_bottom;
 			m_queue[b & MASK] = pJob;
 			m_bottom = b + 1;
 		};
@@ -304,7 +296,7 @@ namespace vgjs {
 		Job * pop() {
 			uint32_t t = m_top;
 			uint32_t b = m_bottom;
-			if ( m_bottom.compare_exchange_strong( t, b ) ) return nullptr;
+			//if ( m_bottom.compare_exchange_strong( t, b ) ) return nullptr;
 
 			b = m_bottom - 1;
 			m_bottom = b;
@@ -332,7 +324,7 @@ namespace vgjs {
 
 			uint32_t t = m_top;
 			uint32_t b = m_bottom;
-			if (m_bottom.compare_exchange_strong(t, b)) return nullptr;
+			//if (m_bottom.compare_exchange_strong(t, b)) return nullptr;
 
 			if (t < b) {	//queue is not empty
 				Job* pJob = m_queue[t & MASK];	//get job
@@ -379,13 +371,14 @@ namespace vgjs {
 
 				if (m_terminate) break;
 
-				uint32_t max = 5*m_threads.size();
-				while (pJob == nullptr && m_threads.size()>1) {
-					uint32_t idx = std::rand() % m_threads.size();
+				uint32_t tsize = m_threads.size();
+				uint32_t max = 5 * tsize;
+				while (pJob == nullptr && tsize > 1) {
+					uint32_t idx = std::rand() % tsize;
 					if (idx != threadIndex) pJob = m_jobQueues[idx]->steal();
-					if (!--max) break;
+					max--;
+					if (max == 0) break;
 				}
-
 				if (m_terminate) break;
 
 				if (pJob != nullptr) {
@@ -551,13 +544,18 @@ namespace vgjs {
 			m_numJobs++;	//keep track of the number of jobs in the system to sync with main thread
 
 			int32_t threadNumber=0;
-			if (m_numJobs < 3 * m_threads.size()) {
-				threadNumber = std::rand() % m_threads.size();
+			uint32_t tsize = m_threads.size();
+			if (m_numJobs < 3 * tsize) {
+				threadNumber = std::rand() % tsize;
 			}
 			else {
 				threadNumber = getThreadNumber();
-				threadNumber = threadNumber < 0 ? 0 : threadNumber;
+				threadNumber = threadNumber < 0 ? std::rand() % tsize : threadNumber;
 			}
+
+			//while (m_jobQueues[threadNumber] == nullptr) {	//queue might not exist yet
+			//	std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+			//}
 			m_jobQueues[threadNumber]->push(pJob);			//keep jobs local
 		};
 
