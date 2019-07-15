@@ -12,7 +12,6 @@
 using namespace vgjs;
 using namespace std;
 
-#ifdef _DEBUG
 
 //a global function does not require a class instance when scheduled
 void printA(int depth, int loopNumber) {
@@ -32,12 +31,15 @@ public:
 		JobSystem::pInstance->printDebug(s);
 
 		if (loopNumber == 0) {
-			JobSystem::pInstance->onFinishedAddJob(std::bind(&printA, depth + 1, loopNumber), "printA " + std::to_string(depth + 1));
+			JobSystem::pInstance->onFinishedAddJob(std::bind(&printA, depth + 1, loopNumber), 
+				"printA " + std::to_string(depth + 1));
 			return;
 		}
 
-		JobSystem::pInstance->addChildJob(std::bind(&A::spawn, this, depth + 1, loopNumber - 1), "spawn " + std::to_string(depth + 1));
-		JobSystem::pInstance->addChildJob(std::bind(&A::spawn, this, depth + 1, loopNumber - 1), "spawn " + std::to_string(depth + 1));
+		JobSystem::pInstance->addChildJob(std::bind(&A::spawn, this, depth + 1, loopNumber - 1), 
+			"spawn " + std::to_string(depth + 1));
+		JobSystem::pInstance->addChildJob(std::bind(&A::spawn, this, depth + 1, loopNumber - 1), 
+			"spawn " + std::to_string(depth + 1));
 	};
 };
 
@@ -65,24 +67,27 @@ void playBack(A& theA, uint32_t loopNumber) {
 	if (loopNumber == 0) return; 
 	JobSystem::pInstance->printDebug("\nplaying loop " + std::to_string(loopNumber) + "\n");
 	JobSystem::pInstance->playBackPool(1);
-	JobSystem::pInstance->onFinishedAddJob(std::bind(&playBack, theA, loopNumber - 1), "playBack " + std::to_string(loopNumber - 1));
+	JobSystem::pInstance->onFinishedAddJob(std::bind(&playBack, theA, loopNumber - 1), 
+		"playBack " + std::to_string(loopNumber - 1));
 }
 
 void record(A& theA, uint32_t loopNumber) {
 	JobSystem::pInstance->printDebug("recording number of loops " + std::to_string(loopNumber) + "\n");
 	JobSystem::pInstance->resetPool(1);
-	JobSystem::pInstance->addChildJob( std::bind(&A::spawn, theA, 0, loopNumber ), 1, "spawn " + std::to_string(loopNumber) );
-	JobSystem::pInstance->onFinishedAddJob( std::bind( &playBack, theA, 3), "playBack " + std::to_string(loopNumber) );
+	JobSystem::pInstance->addChildJob( std::bind(&A::spawn, theA, 0, loopNumber ), 1, 
+		"spawn " + std::to_string(loopNumber) );
+	JobSystem::pInstance->onFinishedAddJob( std::bind( &playBack, theA, 3), 
+		"playBack " + std::to_string(loopNumber) );
 }
 
-#endif
 
 
 //-----------------------------------------------
 
-#ifndef _DEBUG
 
 std::atomic<uint32_t> counter = 0;
+using namespace std::chrono;
+
 
 void spawn( uint32_t depth) {
 	counter++;
@@ -104,35 +109,16 @@ void spawn2(uint32_t depth) {
 }
 
 
-#endif
-
-
-using namespace std::chrono;
-
-//the main thread starts a child and waits forall jobs to finish by calling wait()
-int main()
-{
-	JobSystem jobsystem(0);
-
-#ifdef _DEBUG
-
-	A theA;
-	//jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
-	jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
-	//jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
-	jobsystem.wait();
-
-#else
+void performance( JobSystem & jobsystem ) {
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
-
 	uint32_t loopNumber = 10;
 	uint32_t depth = 11;
 
 	//---------------------------------------------------------------------
 	counter = 0;
 	t1 = high_resolution_clock::now();
-	jobsystem.addJob(std::bind(&spawn, depth), 1 );
+	jobsystem.addJob(std::bind(&spawn, depth), 1);
 	jobsystem.wait();
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
@@ -160,7 +146,7 @@ int main()
 	}
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
-	std::cout << "It took me " << time_span.count() << " seconds for " + std::to_string(counter) + " children (" + std::to_string( 1000000.0f*time_span.count() / counter ) + " us/child)\n";
+	std::cout << "It took me " << time_span.count() << " seconds for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
 
 
 	//---------------------------------------------------------------------
@@ -172,7 +158,23 @@ int main()
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
 	std::cout << "It took me " << time_span.count() << " seconds for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
-#endif
+
+}
+
+
+
+//the main thread starts a child and waits forall jobs to finish by calling wait()
+int main()
+{
+	JobSystem jobsystem(0);
+
+	A theA;
+	//jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
+	//jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
+	//jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
+	performance( jobsystem );
+	jobsystem.wait();
+
 
 	jobsystem.terminate();
 	jobsystem.waitForTermination();

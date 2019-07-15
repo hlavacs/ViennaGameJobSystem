@@ -572,19 +572,19 @@ namespace vgjs {
 		//poolNumber Optional number of the pool, or 0
 		//
 		void addJob(Function&& func, uint32_t poolNumber = 0) {
-			addJob(std::move(func), poolNumber, "");
+			addJob(std::move(func), poolNumber, std::string(""));
 		};
 
 		//func The function to schedule
 		//id A name for the job for debugging
-		void addJob(Function&& func, std::string id) {
-			addJob(std::move(func), 0, id);
+		void addJob(Function&& func, std::string&& id) {
+			addJob(std::move(func), 0, std::move(id));
 		};
 
 		//func The function to schedule
 		//poolNumber Optional number of the pool, or 0
 		//id A name for the job for debugging
-		void addJob(Function&& func, uint32_t poolNumber, std::string id ) {
+		void addJob(Function&& func, uint32_t poolNumber, std::string&& id ) {
 			Job *pCurrentJob = getJobPointer();
 			if (pCurrentJob == nullptr) {		//called from main thread -> need a Job 
 				pCurrentJob = JobMemory::pInstance->allocateJob( poolNumber );
@@ -605,33 +605,36 @@ namespace vgjs {
 		};
 
 
-#ifdef _DEBUG
+		//---------------------------------------------------------------------------
+		//create a new child job in a job pool
+		//func The function to schedule
+		void addChildJob(Function&& func) {
+			addChildJob(std::move(func), getJobPointer()->m_poolNumber, std::move(std::string("")));
+		};
+
 		//func The function to schedule
 		//id A name for the job for debugging
-		void addChildJob( Function func, std::string id) {
-			addChildJob(std::move(func), getJobPointer()->m_poolNumber, id);
+		void addChildJob( Function func, std::string&& id) {
+			addChildJob(std::move(func), getJobPointer()->m_poolNumber, std::move(id) );
+		};
+
+
+		//func The function to schedule
+		//id A name for the job for debugging
+		void addChildJob(Function func, uint32_t poolNumber) {
+			addChildJob(std::move(func), poolNumber, std::move(std::string("")));
 		};
 
 		//func The function to schedule
 		//poolNumber Number of the pool
 		//id A name for the job for debugging
-		void addChildJob(Function&& func, uint32_t poolNumber, std::string id ) {
-#else
-		//---------------------------------------------------------------------------
-		//create a new child job in a job pool
-		//func The function to schedule
-		void addChildJob(Function&& func ) {
-			addChildJob( std::move(func), getJobPointer()->m_poolNumber );
-		};
-
-		void addChildJob(Function&& func, uint32_t poolNumber ) {
-#endif
+		void addChildJob(Function&& func, uint32_t poolNumber, std::string&& id ) {
 			if (JobMemory::pInstance->getPoolPointer(poolNumber)->isPlayedBack) return;			//in playback no children are created
 			Job *pJob = JobMemory::pInstance->allocateJob( poolNumber );
-			pJob->setParentJob(getJobPointer(), true);	//set parent Job and notify parent
+			pJob->setParentJob(getJobPointer(), true);			//set parent Job and notify parent
 
 #ifdef _DEBUG
-			pJob->id = id;							//copy Job id, can be removed in production code
+			pJob->id = id;										//copy Job id, can be removed in production code
 #endif
 			pJob->setFunction(std::make_shared<Function>(func));
 			addJob(pJob);
@@ -643,11 +646,7 @@ namespace vgjs {
 		//func The function to schedule
 		//id A name for the job for debugging
 		//
-#ifdef _DEBUG	
 		void onFinishedAddJob(Function func, std::string id) {
-#else
-		void onFinishedAddJob(Function func ) {
-#endif
 			Job *pCurrentJob = getJobPointer();			//can be nullptr if called from main thread
 			if (JobMemory::pInstance->getPoolPointer(pCurrentJob->m_poolNumber)->isPlayedBack) return; //in playback mode no sucessors are recorded
 			uint32_t poolNumber = pCurrentJob != nullptr ? pCurrentJob->m_poolNumber.load() : 0;	//stay in the same pool
@@ -662,11 +661,7 @@ namespace vgjs {
 		//---------------------------------------------------------------------------
 		//wait for all children to finish and then terminate the pool
 		void onFinishedTerminatePool() {
-#ifdef _DEBUG
 			onFinishedAddJob( std::bind(&JobSystem::terminate, this), "terminate");
-#else
-			onFinishedAddJob(std::bind(&JobSystem::terminate, this) );
-#endif
 		};
 
 		//---------------------------------------------------------------------------
