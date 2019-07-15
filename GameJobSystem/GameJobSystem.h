@@ -48,6 +48,7 @@ namespace vgjs {
 		std::atomic<uint32_t>	m_numUnfinishedChildren;		//number of unfinished jobs
 		std::atomic<bool>		m_available;					//is this job available after a pool reset?
 		bool					m_endPlayback;					//true then end pool playback after this job is finished
+		uint32_t				m_padding[4];					//pad to 128 bytes
 	
 		//---------------------------------------------------------------------------
 		//set pointer to parent job
@@ -360,6 +361,9 @@ namespace vgjs {
 			uint32_t threadIndex = threadIndexCounter.fetch_add(1);
 			m_threadIndexMap[std::this_thread::get_id()] = threadIndex;		//use only the map to determine how many threads are in the pool
 
+			while(threadIndexCounter < m_threads.size() )
+				std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+
 			while (true) {
 
 				if (m_terminate) break;
@@ -369,12 +373,16 @@ namespace vgjs {
 				if (m_terminate) break;
 
 				uint32_t tsize = m_threads.size();
-				uint32_t max = 5 * tsize;
-				while (pJob == nullptr && tsize > 1) {
+				if (pJob == nullptr && tsize > 1) {
 					uint32_t idx = std::rand() % tsize;
-					if (idx != threadIndex) pJob = m_jobQueues[idx]->steal();
-					max--;
-					if (max == 0) break;
+					uint32_t max = 2*tsize;
+
+					while (pJob == nullptr) {
+						if (idx != threadIndex) pJob = m_jobQueues[idx]->steal();
+						idx = (idx+1) % tsize;
+						max--;
+						if (max == 0) break;
+					}
 				}
 				if (m_terminate) break;
 
@@ -563,20 +571,20 @@ namespace vgjs {
 		//func The function to schedule
 		//poolNumber Optional number of the pool, or 0
 		//
-		void addJob(Function func, uint32_t poolNumber = 0) {
-			addJob(func, poolNumber, "");
+		void addJob(Function&& func, uint32_t poolNumber = 0) {
+			addJob(std::move(func), poolNumber, "");
 		};
 
 		//func The function to schedule
 		//id A name for the job for debugging
-		void addJob(Function func, std::string id) {
-			addJob(func, 0, id);
+		void addJob(Function&& func, std::string id) {
+			addJob(std::move(func), 0, id);
 		};
 
 		//func The function to schedule
 		//poolNumber Optional number of the pool, or 0
 		//id A name for the job for debugging
-		void addJob(Function func, uint32_t poolNumber, std::string id ) {
+		void addJob(Function&& func, uint32_t poolNumber, std::string id ) {
 			Job *pCurrentJob = getJobPointer();
 			if (pCurrentJob == nullptr) {		//called from main thread -> need a Job 
 				pCurrentJob = JobMemory::pInstance->allocateJob( poolNumber );
@@ -601,25 +609,25 @@ namespace vgjs {
 		//func The function to schedule
 		//id A name for the job for debugging
 		void addChildJob( Function func, std::string id) {
-			addChildJob(func, getJobPointer()->m_poolNumber, id);
+			addChildJob(std::move(func), getJobPointer()->m_poolNumber, id);
 		};
 
 		//func The function to schedule
 		//poolNumber Number of the pool
 		//id A name for the job for debugging
-		void addChildJob(Function func, uint32_t poolNumber, std::string id ) {
+		void addChildJob(Function&& func, uint32_t poolNumber, std::string id ) {
 #else
 		//---------------------------------------------------------------------------
 		//create a new child job in a job pool
 		//func The function to schedule
-		void addChildJob(Function func ) {
-			addChildJob(func, getJobPointer()->m_poolNumber );
+		void addChildJob(Function&& func ) {
+			addChildJob( std::move(func), getJobPointer()->m_poolNumber );
 		};
 
-		void addChildJob(Function func, uint32_t poolNumber ) {
+		void addChildJob(Function&& func, uint32_t poolNumber ) {
 #endif
 			if (JobMemory::pInstance->getPoolPointer(poolNumber)->isPlayedBack) return;			//in playback no children are created
-				Job *pJob = JobMemory::pInstance->allocateJob( poolNumber );
+			Job *pJob = JobMemory::pInstance->allocateJob( poolNumber );
 			pJob->setParentJob(getJobPointer(), true);	//set parent Job and notify parent
 
 #ifdef _DEBUG
