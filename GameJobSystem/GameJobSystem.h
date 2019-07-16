@@ -28,6 +28,7 @@ namespace vgjs {
 	class JobMemory;
 	class Job;
 	class JobSystem;
+	class JobQueue;
 
 
 	using Function = std::function<void()>;
@@ -36,8 +37,11 @@ namespace vgjs {
 	class Job {
 		friend JobMemory;
 		friend JobSystem;
+		friend JobQueue;
 
 	private:
+		Job *					m_nextInQueue;					//next in the current queue
+
 		Job *					m_parentJob;					//parent job, called if this job finishes
 		Job *					m_onFinishedJob;				//job to schedule once this job finshes
 		Job *					m_pFirstChild;					//pointer to first child, needed for recording/playback
@@ -96,13 +100,13 @@ namespace vgjs {
 	public:
 
 #ifndef _DEBUG
-		uint32_t				m_padding[4];					//pad to 128 bytes
+		uint32_t				m_padding[2];					//pad to 128 bytes
 #else
 
 		std::string				id;											//info for debugging
 #endif
 
-		Job() : m_poolNumber(0), m_parentJob(nullptr), m_numUnfinishedChildren(0), m_onFinishedJob(nullptr),
+		Job() : m_nextInQueue(nullptr), m_poolNumber(0), m_parentJob(nullptr), m_numUnfinishedChildren(0), m_onFinishedJob(nullptr),
 				m_pFirstChild(nullptr), m_pNextSibling(nullptr), m_available(true) {};
 		~Job() {};
 	};
@@ -186,6 +190,8 @@ namespace vgjs {
 			do {
 				pJob = getNextJob(poolNumber);		//get the next Job in the pool
 			} while ( !pJob->m_available );			//check whether it is available
+			pJob->m_nextInQueue = nullptr;
+
 			pJob->m_poolNumber = poolNumber;		//make sure the job knows its own pool number
 			pJob->m_onFinishedJob = nullptr;		//no successor Job yet
 			pJob->m_endPlayback = false;			//should not end playback
@@ -224,7 +230,7 @@ namespace vgjs {
 	//---------------------------------------------------------------------------
 	//queue class
 	//will be changed for lock free queues
-	class JobQueue {
+	/*class JobQueue {
 		std::mutex m_mutex;
 		std::queue<Job*> m_queue;	//conventional queue by now
 
@@ -257,90 +263,55 @@ namespace vgjs {
 			return pop();
 		};
 	};
-
+	*/
 
 	//---------------------------------------------------------------------------
 	//queue class
 	//lock free queue
-	/*class JobQueue {
+	class JobQueue {
 
-		uint32_t NUMBER_OF_JOBS = 1024*1024;
-		uint32_t MASK = NUMBER_OF_JOBS - 1;
-
-		using JobListP = std::vector<Job*>;
-		JobListP m_queue;
-		std::atomic<uint32_t> m_bottom;
-		std::atomic<uint32_t> m_top;
-
+		Job * m_pHead = nullptr;
+		Job * m_pTail = nullptr;
 		std::mutex m_mutex;
 
 	public:
 		//---------------------------------------------------------------------------
-		JobQueue() : m_bottom(0), m_top(0) {
-			m_queue.resize(NUMBER_OF_JOBS);
+		JobQueue() {
 		};
 
 		//---------------------------------------------------------------------------
 		void push(Job * pJob) {
-			uint32_t t = m_top;
-			uint32_t b = m_bottom;
-
-			//if (b - t == NUMBER_OF_JOBS) {
-			//	std::lock_guard<std::mutex> lock(m_mutex);
-			//	if (b - t == NUMBER_OF_JOBS) {
-			//	}
-			//}
-
-			b = m_bottom;
-			m_queue[b & MASK] = pJob;
-			m_bottom = b + 1;
+			m_mutex.lock();
+			pJob->m_nextInQueue = nullptr;
+			if (m_pHead == nullptr) m_pHead = pJob;
+			if( m_pTail != nullptr ) m_pTail->m_nextInQueue = pJob;
+			m_pTail = pJob;			
+			m_mutex.unlock();
 		};
 
 		//---------------------------------------------------------------------------
 		Job * pop() {
-			uint32_t t = m_top;
-			uint32_t b = m_bottom;
-			//if ( m_bottom.compare_exchange_strong( t, b ) ) return nullptr;
+			m_mutex.lock();
 
-			b = m_bottom - 1;
-			m_bottom = b;
-			if (t <= b) {
-				Job* job = m_queue[b & MASK];
-				if (t != b) {
-					return job;
-				}
-
-				// this is the last item in the queue
-				if ( m_top.compare_exchange_strong( t, t + 1 ) ) {
-					job = nullptr;
-				}
-
-				m_bottom = t + 1;
-				return job;
+			if (m_pHead == nullptr) {
+				m_mutex.unlock();
+				return nullptr;
 			}
-			m_bottom = t;
-			return nullptr;
+			Job *pJob = m_pHead;
+			if (pJob == m_pTail) {
+				m_pTail = nullptr;
+			}
+			m_pHead = m_pHead->m_nextInQueue;
+
+			m_mutex.unlock();
+			return pJob;
 		};
 
 		//---------------------------------------------------------------------------
 		Job *steal() {
-			return nullptr;
-
-			uint32_t t = m_top;
-			uint32_t b = m_bottom;
-			//if (m_bottom.compare_exchange_strong(t, b)) return nullptr;
-
-			if (t < b) {	//queue is not empty
-				Job* pJob = m_queue[t & MASK];	//get job
-
-				if (  !m_top.compare_exchange_strong( t, t + 1 ) ) {
-					return nullptr;	//another task was faster and stole it
-				}
-				return pJob;
-			}
-			return nullptr;	//queue is empty
+			return pop();
 		};
-	};*/
+	};
 
 
 	//---------------------------------------------------------------------------
