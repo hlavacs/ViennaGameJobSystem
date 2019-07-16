@@ -48,7 +48,6 @@ namespace vgjs {
 		std::atomic<uint32_t>	m_numUnfinishedChildren;		//number of unfinished jobs
 		std::atomic<bool>		m_available;					//is this job available after a pool reset?
 		bool					m_endPlayback;					//true then end pool playback after this job is finished
-		uint32_t				m_padding[4];					//pad to 128 bytes
 	
 		//---------------------------------------------------------------------------
 		//set pointer to parent job
@@ -95,13 +94,17 @@ namespace vgjs {
 		void operator()();				//does not know JobMemory yet, so define later
 
 	public:
+
+#ifndef _DEBUG
+		uint32_t				m_padding[4];					//pad to 128 bytes
+#else
+
+		std::string				id;											//info for debugging
+#endif
+
 		Job() : m_poolNumber(0), m_parentJob(nullptr), m_numUnfinishedChildren(0), m_onFinishedJob(nullptr),
 				m_pFirstChild(nullptr), m_pNextSibling(nullptr), m_available(true) {};
 		~Job() {};
-
-#ifdef _DEBUG
-		std::string id;
-#endif
 	};
 
 
