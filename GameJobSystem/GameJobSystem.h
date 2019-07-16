@@ -646,7 +646,7 @@ namespace vgjs {
 		//func The function to schedule
 		//id A name for the job for debugging
 		//
-		void onFinishedAddJob(Function func, std::string id) {
+		void onFinishedAddJob(Function func, std::string &&id) {
 			Job *pCurrentJob = getJobPointer();			//can be nullptr if called from main thread
 			if (JobMemory::pInstance->getPoolPointer(pCurrentJob->m_poolNumber)->isPlayedBack) return; //in playback mode no sucessors are recorded
 			uint32_t poolNumber = pCurrentJob != nullptr ? pCurrentJob->m_poolNumber.load() : 0;	//stay in the same pool

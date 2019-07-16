@@ -112,7 +112,7 @@ void spawn2(uint32_t depth) {
 void performance( JobSystem & jobsystem ) {
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
-	uint32_t loopNumber = 10;
+	uint32_t loopNumber = 2;
 	uint32_t depth = 11;
 
 	//---------------------------------------------------------------------
@@ -166,7 +166,7 @@ void performance( JobSystem & jobsystem ) {
 //the main thread starts a child and waits forall jobs to finish by calling wait()
 int main()
 {
-	JobSystem jobsystem(0);
+	JobSystem jobsystem(1);
 
 	A theA;
 	//jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
