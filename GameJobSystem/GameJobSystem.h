@@ -51,6 +51,7 @@ namespace vgjs {
 		std::shared_ptr<Function> m_function;					//the function to carry out
 		std::atomic<uint32_t>	m_numUnfinishedChildren;		//number of unfinished jobs
 		std::atomic<bool>		m_available;					//is this job available after a pool reset?
+		bool					m_repeatJob;					//if true then the job will be rescheduled
 		bool					m_endPlayback;					//true then end pool playback after this job is finished
 	
 		//---------------------------------------------------------------------------
@@ -107,7 +108,7 @@ namespace vgjs {
 #endif
 
 		Job() : m_nextInQueue(nullptr), m_poolNumber(0), m_parentJob(nullptr), m_numUnfinishedChildren(0), m_onFinishedJob(nullptr),
-				m_pFirstChild(nullptr), m_pNextSibling(nullptr), m_available(true) {};
+				m_pFirstChild(nullptr), m_pNextSibling(nullptr), m_repeatJob(false), m_available(true) {};
 		~Job() {};
 	};
 
@@ -199,6 +200,7 @@ namespace vgjs {
 			pJob->m_pLastChild = nullptr;			//no children yet
 			pJob->m_pNextSibling = nullptr;			//no sibling yet
 			pJob->m_parentJob = nullptr;			//default is no parent
+			pJob->m_repeatJob = false;				//default is no repeat
 			return pJob;
 		};
 
@@ -621,8 +623,10 @@ namespace vgjs {
 		//id A name for the job for debugging
 		//
 		void onFinishedAddJob(Function func, std::string &&id) {
-			Job *pCurrentJob = getJobPointer();			//can be nullptr if called from main thread
+			Job *pCurrentJob = getJobPointer();			//should never be called by meain thread
+			if (pCurrentJob == nullptr) return;			//is null if called by main thread
 			if (JobMemory::pInstance->getPoolPointer(pCurrentJob->m_poolNumber)->isPlayedBack) return; //in playback mode no sucessors are recorded
+			if (pCurrentJob->m_repeatJob) return;		//you cannot do both repeat and add job after finishing
 			uint32_t poolNumber = pCurrentJob != nullptr ? pCurrentJob->m_poolNumber.load() : 0;	//stay in the same pool
 			Job *pNewJob = JobMemory::pInstance->allocateJob( poolNumber);			//new job has the same parent as current job
 #ifdef _DEBUG	
@@ -631,6 +635,17 @@ namespace vgjs {
 			pNewJob->setFunction(std::make_shared<Function>(func));
 			pCurrentJob->setOnFinished(pNewJob);
 		};
+
+		//---------------------------------------------------------------------------
+		//Once the Job finished, it will be rescheduled  and repeated
+		//This also includes all children, which will be recreated and run
+		//
+		void onFinishedRepeatJob() {
+			Job *pCurrentJob = getJobPointer();						//can be nullptr if called from main thread
+			if (pCurrentJob == nullptr) return;						//is null if called by main thread
+			if (pCurrentJob->m_onFinishedJob != nullptr) return;	//you cannot do both repeat and add job after finishing	
+			pCurrentJob->m_repeatJob = true;
+		}
 
 		//---------------------------------------------------------------------------
 		//wait for all children to finish and then terminate the pool
@@ -665,6 +680,9 @@ namespace vgjs {
 		m_numUnfinishedChildren = 1;					//number of children includes itself
 		(*m_function)();								//call the function
 
+		//addChildJob() would have started the children already, so if playback do this immediately
+		//you cannot wait for children to finish, since in playback there are no children yet
+		//if a job is repeated - so are its children!
 		JobMemory::JobPool *pPool = JobMemory::pInstance->getPoolPointer(m_poolNumber);
 		if( pPool->isPlayedBack) {
 			Job *pChild = m_pFirstChild;					//if pool is played back
@@ -686,6 +704,14 @@ namespace vgjs {
 #ifdef _DEBUG
 		JobSystem::pInstance->printDebug( "Job " + id + " finishes\n" );
 #endif
+
+		if (m_repeatJob) {
+			m_repeatJob = false;								//only repeat if job executes so
+			JobSystem::pInstance->m_numJobs--;					//addJob will increase this again
+			JobSystem::pInstance->addJob( this );				//rescheduled this
+			return;
+		}
+
 		if (m_onFinishedJob != nullptr) {						//is there a successor Job?
 			if (m_parentJob != nullptr) 
 				m_onFinishedJob->setParentJob(  m_parentJob, false );
