@@ -28,7 +28,8 @@ namespace vgjs {
 	class JobMemory;
 	class Job;
 	class JobSystem;
-	class JobQueue;
+	class JobQueueFIFO;
+	class JobQueueLockFree;
 
 
 	using Function = std::function<void()>;
@@ -37,7 +38,8 @@ namespace vgjs {
 	class Job {
 		friend JobMemory;
 		friend JobSystem;
-		friend JobQueue;
+		friend JobQueueFIFO;
+		friend JobQueueLockFree;
 
 	private:
 		Job *					m_nextInQueue;					//next in the current queue
@@ -232,16 +234,29 @@ namespace vgjs {
 	//---------------------------------------------------------------------------
 	//queue class
 	//will be changed for lock free queues
-	/*class JobQueue {
+	class JobQueue {
+
+	public:
+		JobQueue() {};
+		virtual void push(Job * pJob) = 0;
+		virtual Job * pop() = 0;
+		virtual Job *steal() = 0;
+	};
+
+
+	//---------------------------------------------------------------------------
+	//queue class
+	//will be changed for lock free queues
+	class JobQueueSTL : public JobQueue {
 		std::mutex m_mutex;
 		std::queue<Job*> m_queue;	//conventional queue by now
 
 	public:
 		//---------------------------------------------------------------------------
-		JobQueue() {};
+		JobQueueSTL() {};
 
 		//---------------------------------------------------------------------------
-		void push( Job * pJob) {
+		void push(Job * pJob) {
 			m_mutex.lock();
 			m_queue.push(pJob);
 			m_mutex.unlock();
@@ -265,12 +280,12 @@ namespace vgjs {
 			return pop();
 		};
 	};
-	*/
+
 
 	//---------------------------------------------------------------------------
 	//queue class
 	//lock free queue
-	class JobQueue {
+	class JobQueueFIFO : public JobQueue {
 
 		Job * m_pHead = nullptr;
 		Job * m_pTail = nullptr;
@@ -278,8 +293,7 @@ namespace vgjs {
 
 	public:
 		//---------------------------------------------------------------------------
-		JobQueue() {
-		};
+		JobQueueFIFO() {};
 
 		//---------------------------------------------------------------------------
 		void push(Job * pJob) {
@@ -314,6 +328,42 @@ namespace vgjs {
 			return pop();
 		};
 	};
+
+
+	//---------------------------------------------------------------------------
+	//queue class
+	//lock free queue
+	class JobQueueLockFree : public JobQueue {
+
+		std::atomic<Job *> m_pHead = nullptr;
+
+	public:
+		//---------------------------------------------------------------------------
+		JobQueueLockFree() {};
+
+		//---------------------------------------------------------------------------
+		void push(Job * pJob) {
+			pJob->m_nextInQueue = m_pHead.load(std::memory_order_relaxed);
+
+			while (! std::atomic_compare_exchange_strong_explicit(
+				&m_pHead, &pJob->m_nextInQueue, pJob, 
+				std::memory_order_release, std::memory_order_relaxed) ) {};
+		};
+
+		//---------------------------------------------------------------------------
+		Job * pop() {
+			Job * head = m_pHead.load(std::memory_order_relaxed);
+			if (head == nullptr) return nullptr;
+			while (head != nullptr && !std::atomic_compare_exchange_weak(&m_pHead, &head, head->m_nextInQueue)) {};
+			return head;
+		};
+
+		//---------------------------------------------------------------------------
+		Job *steal() {
+			return pop();
+		};
+	};
+
 
 
 	//---------------------------------------------------------------------------
@@ -358,6 +408,7 @@ namespace vgjs {
 						idx = (idx+1) % tsize;
 						max--;
 						if (max == 0) break;
+						if (m_terminate) break;
 					}
 				}
 				if (m_terminate) break;
@@ -396,7 +447,7 @@ namespace vgjs {
 			m_jobQueues.resize(threadCount);							//reserve mem for job queue pointers
 			m_jobPointers.resize(threadCount);							//rerve mem for Job pointers
 			for (uint32_t i = 0; i < threadCount; i++) {
-				m_jobQueues[i] = new JobQueue();						//job queue
+				m_jobQueues[i] = new JobQueueSTL();						//job queue
 				m_jobPointers[i] = nullptr;								//pointer to current Job structure
 			}
 
@@ -529,14 +580,12 @@ namespace vgjs {
 		void addJob( Job *pJob ) {
 			m_numJobs++;	//keep track of the number of jobs in the system to sync with main thread
 
-			int32_t threadNumber=0;
 			uint32_t tsize = m_threads.size();
-			if (m_numJobs < 3 * tsize) {
+			int32_t threadNumber = getThreadNumber();
+			threadNumber = threadNumber < 0 ? std::rand() % tsize : threadNumber;
+
+			if (m_numJobs < 2 * tsize) {
 				threadNumber = std::rand() % tsize;
-			}
-			else {
-				threadNumber = getThreadNumber();
-				threadNumber = threadNumber < 0 ? std::rand() % tsize : threadNumber;
 			}
 
 			m_jobQueues[threadNumber]->push(pJob);			//keep jobs local

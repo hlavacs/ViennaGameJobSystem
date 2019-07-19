@@ -87,94 +87,123 @@ void record(A& theA, uint32_t loopNumber) {
 
 std::atomic<uint32_t> counter = 0;
 using namespace std::chrono;
+std::atomic<double> duration_spawn;
 
 
-void spawn( uint32_t depth) {
-	counter++;
-	if (depth == 0) return;
-	if (JobSystem::pInstance->isPlayedBack(1)) return;
-	JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1)), 1);
-	JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1)), 1);
-	JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1)), 1);
-	JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1)), 1);
+void sleep(uint32_t sleepTime) {
+	high_resolution_clock::time_point t1, t2;
+	t1 = high_resolution_clock::now();
+	do {
+		t2 = high_resolution_clock::now();
+	} while ((double)duration_cast<duration<double>>(t2 - t1).count()*1000000000.0 < sleepTime);
 }
 
-void spawn2(uint32_t depth) {
+void spawn( uint32_t depth, uint32_t workDepth, uint32_t sleepTime) {
+	//high_resolution_clock::time_point t1, t2;
+	//t1 = high_resolution_clock::now();
 	counter++;
-	if (depth == 0) return;
-	spawn2(depth - 1);
-	spawn2(depth - 1);
-	spawn2(depth - 1);
-	spawn2(depth - 1);
+	//JobSystem::pInstance->printDebug( "spawn " + std::to_string(counter) + "\n");
+	if (depth > 0 && !JobSystem::pInstance->isPlayedBack()) {
+		JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1, workDepth, sleepTime)), 1);
+		JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1, workDepth, sleepTime)), 1);
+	}
+	if (depth<workDepth)
+		sleep(sleepTime);
+
+	//t2 = high_resolution_clock::now();
+	//duration<double> dur = 	duration_cast<duration<double>>(t2 - t1);
+	//duration_spawn = duration_spawn + (double)dur.count() ;
 }
+
+void spawn2(uint32_t depth, uint32_t workDepth, uint32_t sleepTime ) {
+	//high_resolution_clock::time_point t1, t2;
+	//t1 = high_resolution_clock::now();
+	counter++;
+	if (depth > 0) {
+		spawn2(depth - 1, workDepth, sleepTime);
+		spawn2(depth - 1, workDepth, sleepTime);
+	}
+	if (depth<workDepth)
+		sleep(sleepTime);
+
+	//t2 = high_resolution_clock::now();
+	//duration<double> dur = duration_cast<duration<double>>(t2 - t1);
+	//duration_spawn = duration_spawn + (double)dur.count();
+}
+
+void loop(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, uint32_t sleepTime) {
+	for (uint32_t i = 0; i < numberLoops; i++) {
+		JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth, workDepth, sleepTime)), 1);
+	}
+}
+
 
 
 void performance( JobSystem & jobsystem ) {
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
-	uint32_t loopNumber = 2;
-	uint32_t depth = 11;
+	uint32_t loopNumber = 100;
+	uint32_t depth = 10;
+	uint32_t workDepth = 10;
+	uint32_t sleepTime = 500;
 
 	//---------------------------------------------------------------------
 	counter = 0;
+	duration_spawn = 0.0;
+	jobsystem.resetPool(1);
 	t1 = high_resolution_clock::now();
-	jobsystem.addJob(std::bind(&spawn, depth), 1);
+	jobsystem.addJob( std::move(std::bind(&loop, loopNumber, depth, workDepth, sleepTime)), 1);
 	jobsystem.wait();
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
-	std::cout << "It took me " << time_span.count() << " seconds for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
+	std::cout << "Warm up   took me " << time_span.count()*1000.0f << " ms or " + std::to_string(duration_spawn*1000.0) + " ms for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
 
 	//---------------------------------------------------------------------
 	counter = 0;
+	duration_spawn = 0.0;
+	jobsystem.resetPool(1);
 	t1 = high_resolution_clock::now();
-
-	for (uint32_t i = 0; i < loopNumber; i++) {
-		jobsystem.resetPool(1);
-		jobsystem.addJob(std::bind(&spawn, depth), 1);
-		jobsystem.wait();
-	}
+	jobsystem.addJob(std::move(std::bind(&loop, loopNumber, depth, workDepth, sleepTime)), 1);
+	jobsystem.wait();
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
-	std::cout << "It took me " << time_span.count() << " seconds for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
+	std::cout << "Work      took me " << time_span.count()*1000.0f << " ms or " + std::to_string(duration_spawn*1000.0) + " ms for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
 
 	//---------------------------------------------------------------------
 	counter = 0;
+	duration_spawn = 0.0;
 	t1 = high_resolution_clock::now();
-	for (uint32_t i = 0; i < loopNumber; i++) {
-		jobsystem.playBackPool(1);
-		jobsystem.wait();
-	}
+	jobsystem.playBackPool(1);
+	jobsystem.wait();
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
-	std::cout << "It took me " << time_span.count() << " seconds for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
-
+	std::cout << "Play back took me " << time_span.count()*1000.0f << " ms or " + std::to_string(duration_spawn*1000.0) + " ms for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
 
 	//---------------------------------------------------------------------
 	counter = 0;
+	duration_spawn = 0.0;
 	t1 = high_resolution_clock::now();
 	for (uint32_t i = 0; i < loopNumber; i++) {
-		spawn2(depth);
+		spawn2(depth, workDepth, sleepTime);
 	}
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
-	std::cout << "It took me " << time_span.count() << " seconds for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
+	std::cout << "Single Th took me " << time_span.count()*1000.0f << " ms or " + std::to_string(duration_spawn*1000.0) + " ms for " + std::to_string(counter) + " children (" + std::to_string(1000000.0f*time_span.count() / counter) + " us/child)\n";
 
 }
-
 
 
 //the main thread starts a child and waits forall jobs to finish by calling wait()
 int main()
 {
-	JobSystem jobsystem(1);
+	JobSystem jobsystem(0);
 
 	A theA;
 	//jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
 	//jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
-	jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
-	//performance( jobsystem );
+	//jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
+	performance( jobsystem );
 	jobsystem.wait();
-
 
 	jobsystem.terminate();
 	jobsystem.waitForTermination();
