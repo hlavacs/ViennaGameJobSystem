@@ -447,7 +447,7 @@ namespace vgjs {
 			m_jobQueues.resize(threadCount);							//reserve mem for job queue pointers
 			m_jobPointers.resize(threadCount);							//rerve mem for Job pointers
 			for (uint32_t i = 0; i < threadCount; i++) {
-				m_jobQueues[i] = new JobQueueSTL();						//job queue
+				m_jobQueues[i] = new JobQueueLockFree();						//job queue
 				m_jobPointers[i] = nullptr;								//pointer to current Job structure
 			}
 

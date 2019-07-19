@@ -142,10 +142,10 @@ void loop(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, uint32_t sle
 void performance( JobSystem & jobsystem ) {
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
-	uint32_t loopNumber = 100;
+	uint32_t loopNumber = 1000;
 	uint32_t depth = 10;
 	uint32_t workDepth = 10;
-	uint32_t sleepTime = 500;
+	uint32_t sleepTime = 0;
 
 	//---------------------------------------------------------------------
 	counter = 0;
@@ -196,7 +196,7 @@ void performance( JobSystem & jobsystem ) {
 //the main thread starts a child and waits forall jobs to finish by calling wait()
 int main()
 {
-	JobSystem jobsystem(0);
+	JobSystem jobsystem(1);
 
 	A theA;
 	//jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
