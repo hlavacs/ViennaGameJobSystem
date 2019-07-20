@@ -415,7 +415,7 @@ namespace vgjs {
 
 				if (pJob != nullptr) {
 #ifdef _DEBUG
-					printDebug("Thread " + std::to_string(threadIndex) + " runs " + pJob->id + "\n");
+					//printDebug("Thread " + std::to_string(threadIndex) + " runs " + pJob->id + "\n");
 #endif
 					m_jobPointers[threadIndex] = pJob;	//make pointer to the Job structure accessible!
 					(*pJob)();							//run the job
@@ -751,7 +751,7 @@ namespace vgjs {
 	//This call back is called once a Job and all its children are finished
 	void Job::onFinished() {
 #ifdef _DEBUG
-		JobSystem::pInstance->printDebug( "Job " + id + " finishes\n" );
+		//JobSystem::pInstance->printDebug( "Job " + id + " finishes\n" );
 #endif
 
 		if (m_repeatJob) {

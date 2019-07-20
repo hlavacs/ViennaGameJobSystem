@@ -102,7 +102,7 @@ void spawn( uint32_t depth, uint32_t workDepth, double sleepTime) {
 		t1 = high_resolution_clock::now();
 		do {
 			t2 = high_resolution_clock::now();
-		} while ((double)duration_cast<duration<double>>(t2 - t1).count() < sleepTime);
+		} while ((double)duration_cast<duration<double>>(t2 - t1).count()*1000000000.0 < sleepTime);
 	}
 }
 
@@ -117,7 +117,7 @@ void spawn2(uint32_t depth, uint32_t workDepth, double sleepTime ) {
 		t1 = high_resolution_clock::now();
 		do {
 			t2 = high_resolution_clock::now();
-		} while ((double)duration_cast<duration<double>>(t2 - t1).count() < sleepTime);
+		} while ((double)duration_cast<duration<double>>(t2 - t1).count()*1000000000.0 < sleepTime);
 	}
 }
 
@@ -209,77 +209,42 @@ double play(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sle
 }
 
 
-void performanceSingle( double &C, double &W, double &P) {
-	uint32_t statLoops = 10;
+void performanceSingle( JobSystem & jobsystem ) {
+	high_resolution_clock::time_point t1, t2;
+	uint32_t statLoops = 20;
 	uint32_t numberLoops = 1;
 	uint32_t depth = 21;
 	uint32_t workDepth = 21;
 
 	counter = 0;
-	C = 0.0;
+	double C = 0.0;
 	for (uint32_t i = 0; i < statLoops; i++) {
 		C += singleThread(numberLoops, depth, workDepth, 0);
 	}
-	std::cout << "Single Th took avg " << C*1000.0f/statLoops << " ms for " << counter << " children (" << 1000000000.0f*C / counter << " ns/child)\n";
-	C /= counter;
+	std::cout << "Single Th took me " << C*1000.0f/statLoops << " ms for " << counter << " children (" << 1000000000.0f*C / counter << " ns/child)\n";
 
 	counter = 0;
 	double CWO = 0.0;
 	for (uint32_t i = 0; i < statLoops; i++) {
 		CWO += singleThreadWO(numberLoops, depth, workDepth, 0);
 	}
-	std::cout << "Single WO took avg " << CWO*1000.0f/statLoops << " ms for " << counter << " children (" << 1000000000.0f*CWO / counter << " ns/child)\n";
-	CWO /= counter;
+	std::cout << "Single WO took me " << CWO*1000.0f / statLoops << " ms for " << counter << " children (" << 1000000000.0f*CWO / counter << " ns/child)\n";
 
 	warmUp(numberLoops, depth, workDepth, 0);
 
 	counter = 0;
-	W = 0.0;
+	double W = 0.0;
 	for (uint32_t i = 0; i < statLoops; i++) {
 		W += work(numberLoops, depth, workDepth, 0);
 	}
-	std::cout << "Work      took avg " << W*1000.0f/statLoops << " ms for " << counter << " children (" << 1000000000.0f*W / counter << " ns/child)\n";
-	W /= counter;
+	std::cout << "Work      took me " << W*1000.0f/statLoops << " ms for " << counter << " children (" << 1000000000.0f*W / counter << " ns/child)\n";
 
 	counter = 0;
-	P = 0.0;
+	double P = 0.0;
 	for (uint32_t i = 0; i < statLoops; i++) {
 		P += play(numberLoops, depth, workDepth, 0);
 	}
-	std::cout << "Play      took avg " << P*1000.0f/statLoops << " ms for " << counter << " children (" << 1000000000.0f*P / counter << " ns/child)\n";
-	P /= counter;
-}
-
-void speedUp( double C, double W, double P) {
-	uint32_t statLoops = 20;
-	uint32_t numberLoops = 1;
-	uint32_t depth = 11;
-	uint32_t workDepth = 11;
-
-	W = W / C;
-	P = P / C;
-
-	std::vector<double> E = {0.5, 0.75, 0.8, 0.9, 0.95, 0.99 };
-	for (auto e : E) {
-		double A = 2*(e*W - 1.0) / (1.0 - e);
-
-		counter = 0;
-		double Wt = 0.0;
-		for (uint32_t i = 0; i < statLoops; i++) {
-			Wt += work(numberLoops, depth, workDepth, A*C);
-		}
-
-		std::cout << "E " << e << " C " << C*1000000000.0 << " ns W " << W << " A " << A << " A*C " << A*C*1000000000.0 << " ns\n";
-		std::cout << "Work took me " << Wt*1000.0f << " ms for " << counter << " children (" << 1000000000.0f*Wt / counter << " ns / child)\n";
-
-		double timeSingle = counter * (C+A*C);
-		double speedUp = timeSingle / Wt;
-		double efficacy = speedUp / 8;
-		std::cout << "Time single " << timeSingle << " Wt " << Wt << " Speedup " << speedUp << " Efficacy " << efficacy << "\n";
-
-	}
-
-
+	std::cout << "Play      took me " << P*1000.0f/statLoops << " ms for " << counter << " children (" << 1000000000.0f*P / counter << " ns/child)\n";
 
 }
 
@@ -287,21 +252,15 @@ void speedUp( double C, double W, double P) {
 //the main thread starts a child and waits forall jobs to finish by calling wait()
 int main()
 {
-	JobSystem jobsystem(0);
+	JobSystem jobsystem(1);
 
 	A theA;
 	//jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
 	//jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
 	//jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
-	double C, W, P;
-	//performanceSingle( C, W, P );
-
-	C = 100.0 / 1E9;
-	W = 347.0 / 1E9;
-	P = 210.0 / 1E9;
-	speedUp(C, W, P);
-
+	performanceSingle( jobsystem );
 	jobsystem.wait();
+
 	jobsystem.terminate();
 	jobsystem.waitForTermination();
 
