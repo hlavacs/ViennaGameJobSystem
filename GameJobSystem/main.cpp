@@ -250,37 +250,31 @@ void performanceSingle( double &C, double &W, double &P) {
 	P /= counter;
 }
 
-void speedUp( double C, double W, double P) {
-	uint32_t statLoops = 20;
-	uint32_t numberLoops = 1;
-	uint32_t depth = 11;
-	uint32_t workDepth = 11;
 
-	W = W / C;
-	P = P / C;
 
-	std::vector<double> E = {0.5, 0.75, 0.8, 0.9, 0.95, 0.99 };
-	for (auto e : E) {
-		double A = 2*(e*W - 1.0) / (1.0 - e);
+void speedUp( ) {
+	uint32_t numberLoops = 200;
+	uint32_t depth = 10;
+	uint32_t workDepth = 10;
 
+	warmUp(numberLoops, depth, workDepth, 0);
+
+	double C = singleThread(numberLoops, depth, workDepth, 0);
+	C = C / counter;
+
+	std::vector<double> A = {1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0 };
+
+	for (auto a : A) {
+		double At = a*C;
 		counter = 0;
-		double Wt = 0.0;
-		for (uint32_t i = 0; i < statLoops; i++) {
-			Wt += work(numberLoops, depth, workDepth, A*C);
-		}
+		double Ct = singleThread(numberLoops, depth, workDepth, At);
+		counter = 0;
+		double Wt = work(numberLoops, depth, workDepth, At);
+		counter = 0;
+		double Pt = play(numberLoops, depth, workDepth, At);
 
-		std::cout << "E " << e << " C " << C*1000000000.0 << " ns W " << W << " A " << A << " A*C " << A*C*1000000000.0 << " ns\n";
-		std::cout << "Work took me " << Wt*1000.0f << " ms for " << counter << " children (" << 1000000000.0f*Wt / counter << " ns / child)\n";
-
-		double timeSingle = counter * (C+A*C);
-		double speedUp = timeSingle / Wt;
-		double efficacy = speedUp / 8;
-		std::cout << "Time single " << timeSingle << " Wt " << Wt << " Speedup " << speedUp << " Efficacy " << efficacy << "\n";
-
+		std::cout << "C " << C*1000000.0 << " us A " << a << " C(At) " << Ct << " W(At) " << Wt << " P(At) " << Pt << " SpeedUp W " << Ct/Wt << " SpeedUp P "<< Ct/Pt <<  "\n";
 	}
-
-
-
 }
 
 
@@ -296,10 +290,7 @@ int main()
 	double C, W, P;
 	//performanceSingle( C, W, P );
 
-	C = 100.0 / 1E9;
-	W = 347.0 / 1E9;
-	P = 210.0 / 1E9;
-	speedUp(C, W, P);
+	speedUp();
 
 	jobsystem.wait();
 	jobsystem.terminate();
