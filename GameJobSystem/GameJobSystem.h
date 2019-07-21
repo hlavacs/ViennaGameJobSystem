@@ -421,7 +421,8 @@ namespace vgjs {
 					(*pJob)();							//run the job
 				}
 				else {
-					std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+					//std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+					//std::this_thread::yield();
 				};
 			}
 			m_numJobs = 0;
