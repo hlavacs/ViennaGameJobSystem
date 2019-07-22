@@ -115,16 +115,18 @@ void spawn( uint32_t depth, uint32_t workDepth, double sleepTime) {
 		JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1, workDepth, sleepTime)), 1);
 		JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1, workDepth, sleepTime)), 1);
 	}
-	if (depth < workDepth) {
+	if (depth < workDepth && sleepTime!=0.0) {
 		uint64_t loops = sleepTime / relTime;
+		double sum3 = sum2;
 		for (uint64_t i = 0; i < loops; i++) {
 			if (i % 2 == 0) {
-				sum2 += atan((double)sum2);
+				sum3 += atan((double)sum3);
 			}
 			else {
-				sum2 -= atan(i*sum2);
+				sum3 -= atan(i*sum3);
 			}
 		}
+		sum2 = sum3;
 	}
 }
 
@@ -138,16 +140,18 @@ void spawn2(uint32_t depth, uint32_t workDepth, double sleepTime ) {
 		spawn2(depth - 1, workDepth, sleepTime);
 		spawn2(depth - 1, workDepth, sleepTime);
 	}
-	if (depth < workDepth) {
+	if (depth < workDepth && sleepTime!=0.0) {
 		uint64_t loops = sleepTime / relTime;
+		double sum3 = sum2;
 		for (uint64_t i = 0; i < loops; i++) {
 			if (i % 2 == 0) {
-				sum2 += atan((double)sum2);
+				sum3 += atan((double)sum3);
 			}
 			else {
-				sum2 -= atan(i*sum2);
+				sum3 -= atan(i*sum3);
 			}
 		}
+		sum2 = sum3;
 	}
 }
 
@@ -270,8 +274,8 @@ void performanceSingle( ) {
 
 
 void speedUp( ) {
-	uint32_t numberLoops = 10000;
-	uint32_t depth = 2;
+	uint32_t numberLoops = 1;
+	uint32_t depth = 18;
 	uint32_t workDepth = depth + 1;
 
 	counter = 0;
@@ -279,7 +283,7 @@ void speedUp( ) {
 	warmUp(2*numberLoops, depth, workDepth, 0);
 
 	double fac = 1.0E-6;
-	std::vector<double> A = { 0.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0 };
+	std::vector<double> A = { 0.0, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0 };
 
 	for (auto a : A) {
 		a = a*fac;
