@@ -87,21 +87,8 @@ void record(A& theA, uint32_t loopNumber) {
 
 std::atomic<uint32_t> counter = 0;
 std::atomic<uint64_t> sum = 0;
-std::atomic<uint64_t> sum2 = 0;
 using namespace std::chrono;
 
-double relTime;
-
-void sleep(uint64_t max_count) {
-	for (uint64_t i = 0; i < max_count; i++) {
-		if (i % 2 == 0) {
-			sum2 += atan((double)sum2);
-		}
-		else {
-			sum2 -= atan(i*sum2);
-		}
-	}
-}
 
 
 void spawn( uint32_t depth, uint32_t workDepth, double sleepTime) {
@@ -115,16 +102,12 @@ void spawn( uint32_t depth, uint32_t workDepth, double sleepTime) {
 		JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1, workDepth, sleepTime)), 1);
 		JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1, workDepth, sleepTime)), 1);
 	}
-	if (depth < workDepth) {
-		uint64_t loops = sleepTime / relTime;
-		for (uint64_t i = 0; i < loops; i++) {
-			if (i % 2 == 0) {
-				sum2 += atan((double)sum2);
-			}
-			else {
-				sum2 -= atan(i*sum2);
-			}
-		}
+	if (depth <= workDepth) {
+		high_resolution_clock::time_point t1, t2;
+		t1 = high_resolution_clock::now();
+		do {
+			t2 = high_resolution_clock::now();
+		} while ((double)duration_cast<duration<double>>(t2 - t1).count() < sleepTime);
 	}
 }
 
@@ -138,16 +121,12 @@ void spawn2(uint32_t depth, uint32_t workDepth, double sleepTime ) {
 		spawn2(depth - 1, workDepth, sleepTime);
 		spawn2(depth - 1, workDepth, sleepTime);
 	}
-	if (depth < workDepth) {
-		uint64_t loops = sleepTime / relTime;
-		for (uint64_t i = 0; i < loops; i++) {
-			if (i % 2 == 0) {
-				sum2 += atan((double)sum2);
-			}
-			else {
-				sum2 -= atan(i*sum2);
-			}
-		}
+	if (depth <= workDepth) {
+		high_resolution_clock::time_point t1, t2;
+		t1 = high_resolution_clock::now();
+		do {
+			t2 = high_resolution_clock::now();
+		} while ((double)duration_cast<duration<double>>(t2 - t1).count() < sleepTime);
 	}
 }
 
@@ -164,20 +143,17 @@ void loopSingle(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double
 	}
 }
 
-
 double singleThread(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sleepTime) {
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
 
-	uint32_t counter2 = counter;
 	JobSystem::pInstance->resetPool(1);
 	t1 = high_resolution_clock::now();
 	JobSystem::pInstance->addJob(std::move(std::bind(&loopSingle, numberLoops, depth, workDepth, sleepTime)), 1);
 	JobSystem::pInstance->wait();
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
-	counter2 = counter - counter2;
-	std::cout << "Single Th took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f/counter2 << " us sum " << sum << "\n";
+	std::cout << "Single Th took me " << time_span.count()*1000.0f << " ms counter " << counter << " per Call " << time_span.count()*1000000.0f/counter << " us sum " << sum << "\n";
 	return time_span.count();
 }
 
@@ -186,14 +162,12 @@ double warmUp(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double s
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
 
-	uint32_t counter2 = counter;
 	t1 = high_resolution_clock::now();
 	JobSystem::pInstance->addJob(std::move(std::bind(&loop, numberLoops, depth, workDepth, sleepTime)), 1);
 	JobSystem::pInstance->wait();
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
-	counter2 = counter - counter2;
-	std::cout << "Warm up   took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f / counter2 << " us sum " << sum << "\n";
+	std::cout << "Warm up   took me " << time_span.count()*1000.0f << " ms counter " << counter << " per Call " << time_span.count()*1000000.0f / counter << " us sum " << sum << "\n";
 	return time_span.count();
 }
 
@@ -201,15 +175,13 @@ double work(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sle
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
 
-	uint32_t counter2 = counter;
 	JobSystem::pInstance->resetPool(1);
 	t1 = high_resolution_clock::now();
 	JobSystem::pInstance->addJob(std::move(std::bind(&loop, numberLoops, depth, workDepth, sleepTime)), 1);
 	JobSystem::pInstance->wait();
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
-	counter2 = counter - counter2;
-	std::cout << "Work      took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f/counter2 << " us sum " << sum << "\n";
+	std::cout << "Work      took me " << time_span.count()*1000.0f << " ms counter " << counter << " per Call " << time_span.count()*1000000.0f/counter << " us sum " << sum << "\n";
 	return time_span.count();
 }
 
@@ -217,14 +189,12 @@ double play(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sle
 	high_resolution_clock::time_point t1, t2;
 	duration<double> time_span;
 
-	uint32_t counter2 = counter;
 	t1 = high_resolution_clock::now();
 	JobSystem::pInstance->playBackPool(1);
 	JobSystem::pInstance->wait();
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
-	counter2 = counter - counter2;
-	std::cout << "Play      took me " << time_span.count()*1000.0f << " ms counter2 " << counter << " per Call " << time_span.count()*1000000.0f / counter2 << " us sum " << sum << "\n";
+	std::cout << "Play      took me " << time_span.count()*1000.0f << " ms counter " << counter << " per Call " << time_span.count()*1000000.0f / counter << " us sum " << sum << "\n";
 	return time_span.count();
 }
 
@@ -233,7 +203,7 @@ void performanceSingle( ) {
 	uint32_t statLoops = 10;
 	uint32_t numberLoops = 1;
 	uint32_t depth = 21;
-	uint32_t workDepth = depth + 1;
+	uint32_t workDepth = 21;
 
 	double C, W, P;
 
@@ -243,7 +213,7 @@ void performanceSingle( ) {
 	for (uint32_t i = 0; i < statLoops; i++) {
 		C += singleThread(numberLoops, depth, workDepth, 0);
 	}
-	std::cout << "Single Th took avg " << C*1000.0f/statLoops << " ms for " << counter << " children (" << 1.0E9*C / counter << " ns/child)\n";
+	std::cout << "Single Th took avg " << C*1000.0f/statLoops << " ms for " << counter << " children (" << 1000000000.0f*C / counter << " ns/child)\n";
 	C /= counter;
 
 	warmUp(numberLoops, depth, workDepth, 0);
@@ -270,28 +240,29 @@ void performanceSingle( ) {
 
 
 void speedUp( ) {
-	uint32_t numberLoops = 10000;
-	uint32_t depth = 2;
-	uint32_t workDepth = depth + 1;
+	uint32_t numberLoops = 100;
+	uint32_t depth = 11;
+	uint32_t workDepth = depth;
 
 	counter = 0;
 	sum = 0;
 	warmUp(2*numberLoops, depth, workDepth, 0);
 
 	double fac = 1.0E-6;
-	std::vector<double> A = { 0.0, 10.0, 20.0, 50.0, 100.0, 500.0, 1000.0 };
+	std::vector<double> A = { 0.0, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 20.0, 50.0 };
 
 	for (auto a : A) {
 		a = a*fac;
+		double At = a;
 		counter = 0;
 		sum = 0;
-		double Ct = singleThread(numberLoops, depth, workDepth, a);
+		double Ct = singleThread(numberLoops, depth, workDepth, At);
 		counter = 0;
 		sum = 0;
-		double Wt = work(numberLoops, depth, workDepth, a);
+		double Wt = work(numberLoops, depth, workDepth, At);
 		counter = 0;
 		sum = 0;
-		double Pt = play(numberLoops, depth, workDepth, a);
+		double Pt = play(numberLoops, depth, workDepth, At);
 
 		std::cout << "A " << a*1000000.0 << " us C(At) " << Ct << " W(At) " << Wt << " P(At) " << Pt << " SpeedUp W " << Ct/Wt << " E(W) " << (Ct / Wt) / JobSystem::pInstance->getThreadCount() << " SpeedUp P "<< Ct/Pt <<  " E(P) " << (Ct / Pt) / JobSystem::pInstance->getThreadCount() << "\n";
 	}
@@ -301,25 +272,15 @@ void speedUp( ) {
 //the main thread starts a child and waits forall jobs to finish by calling wait()
 int main()
 {
-
-	uint64_t steps = 100000000;
-	high_resolution_clock::time_point t1, t2;
-	t1 = high_resolution_clock::now();
-	sleep( steps );
-	t2 = high_resolution_clock::now();
-	duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
-	relTime = time_span.count() / steps;
-	std::cout << relTime << "\n";
-
 	JobSystem jobsystem(0);
+
 	A theA;
 	//jobsystem.addJob( std::bind( &case1, theA, 3 ), "case1" );
 	//jobsystem.addJob( std::bind( &case2, theA, 3 ), "case2");
 	//jobsystem.addJob( std::bind( &record, theA, 3 ), "record");
-
 	//performanceSingle();
 
-	speedUp( );
+	speedUp();
 
 	jobsystem.wait();
 	jobsystem.terminate();
