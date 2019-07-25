@@ -181,7 +181,7 @@ double singleThread(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, do
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
 	counter2 = counter - counter2;
-	std::cout << "Single Th took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f/counter2 << " us sum " << sum << "\n";
+	//std::cout << "Single Th took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f/counter2 << " us sum " << sum << "\n";
 	return time_span.count();
 }
 
@@ -197,7 +197,7 @@ double warmUp(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double s
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
 	counter2 = counter - counter2;
-	std::cout << "Warm up   took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f / counter2 << " us sum " << sum << "\n";
+	//std::cout << "Warm up   took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f / counter2 << " us sum " << sum << "\n";
 	return time_span.count();
 }
 
@@ -213,7 +213,7 @@ double work(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sle
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
 	counter2 = counter - counter2;
-	std::cout << "Work      took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f/counter2 << " us sum " << sum << "\n";
+	//std::cout << "Work      took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f/counter2 << " us sum " << sum << "\n";
 	return time_span.count();
 }
 
@@ -228,7 +228,7 @@ double play(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sle
 	t2 = high_resolution_clock::now();
 	time_span = duration_cast<duration<double>>(t2 - t1);
 	counter2 = counter - counter2;
-	std::cout << "Play      took me " << time_span.count()*1000.0f << " ms counter2 " << counter << " per Call " << time_span.count()*1000000.0f / counter2 << " us sum " << sum << "\n";
+	//std::cout << "Play      took me " << time_span.count()*1000.0f << " ms counter2 " << counter << " per Call " << time_span.count()*1000000.0f / counter2 << " us sum " << sum << "\n";
 	return time_span.count();
 }
 
@@ -274,7 +274,7 @@ void performanceSingle( ) {
 
 
 void speedUp( ) {
-	uint32_t numberLoops = 1;
+	uint32_t numberLoops = 2;
 	uint32_t depth = 18;
 	uint32_t workDepth = depth + 1;
 
@@ -282,22 +282,22 @@ void speedUp( ) {
 	sum = 0;
 	warmUp(2*numberLoops, depth, workDepth, 0);
 
-	double fac = 1.0E-6;
-	std::vector<double> A = { 0.0, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0 };
+	std::vector<double> At = { 1.0, 10.0, 25.0, 50.0, 75.0, 100.0, 150.0, 250.0, 300, 400, 500, 600.0, 700, 800, 900, 1000 };
+	double C = 15e-9;
+	for (auto A : At) {
+		double ac = A*C;
+		counter = 0;
+		sum = 0;
+		double Ct = singleThread(numberLoops, depth, workDepth, ac);
+		counter = 0;
+		sum = 0;
+		double Wt = work(numberLoops, depth, workDepth, ac);
+		counter = 0;
+		sum = 0;
+		double Pt = play(numberLoops, depth, workDepth, ac);
 
-	for (auto a : A) {
-		a = a*fac;
-		counter = 0;
-		sum = 0;
-		double Ct = singleThread(numberLoops, depth, workDepth, a);
-		counter = 0;
-		sum = 0;
-		double Wt = work(numberLoops, depth, workDepth, a);
-		counter = 0;
-		sum = 0;
-		double Pt = play(numberLoops, depth, workDepth, a);
-
-		std::cout << "A " << a*1000000.0 << " us C(At) " << Ct << " W(At) " << Wt << " P(At) " << Pt << " SpeedUp W " << Ct/Wt << " E(W) " << (Ct / Wt) / JobSystem::pInstance->getThreadCount() << " SpeedUp P "<< Ct/Pt <<  " E(P) " << (Ct / Pt) / JobSystem::pInstance->getThreadCount() << "\n";
+		//std::cout << (Ct / Pt) / JobSystem::pInstance->getThreadCount() << ",";
+		std::cout << "A " << A << " AC " << ac*1e6 << " us C(At) " << Ct << " s W(At) " << Wt << " s P(At) " << Pt << " s SpeedUp W " << Ct/Wt << " E(W) " << (Ct / Wt) / JobSystem::pInstance->getThreadCount() << " SpeedUp P "<< Ct/Pt <<  " E(P) " << (Ct / Pt) / JobSystem::pInstance->getThreadCount() << "\n";
 	}
 }
 
