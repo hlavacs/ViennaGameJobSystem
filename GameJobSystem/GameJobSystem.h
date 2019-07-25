@@ -377,6 +377,8 @@ namespace vgjs {
 		std::atomic<bool>					m_terminate;		//Flag for terminating the pool
 		std::vector<JobQueue*>				m_jobQueues;		//Each thread has its own Job queue
 		std::atomic<uint32_t>				m_numJobs;			//total number of jobs in the system
+		std::vector<uint64_t>				m_numLoops;			//number of loops the task has done so far
+		std::vector<uint64_t>				m_numMisses;		//number of times the task did not get a job
 		std::mutex							m_mainThreadMutex;	//used for syncing with main thread
 		std::condition_variable				m_mainThreadCondVar;//used for waking up main tread
 
@@ -391,6 +393,7 @@ namespace vgjs {
 				std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 
 			while (true) {
+				m_numLoops[threadIndex]++;
 
 				if (m_terminate) break;
 
@@ -421,6 +424,7 @@ namespace vgjs {
 					(*pJob)();							//run the job
 				}
 				else {
+					m_numMisses[threadIndex]++;
 					//std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 					//std::this_thread::yield();
 				};
@@ -447,9 +451,13 @@ namespace vgjs {
 
 			m_jobQueues.resize(threadCount);							//reserve mem for job queue pointers
 			m_jobPointers.resize(threadCount);							//rerve mem for Job pointers
+			m_numMisses.resize(threadCount);
+			m_numLoops.resize(threadCount);
 			for (uint32_t i = 0; i < threadCount; i++) {
-				m_jobQueues[i] = new JobQueueFIFO();						//job queue
+				m_jobQueues[i] = new JobQueueLockFree();				//job queue
 				m_jobPointers[i] = nullptr;								//pointer to current Job structure
+				m_numLoops[i] = 0;										//for accounting per thread statistics
+				m_numMisses[i] = 0;
 			}
 
 			m_threads.reserve(threadCount);								//reserve mem for the threads
