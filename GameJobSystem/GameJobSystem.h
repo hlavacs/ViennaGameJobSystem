@@ -376,6 +376,7 @@ namespace vgjs {
 		std::map<std::thread::id, uint32_t> m_threadIndexMap;	//Each thread has an index number 0...Num Threads
 		std::atomic<bool>					m_terminate;		//Flag for terminating the pool
 		std::vector<JobQueue*>				m_jobQueues;		//Each thread has its own Job queue
+		std::vector<JobQueue*>				m_jobQueuesPolling;	//a secondary low priority FIFO queue for each thread, where polling jobs are parked
 		std::atomic<uint32_t>				m_numJobs;			//total number of jobs in the system
 		std::vector<uint64_t>				m_numLoops;			//number of loops the task has done so far
 		std::vector<uint64_t>				m_numMisses;		//number of times the task did not get a job
@@ -401,13 +402,20 @@ namespace vgjs {
 
 				if (m_terminate) break;
 
+				if( pJob == nullptr ) pJob = m_jobQueuesPolling[threadIndex]->pop();
+
+				if (m_terminate) break;
+
 				uint32_t tsize = m_threads.size();
 				if (pJob == nullptr && tsize > 1) {
 					uint32_t idx = std::rand() % tsize;
 					uint32_t max = 2*tsize;
 
 					while (pJob == nullptr) {
-						if (idx != threadIndex) pJob = m_jobQueues[idx]->steal();
+						if (idx != threadIndex) {
+							pJob = m_jobQueues[idx]->steal();
+							if (pJob == nullptr) pJob = m_jobQueuesPolling[idx]->steal();
+						}
 						idx = (idx+1) % tsize;
 						max--;
 						if (max == 0) break;
@@ -450,11 +458,13 @@ namespace vgjs {
 			}
 
 			m_jobQueues.resize(threadCount);							//reserve mem for job queue pointers
+			m_jobQueuesPolling.resize(threadCount);						//reserve mem for polling job queue pointers
 			m_jobPointers.resize(threadCount);							//rerve mem for Job pointers
 			m_numMisses.resize(threadCount);
 			m_numLoops.resize(threadCount);
 			for (uint32_t i = 0; i < threadCount; i++) {
-				m_jobQueues[i] = new JobQueueLockFree();				//job queue
+				m_jobQueues[i]		  = new JobQueueLockFree();			//job queue
+				m_jobQueuesPolling[i] = new JobQueueFIFO();				//job queue
 				m_jobPointers[i] = nullptr;								//pointer to current Job structure
 				m_numLoops[i] = 0;										//for accounting per thread statistics
 				m_numMisses[i] = 0;
@@ -586,18 +596,22 @@ namespace vgjs {
 		//add a job to a queue
 		//pJob Pointer to the job to schedule
 		//
-		void addJob( Job *pJob ) {
+		void addJob( Job *pJob, uint32_t queue = 0 ) {
 			m_numJobs++;	//keep track of the number of jobs in the system to sync with main thread
 
 			uint32_t tsize = m_threads.size();
-			int32_t threadNumber = getThreadNumber();
-			threadNumber = threadNumber < 0 ? std::rand() % tsize : threadNumber;
+			int32_t threadNumber = getThreadNumber();		//if called from main thread then this is -1
+			threadNumber = threadNumber < 0 ? std::rand() % tsize : threadNumber; 
 
 			if (m_numJobs < 2 * tsize) {
 				threadNumber = std::rand() % tsize;
 			}
 
-			m_jobQueues[threadNumber]->push(pJob);			//keep jobs local
+			if (queue == 0) {
+				m_jobQueues[threadNumber]->push(pJob);			//keep jobs local
+				return;
+			}
+			m_jobQueuesPolling[threadNumber]->push(pJob);			//keep jobs local
 		};
 
 		//---------------------------------------------------------------------------
@@ -702,7 +716,7 @@ namespace vgjs {
 			Job *pCurrentJob = getJobPointer();						//can be nullptr if called from main thread
 			if (pCurrentJob == nullptr) return;						//is null if called by main thread
 			if (pCurrentJob->m_onFinishedJob != nullptr) return;	//you cannot do both repeat and add job after finishing	
-			pCurrentJob->m_repeatJob = true;
+			pCurrentJob->m_repeatJob = true;						//flag that in onFinished() the job will be rescheduled
 		}
 
 		//---------------------------------------------------------------------------
@@ -763,10 +777,10 @@ namespace vgjs {
 		//JobSystem::pInstance->printDebug( "Job " + id + " finishes\n" );
 #endif
 
-		if (m_repeatJob) {
+		if (m_repeatJob) {										//job is repeated for polling
 			m_repeatJob = false;								//only repeat if job executes so
 			JobSystem::pInstance->m_numJobs--;					//addJob will increase this again
-			JobSystem::pInstance->addJob( this );				//rescheduled this
+			JobSystem::pInstance->addJob( this, 1 );			//rescheduled this to the polling FIFO queue
 			return;
 		}
 
