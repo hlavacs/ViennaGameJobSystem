@@ -21,6 +21,8 @@ void printA(int depth, int loopNumber) {
 };
 
 
+//---------------------------------------------------------------------------------------------------
+
 class A {
 public:
 	A() {};
@@ -44,7 +46,7 @@ public:
 	};
 };
 
-//-----------------------------------------------
+//---------------------------------------------------------------------------------------------------
 
 //a global function does not require a class instance when scheduled
 void case1( A& theA, uint32_t loopNumber) {
@@ -62,7 +64,7 @@ void case2( A& theA, uint32_t loopNumber ) {
 }
 
 
-//-----------------------------------------------
+//---------------------------------------------------------------------------------------------------
 
 void playBack(A& theA, uint32_t loopNumber) {
 	if (loopNumber == 0) return; 
@@ -83,7 +85,7 @@ void record(A& theA, uint32_t loopNumber) {
 
 
 
-//-----------------------------------------------
+//---------------------------------------------------------------------------------------------------
 
 
 std::atomic<uint32_t> counter = 0;
@@ -94,14 +96,16 @@ using namespace std::chrono;
 double relTime;
 
 void sleep(uint64_t max_count) {
+	double sum3 = sum2;
 	for (uint64_t i = 0; i < max_count; i++) {
 		if (i % 2 == 0) {
-			sum2 += atan((double)sum2);
+			sum3 += atan((double)sum3);
 		}
 		else {
-			sum2 -= atan(i*sum2);
+			sum3 -= atan(i*sum3);
 		}
 	}
+	sum2 = sum3;
 }
 
 
@@ -158,7 +162,7 @@ void spawn2(uint32_t depth, uint32_t workDepth, double sleepTime ) {
 
 
 
-double computeMedian(vector<double>& values)
+double minOrMedian(vector<double>& values)
 {
 	double median;
 	std::sort(values.begin(), values.end(), [](double a, double b) {
@@ -176,6 +180,9 @@ double computeMedian(vector<double>& values)
 
 	return values[0];
 }
+
+
+//---------------------------------------------------------------------------------------------------
 
 
 double singleThread(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sleepTime) {
@@ -196,7 +203,7 @@ double singleThread(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, do
 		//std::cout << "Single Th took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f/counter2 << " us sum " << sum << "\n";
 		values.push_back(time_span.count());
 	}
-	return computeMedian( values);
+	return minOrMedian( values);
 }
 
 
@@ -232,7 +239,7 @@ double work(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sle
 		//std::cout << "Work      took me " << time_span.count()*1000.0f << " ms counter " << counter2 << " per Call " << time_span.count()*1000000.0f/counter2 << " us sum " << sum << "\n";
 		values.push_back(time_span.count());
 	}
-	return computeMedian(values);
+	return minOrMedian(values);
 }
 
 double play(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sleepTime) {
@@ -252,8 +259,10 @@ double play(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sle
 		//std::cout << "Play      took me " << time_span.count()*1000.0f << " ms counter2 " << counter << " per Call " << time_span.count()*1000000.0f / counter2 << " us sum " << sum << "\n";
 		values.push_back(time_span.count());
 	}
-	return computeMedian(values);
+	return minOrMedian(values);
 }
+
+//---------------------------------------------------------------------------------------------------
 
 
 void performanceSingle( ) {
@@ -295,6 +304,8 @@ void performanceSingle( ) {
 }
 
 
+//---------------------------------------------------------------------------------------------------
+
 
 void speedUp( ) {
 	uint32_t numberLoops = 20;
@@ -326,6 +337,9 @@ void speedUp( ) {
 		std::cout << "A " << A << " AC " << ac*1e6 << " us C(At) " << Ct << " s W(At) " << Wt << " s P(At) " << Pt << " s SpeedUp W " << Ct/Wt << " E(W) " << (Ct / Wt) / JobSystem::pInstance->getThreadCount() << " SpeedUp P "<< Ct/Pt <<  " E(P) " << (Ct / Pt) / JobSystem::pInstance->getThreadCount() << "\n";
 	}
 }
+
+
+//---------------------------------------------------------------------------------------------------
 
 
 //the main thread starts a child and waits forall jobs to finish by calling wait()
