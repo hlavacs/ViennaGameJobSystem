@@ -656,27 +656,27 @@ namespace vgjs {
 		//---------------------------------------------------------------------------
 		//create a new child job in a job pool
 		//func The function to schedule
-		void addChildJob(Function&& func) {
-			addChildJob(std::move(func), getJobPointer()->m_poolNumber, std::move(std::string("")));
+		void addChildJob( Function&& func) {
+			addChildJob( std::move(func), getJobPointer()->m_poolNumber, std::string(""));
 		};
 
 		//func The function to schedule
 		//id A name for the job for debugging
 		void addChildJob( Function func, std::string&& id) {
-			addChildJob(std::move(func), getJobPointer()->m_poolNumber, std::move(id) );
+			addChildJob( std::move(func), getJobPointer()->m_poolNumber, std::move(id) );
 		};
 
 
 		//func The function to schedule
 		//id A name for the job for debugging
-		void addChildJob(Function func, uint32_t poolNumber) {
-			addChildJob(std::move(func), poolNumber, std::move(std::string("")));
+		void addChildJob( Function func, uint32_t poolNumber) {
+			addChildJob( std::move(func), poolNumber, std::string("") );
 		};
 
 		//func The function to schedule
 		//poolNumber Number of the pool
 		//id A name for the job for debugging
-		void addChildJob(Function&& func, uint32_t poolNumber, std::string&& id ) {
+		void addChildJob( Function&& func, uint32_t poolNumber, std::string&& id ) {
 			if (JobMemory::pInstance->getPoolPointer(poolNumber)->isPlayedBack) return;			//in playback no children are created
 			Job *pJob = JobMemory::pInstance->allocateJob( poolNumber );
 			pJob->setParentJob(getJobPointer(), true);			//set parent Job and notify parent

@@ -1,9 +1,9 @@
 # Vienna Game Engine Job System
 The Vienna Game Engine Job System (VGJS) is a C++11 library for parallelizing arbitrary tasks, as for example are typically found in game engines. It was designed and implemented by Prof. Helmut Hlavacs from the University of Vienna, Faculty of Computer Science. Important features are:
-* Work stealing paradigm (lock-free queues are planned to be included soon)
+* Work stealing paradigm, lock-free queues
 * Directed acyclic graphs (DAGs) are automatically created and recorded
-* Recorded DAGs can be replayed, respecting parent-child dependencies, but fully in parallel
-* Enables a data parallel paradigm
+* Recorded DAGs can be replayed (with better performance), respecting parent-child dependencies, but fully in parallel
+* Enables a data oriented, data parallel paradigm
 * Intended as partner project of the Vienna Vulkan Engine (https://github.com/hlavacs/ViennaVulkanEngine), which will be ported to run on VGJS.
 
 ## Library Usage
@@ -157,7 +157,7 @@ Note how the call order can be mixed up due to rasce conditions since functions 
 
 ## Directed Acyclic Graph (DAG)
 A DAG describes dependencies amongst jobs. There is a dependency between init1() and func2_1(), if init1() must start running before func2_1(). In fact init1() decides when to start func2_1(), and can carry out work before starting it, and afterwards. However, when starting a child, the child is immediately runnable and does not have to wait for the parent to stop running. Even though init1() eventually returns and stops running, it is not automatically said to have finished. As described above, a job finishes only if it stopped running and all of its children have finished.
-As a consequence, in a DAG, since all children have to finish before the parent, the finishing order is reverse to the running order. First all children finish, then the parent.
+As a consequence, in a DAG, since all children have to finish before the parent, the finishing order is reverse to the running order. First all children finish, then the parents.
 
 ![](dag.jpg "Example DAG")
 
@@ -168,17 +168,17 @@ After func3_1() and func3_2() have finished, they notify func2_1(), which schedu
 init1() additionally schedule jobs in pools 1 and 2. There is a dependency between init1() and funcX_1(), so only after funcX_2() and funcX_1() have finished, init1() finally finishes and schedules final5(). The main thread can wait either for explicit system termination by calling waitForTermination(), or until there are no more active jobs in the queues by calling wait().
 
 ## Recording and Replaying Pools
-After a pool is initialized (either after start or after calling resetPool()), it will start recording job DAGs automatically that are scheduled in it. At any time, the jobs of a pool can be replayed by calling playBackPool(), which might result in faster computation since many management tasks will not be redone by VGJS during playback.
+After a pool is initialized (either after start or after calling resetPool()), it will start recording job DAGs automatically that are scheduled in it. At any time, the jobs of a pool can be replayed by calling playBackPool(<POOLNUMBER>), which might result in faster computation since many management tasks will not be redone by VGJS during playback.
 
-Since recording preserves the parent-child relationships and follow-up jobs, this will schedule the recorded jobs to the thread pool, but preserving dependencies. In fact, when replaying a pool, a parent must actually stop running before its children are started.
+Since recording preserves the parent-child relationships and follow-up jobs, this will schedule the recorded jobs to the thread pool, but preserving dependencies. In fact, when replaying a pool, a parent must actually stop running before its children are started. This is in contrast to recording mode, in which children run immediately.
 
 Playback means that the very first job job[0] in the pool is scheduled, and that this job[0] is a child of the calling job parentJob. So once job[0] finishes, the parent job parentJob will be notified and can also finish. Therefore, playback can only work correctly if there is one and only one starting job job[0], that subsequently schedules child jobs. Scheduling of child jobs can be done across pools, but care must be taken that none of the involved pools is reset during playback, since this might result in unexpected behavior.
 
-It also must be noted that the function calls in playback of a pool are exactly the same as at recording time. This is especially true for the function parameters. Any call to addJob(), addChildJob() or onFinishedAddJob() during playback is simply ignored. So in order to make new work instead of just recomputing the old work, functions must deal with pointers to data structures that they work upon. One example is the updating of a scene graph of a scene in a computer game, if the graph has not changed since the last frame. This involves the multiplication of transform matrices in a hierarchical data structure. Transforms of parent objects are multiplied onto the transforms of their children. This can be recorded by calling a function for each object, with a pointer to the object and the object's parent. Replaying then will run the same sequence, and using a pointer to a (global) boolean flag the calls to addChildJob() can even be prevented during plabyack since they would be ignored anyways.
+It also must be noted that the function calls in playback of a pool are exactly the same as at recording time. This is especially true for the function parameters. Any call to addJob(), addChildJob() or onFinishedAddJob() during playback is simply ignored. So in order to make new work instead of just recomputing the old work, functions must deal with pointers to data structures that they work upon. One example is the updating of a scene graph of a scene in a computer game, if the graph has not changed since the last frame. This involves the multiplication of transform matrices in a hierarchical data structure or array. Transforms of parent objects are multiplied onto the transforms of their children. This can be recorded by calling a function for each object, with a pointer to the object and the object's parent. Replaying then will run the same sequence, and using a pointer to a (global) boolean flag the calls to addChildJob() can even be prevented during playback since they would be ignored anyways.
 
-Also note that a job of a pool X that is currently played back cannot schedule jobs that depend on runtime conditions. However, if during recording the job has scheduled a child in another pool Y, then this pool Y will not be in playback mode and therefore calls to addChildJob() of jobs belonging to pool Y will NOT be ignored and CAN depend on runtime conditions. 
+Also note that a job of a pool X that is currently played back cannot schedule jobs that depend on runtime conditions. This means that the same child jobs will be scheduled, as have been recorded, regardless of any runtime condition. There are two notable exceptions from this policy. First, calls to addJob() result in newly spawned jobs, which have not been part of the recorded DAG. Second, if a job has to wait for some condition in order to proceed, like the availability of results from other parts of the processing, it can go into polling mode by calling onFinishedRepeatJob(). This causes the job to be rescheduled after finishing into the same thread's polling queue, which is a low priority FIFO queue. This also happens in playback mode, and therefore a job can actually wait for some condition to happen before going on. This might include e.g. the availability of some future value (when using playback be sure to create new futures and promises each time anew, since futures can be used only once, and just use a pointer to them in local arguments).
 
-The following shows an example of how pools can be replayed. The main thread schedules the function record(), which first starts a Job in pool 1 calling the memberfunction A::spawn(). On finishing, record() then schedules function playBack(), which plays back pool 1, then reschedules itself for three more times.
+The following shows an example of how pools can be replayed. The main thread schedules the function record(), which first starts a Job in pool 1 calling the member function A::spawn(). On finishing, record() then schedules function playBack(), which plays back pool 1, then reschedules itself for three more times.
 
     void playBack(A& theA, uint32_t loopNumber) {
         if (loopNumber == 0) return;
@@ -406,6 +406,11 @@ The system supports the following functions API.
     //func The function to schedule
     //id A name for the job for debugging
     void onFinishedAddJob(Function func, std::string id );
+
+    //After finishing repeat the job by sending it to a FIFO queue
+    //this can be used when polling for the availability of a resource
+    //and works even in playback mode
+    onFinishedRepeatJob()
 
     //wait for all children to finish and then terminate the pool
     void onFinishedTerminatePool();

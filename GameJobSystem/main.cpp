@@ -94,7 +94,8 @@ std::atomic<uint64_t> g_sum = 0;
 std::atomic<uint64_t> g_sum2 = 0;
 using namespace std::chrono;
 
-double relTime;
+double g_relTime;
+
 
 void sleep(uint64_t max_count) {
 	double sum3 = g_sum2;
@@ -109,6 +110,19 @@ void sleep(uint64_t max_count) {
 	g_sum2 = sum3;
 }
 
+void measureRelTime() {
+	uint64_t steps = 100000000;
+	high_resolution_clock::time_point t1, t2;
+	t1 = high_resolution_clock::now();
+	sleep(steps);
+	t2 = high_resolution_clock::now();
+	duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+	g_relTime = time_span.count() / steps;
+	std::cout << g_relTime << "\n";
+}
+
+
+
 
 void spawn( uint32_t depth, uint32_t workDepth, double sleepTime) {
 	g_counter++;
@@ -122,7 +136,7 @@ void spawn( uint32_t depth, uint32_t workDepth, double sleepTime) {
 		JobSystem::pInstance->addChildJob(std::move(std::bind(&spawn, depth - 1, workDepth, sleepTime)), 1);
 	}
 	if (depth < workDepth && sleepTime!=0.0) {
-		uint64_t loops = sleepTime / relTime;
+		uint64_t loops = sleepTime / g_relTime;
 		double sum3 = g_sum2;
 		for (uint64_t i = 0; i < loops; i++) {
 			if (i % 2 == 0) {
@@ -147,7 +161,7 @@ void spawn2(uint32_t depth, uint32_t workDepth, double sleepTime ) {
 		spawn2(depth - 1, workDepth, sleepTime);
 	}
 	if (depth < workDepth && sleepTime!=0.0) {
-		uint64_t loops = sleepTime / relTime;
+		uint64_t loops = sleepTime / g_relTime;
 		double sum3 = g_sum2;
 		for (uint64_t i = 0; i < loops; i++) {
 			if (i % 2 == 0) {
@@ -264,7 +278,8 @@ double play(uint32_t numberLoops, uint32_t depth, uint32_t workDepth, double sle
 }
 
 //---------------------------------------------------------------------------------------------------
-
+//measure the time a single function call takes
+//set number of threads in the system to 1
 
 void performanceSingle( ) {
 	uint32_t statLoops = 10;
@@ -306,7 +321,7 @@ void performanceSingle( ) {
 
 
 //---------------------------------------------------------------------------------------------------
-
+//measure the speed up and efficiency you get out of your CPU with different CPU load per job
 
 void speedUp( ) {
 	uint32_t numberLoops = 20;
@@ -341,6 +356,7 @@ void speedUp( ) {
 
 
 //---------------------------------------------------------------------------------------------------
+//measure the performance of game tree computations
 
 struct Transform {
 	glm::mat4 localTransform;
@@ -421,15 +437,7 @@ std::vector<TransformVector> g_transformBuckets;
 //the main thread starts a child and waits forall jobs to finish by calling wait()
 int main()
 {
-
-	uint64_t steps = 100000000;
-	high_resolution_clock::time_point t1, t2;
-	t1 = high_resolution_clock::now();
-	sleep( steps );
-	t2 = high_resolution_clock::now();
-	duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
-	relTime = time_span.count() / steps;
-	std::cout << relTime << "\n";
+	measureRelTime();
 
 	JobSystem jobsystem(0);
 	A theA;
