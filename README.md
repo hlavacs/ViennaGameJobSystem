@@ -104,13 +104,13 @@ The job system is started by accessing its singleton pointer. See the main() fun
     	init();
 
     	#ifdef VE_ENABLE_MULTITHREADING
-    	vgjs::JobSystem::getInstance(0, 1);					//create pool without thread 0
+    	vgjs::JobSystem::getInstance(0, 1); //create pool without thread 0
     	#endif
 
-    	JADD(runGameLoop());								//schedule the game loop
+    	JADD(runGameLoop());               //schedule the game loop
 
     	#ifdef VE_ENABLE_MULTITHREADING
-    	vgjs::JobSystem::getInstance()->threadTask(0);		//put main thread as first thread into pool
+    	vgjs::JobSystem::getInstance()->threadTask(0);  //put main thread as first thread into pool
     	JWAITTERM;
     	#endif
 
@@ -127,10 +127,10 @@ main thread will join the job system. In the example given, the main threads sch
     ///the main game loop
     void runGameLoop() {
     	while (go_on) {
-    		JRESET;							//reset the thread pool!!!
-    		JADD(computeOneFrame2(0));	//compute the next frame
-    		JREP;							//repeat the loop
-    		JRET;							//if multithreading, return, else stay in loop
+    		JRESET;                    //reset the thread pool!!!
+    		JADD(computeOneFrame2(0)); //compute the next frame
+    		JREP;                      //repeat the loop
+    		JRET;                      //if multithreading, return, else stay in loop
     	}
     	JTERM;
     }
@@ -145,8 +145,66 @@ The parent can finish only if all its children have finished. A job that finishe
 Parents waiting for jobs implicitly span a dependecy graph, of jobs depending on subtrees of jobs. This easily anables any kind of dependency structure to be created just by calling JADD() and JDEP().
 
 ## Enforcing Specific Threads
+The macros JADDT() and JDEPT() enable a second parameter that lets users specify the thread that the job should go to.
+Some systems like GLFW need to be handled by the main thread, and thus e.g. JADDT( updateGLFW(), 0 ); schedules the function updateGLFW() to run on
+thread 0.
 
+## dependencies
+JDEP() or JDEPT() emable to schedule jobs after other jobs have finished. Since these are seperate function calls, the previous job must return before the follow-ups can run. Follow-up functions can be different functions than the caller, or the same function can be rescheduled as follow-up. However, this requires some gotos at the start to differentiate between different stages. Essentially, this way the functionality of co-routines can be emulated.
+Consider as an exampe this function:
 
+    constexpr uint32_t epoch_duration = 1000000 / 60;                                       //1/60 seconds
+    duration<int, std::micro>			time_delta = duration<int, std::micro>{ epoch_duration };	//the duration of an epoch
+    time_point<high_resolution_clock>	now_time = high_resolution_clock::now();              //now time
+    time_point<high_resolution_clock>	current_update_time = now_time;                      //start of the current epoch
+    time_point<high_resolution_clock>	next_update_time = current_update_time + time_delta; //end of the current epoch
+    time_point<high_resolution_clock>	reached_time = current_update_time;                 //time the simulation has reached
+
+    //acts like a co-routine
+    void computeOneFrame(uint32_t step) {
+
+    	if (step == 1) goto step1;
+    	if (step == 2) goto step2;
+    	if (step == 3) goto step3;
+    	if (step == 4) goto step4;
+
+    	now_time = std::chrono::high_resolution_clock::now();
+
+    	if (now_time < next_update_time) {		//still in the same time epoch
+    		return;
+    	}
+
+    step1:
+    	forwardTime();
+    	JDEP(computeOneFrame(2));		//wait for finishing, then do step3
+    	return;
+
+    step2:
+    	swapTables();
+    	JDEP(computeOneFrame(3));		//wait for finishing, then do step3
+    	return;
+
+    step3:
+    	updateClock.start();
+    	update();
+    	JDEP(updateClock.stop();  computeOneFrame(4));		//wait for finishing, then do step4
+    	return;
+
+    step4:
+    	reached_time = next_update_time;
+
+    	if (now_time > next_update_time) {	//if now is not reached yet
+    		JDEP(computeOneFrame(1); );	//move one epoch further
+    	}
+    }
+
+This function drives the whole game fucntionality. Time is divided into slots called epochs. Epochs should mimic e.g. monitor frequencies like 60 Hz.
+Game state is only changed at epoch borders, epochs start at current_update_time and end at next_update_time.
+So once a new epoch is entered because "now" (now_time) is inbetween some current_update_time and next_update_time, the game state for the next time point next_update_time is computed as a function of the state at current_update_time, and all inputs that occured before current_update_time.
+In parallel, the renderer can begin drawing the next frame as soon as its state has been computed.
+
+The above example shows how to use VGJS to emulate the functionlity of co-routines. The function computeOneFrame() keeps scheulding itself as
+follow-up job (of itself). The parameter step determines where it should pick up its operations. In singlethreaded operations, the function simply calls itself recursively. 
 
 ## Never use Pointers and References to Local Variables!
 It is important to notice that running functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parents should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in a DAG, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures or heaps.
