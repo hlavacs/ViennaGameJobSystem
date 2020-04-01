@@ -118,25 +118,24 @@ The job system is started by accessing its singleton pointer. See the main() fun
     }
 
 The first parameter of the first call to vgjs::JobSystem::getInstance is the number of threads to be spawned. If this is 0 then
-the number of available hardware threads is used (either number of CPU cores, or 2x is SMT is used). The second parameter is either
-0 or 1 and denotes the startindex of the new threads. Use 0 if the main threads does not join the system. Use 1 if the
-main thread will join the job system.
-In the example given, the main threads schedules the first job - the game loop - and then joins the job system.
+the number of available hardware threads is used (either number of CPU cores, or 2x is SMT is used). Not that in case of SMT any speedup larger
+than the number of cores is a good thing.
+
+The second parameter is either 0 or 1 and denotes the startindex of the new threads. Use 0 if the main threads does not join the system. Use 1 if the
+main thread will join the job system. In the example given, the main threads schedules the first job - the game loop - and then joins the job system.
 
     ///the main game loop
     void runGameLoop() {
     	while (go_on) {
     		JRESET;							//reset the thread pool!!!
-    		JADDT(computeOneFrame2(0),0);	//run on main thread for GUI polling!
+    		JADD(computeOneFrame2(0));	//compute the next frame
     		JREP;							//repeat the loop
     		JRET;							//if multithreading, return, else stay in loop
     	}
     	JTERM;
     }
 
-The main game loop is simply a while() loop that continuously calls computeOneFrame2(). Note that this child is always
-scheduled to task 0 since some GUIs like GLFW must be polled through the main thread.
-
+The game loop is simply a while() loop waiting for termination. In multithreaded mode it continuously resets the thread pools and calls computeOneFrame(). Afterwards it schedules a repeat, and returns. In singlethreaded mode it simply calls computeOneFrame() until the loop gets terminated.
 
 ## Adding and Finishing Jobs
 Functions can be scheduled by calling JADD(). Each function that is scheduled is internally represented by a Job structure, pointing also to the function that it represents. Jobs creating other jobs using JADD() establish a parent-child relationship.

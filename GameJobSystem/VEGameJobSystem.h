@@ -288,7 +288,7 @@ namespace vgjs {
 		friend JobSystem;
 		friend Job;
 
-		constexpr static std::uint32_t	m_listLength = 4096;	///< Default length of a segment
+		constexpr static std::uint32_t	m_listLength = 2048;	///< Default length of a segment
 		constexpr static std::uint32_t  m_listmask = m_listLength - 1;
 
 		using JobList = std::unique_ptr<std::vector<Job>>;

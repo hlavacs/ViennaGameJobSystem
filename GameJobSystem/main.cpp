@@ -44,7 +44,7 @@ void burn_ns(glm::mat4 m1, duration<int, std::nano> &dur) {
 	} while (now - start < dur);
 }
 
-constexpr uint32_t BURN_NS = 2000;
+constexpr uint32_t BURN_NS = 1000;
 
 ///make game simulations
  glm::mat4 simulate(int32_t loops) {
@@ -135,7 +135,7 @@ void runGameLoop() {
 
 	while (go_on) {
 		JRESET;							//reset the thread pool!!!
-		JADDT(computeOneFrame(0),0);	//run on main thread for GUI polling!
+		JADD(computeOneFrame(0));		//compute the next frame
 		JREP;							//repeat the loop
 		JRET;							//if multithreading, return, else stay in loop
 	}
