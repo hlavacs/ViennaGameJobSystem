@@ -160,7 +160,7 @@ Some systems like GLFW need to be handled by the main thread, and thus e.g. JADD
 thread 0.
 
 ## Dependencies
-JDEP() or JDEP() emable to schedule jobs after other jobs have finished. Since these are seperate function calls, the previous job must return before the follow-ups can run. Follow-up functions can be different functions than the caller, or the same function can be rescheduled as follow-up. However, this requires some gotos at the start to differentiate between different stages. Essentially, this way the functionality of co-routines can be emulated.
+JDEP() or JDEPT() emable to schedule jobs after other jobs have finished. Since these are seperate function calls, the previous job must return before the follow-ups can run. Follow-up functions can be different functions than the caller, or the same function can be rescheduled as follow-up. However, this requires some gotos at the start to differentiate between different stages. Essentially, this way the functionality of co-routines can be emulated.
 Consider as an exampe this function:
 
     constexpr uint32_t epoch_duration = 1000000 / 60;                                       //1/60 seconds
