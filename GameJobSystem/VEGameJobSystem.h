@@ -38,6 +38,12 @@
 	* @{
 	*/
 	
+	/**
+	* \brief Get index of the thread running this job
+	*
+	* \returns the index of the thread running this job
+	*
+	*/
 	#define JIDX vgjs::JobSystem::getInstance()->getThreadIndex()
 
 	/**
@@ -47,6 +53,7 @@
 	* In singlethreaded mode, this macro simply calls the function.
 	*
 	* \param[in] f The function to be added or called.
+	*
 	*/
 	#define JADD( f )	vgjs::JobSystem::getInstance()->addJob( [=](){ f; } )
 
@@ -57,6 +64,7 @@
 	* In singlethreaded mode, this macro simply calls the function.
 	*
 	* \param[in] f The function to be added or called.
+	*
 	*/
 	#define JDEP( f )	vgjs::JobSystem::getInstance()->onFinishedAddJob( [=](){ f; } )
 
@@ -68,6 +76,7 @@
 	*
 	* \param[in] f The function to be added or called.
 	* \param[in] t The thread that the job should go to.
+	*
 	*/
 	#define JADDT( f, t )	vgjs::JobSystem::getInstance()->addJob( [=](){ f; }, t )
 
@@ -80,6 +89,7 @@
 	*
 	* \param[in] f The function to be added or called.
 	* \param[in] t The thread that the job should go to.
+	*
 	*/
 	#define JDEPT( f, t )	vgjs::JobSystem::getInstance()->onFinishedAddJob( [=](){ f; }, t )
 
