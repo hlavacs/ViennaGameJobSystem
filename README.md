@@ -21,7 +21,13 @@ VGJS runs a number of n worker threads, each having its own work queue. Each thr
 ## Macros
 At the start the library defines a number of macros. If VE_ENABLE_MULTITHREADING is not defined, then the macros are actually empty, and the whole program runs in singlethread mode. The macros are:
 
-#define JIDX vgjs::JobSystem::getInstance()->getThreadIndex()
+    /**
+    * \brief Get index of the thread running this job
+    *
+    * \returns the index of the thread running this job
+    *
+    */
+    #define JIDX vgjs::JobSystem::getInstance()->getThreadIndex()
 
     /**
     * \brief Add a function as a job to the jobsystem.
@@ -30,6 +36,7 @@ At the start the library defines a number of macros. If VE_ENABLE_MULTITHREADING
     * In singlethreaded mode, this macro simply calls the function.
     *
     * \param[in] f The function to be added or called.
+    *
     */
     #define JADD( f )	vgjs::JobSystem::getInstance()->addJob( [=](){ f; } )
 
@@ -40,6 +47,7 @@ At the start the library defines a number of macros. If VE_ENABLE_MULTITHREADING
     * In singlethreaded mode, this macro simply calls the function.
     *
     * \param[in] f The function to be added or called.
+    *
     */
     #define JDEP( f )	vgjs::JobSystem::getInstance()->onFinishedAddJob( [=](){ f; } )
 
@@ -51,6 +59,7 @@ At the start the library defines a number of macros. If VE_ENABLE_MULTITHREADING
     *
     * \param[in] f The function to be added or called.
     * \param[in] t The thread that the job should go to.
+    *
     */
     #define JADDT( f, t )	vgjs::JobSystem::getInstance()->addJob( [=](){ f; }, t )
 
@@ -63,6 +72,7 @@ At the start the library defines a number of macros. If VE_ENABLE_MULTITHREADING
     *
     * \param[in] f The function to be added or called.
     * \param[in] t The thread that the job should go to.
+    *
     */
     #define JDEPT( f, t )	vgjs::JobSystem::getInstance()->onFinishedAddJob( [=](){ f; }, t )
 
@@ -92,9 +102,9 @@ At the start the library defines a number of macros. If VE_ENABLE_MULTITHREADING
     #define JWAITTERM vgjs::JobSystem::getInstance()->waitForTermination()
 
     /**
-  	* \brief A wrapper over return, is empty in singlethreaded use
-  	*/
-    #define JRET return
+    * \brief A wrapper over return, is empty in singlethreaded use
+    */
+    #define JRET return;
 
 ## Using the Job system
 The job system is started by accessing its singleton pointer. See the main() function provided:
