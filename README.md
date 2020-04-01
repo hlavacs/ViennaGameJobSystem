@@ -220,12 +220,18 @@ Not also how the clock is used in the update step to measure the time. JADD() an
 put everything into a lambda function that is eventually scheduled as job.
 
 ## Never use Pointers and References to Local Variables!
-It is important to notice that running functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parents should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in a DAG, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures or heaps.
+It is important to notice that running functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parents should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in the dependency tree, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures or heaps.
 
 When sharing global variables that might be changed by several jobs in parallel, e.g. counters counting something up or down, you should consider using std::atomic<> or std::mutex, in order to avoid unpredictable runtime behavior. In a job, never wait for anything for long, use polling instead and finally return. Waiting will block the thread that runs the job and take away overall processing efficiency.
 
 ## Data Parallelism instead of Task Parallelism
-VGJS enables data parallel thinking since it enables focusing on data structures rather than tasks. The system assumes the use of many global data structures that might or might not need computation. So one use case would be to create a job for each data structure, using the mechanisms of VGJS to honor dependencies between computations. Everything that can run in parallel eventually will, and if the STRUCTURE of the data structures does not change (the VALUES might and should change though), previous computations can be simply replayed, thus speeding up the computations significantly.
+VGJS enables data parallel thinking since it enables focusing on data structures rather than tasks. The system assumes the use of many data structures that might or might not need computation. Data structures can be either global, or are organized as data streams that flow from one system
+to another system and get transformed in the process.
+
+## Performance and Granularity
+Since the VGJS incurs some overhead, jobs should not bee too small in order to enable some speedup. Depending on the CPU, job sizes in te order
+of 1-2 us seem to be enough to result in noticable speedups on a 4 core Intel i7 with 8 hardware threads. Smaller job sizes are course
+possible but should not occur too often.
 
 ## Lockfree Operations
 Lockfree operations can be enforced by defining a specific thread for specific data structures.
@@ -234,4 +240,4 @@ get sequentialized inside this thread. If several structures should be written t
 
 Reading can be enforced by defining all state at current_update_time to be readonly, and state at next_update_time to be writeonly.
 State is thus present in two versions, and every time the epoch is progressed, the write state is copied to the read state.
-So in the next epoch, all computations are based on the readonly state, and create a new write state.
+In the above example this is symbolized by the function swapTables().

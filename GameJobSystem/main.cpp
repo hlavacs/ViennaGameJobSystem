@@ -104,7 +104,7 @@ void computeOneFrame(uint32_t step) {
 
 step1:
 	forwardTime();
-	JDEP(computeOneFrame(2));		//wait for finishing, then do step3
+	JDEP(computeOneFrame(2));		//wait for finishing, then do step2
 	return;
 
 step2:
