@@ -44,7 +44,7 @@ void burn_ns(glm::mat4 m1, duration<int, std::nano> &dur) {
 	} while (now - start < dur);
 }
 
-constexpr uint32_t BURN_NS = 1000;
+constexpr uint32_t BURN_NS = 2000;
 
 ///make game simulations
  glm::mat4 simulate(int32_t loops) {
@@ -89,7 +89,7 @@ void forwardTime() {
 }
 
 //acts like a co-routine
-void computeOneFrame2(uint32_t step) {
+void computeOneFrame(uint32_t step) {
 
 	if (step == 1) goto step1;
 	if (step == 2) goto step2;
@@ -104,25 +104,25 @@ void computeOneFrame2(uint32_t step) {
 
 step1:
 	forwardTime();
-	JDEP(computeOneFrame2(2));		//wait for finishing, then do step3
+	JDEP(computeOneFrame(2));		//wait for finishing, then do step3
 	return;
 
 step2:
 	swapTables();
-	JDEP(computeOneFrame2(3));		//wait for finishing, then do step3
+	JDEP(computeOneFrame(3));		//wait for finishing, then do step3
 	return;
 
 step3:
 	updateClock.start();
 	update();
-	JDEP(updateClock.stop();  computeOneFrame2(4));		//wait for finishing, then do step4
+	JDEP(updateClock.stop();  computeOneFrame(4));		//wait for finishing, then do step4
 	return;
 
 step4:
 	reached_time = next_update_time;
 
 	if (now_time > next_update_time) {	//if now is not reached yet
-		JDEP(computeOneFrame2(1); );	//move one epoch further
+		JDEP(computeOneFrame(1); );	//move one epoch further
 	}
 }
 
@@ -135,9 +135,9 @@ void runGameLoop() {
 
 	while (go_on) {
 		JRESET;							//reset the thread pool!!!
-		JADDT(computeOneFrame2(0),0);	//run on main thread for GUI polling!
-		JREP;
-		JRET;
+		JADDT(computeOneFrame(0),0);	//run on main thread for GUI polling!
+		JREP;							//repeat the loop
+		JRET;							//if multithreading, return, else stay in loop
 	}
 	JTERM;
 }

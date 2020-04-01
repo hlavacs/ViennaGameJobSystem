@@ -91,7 +91,51 @@ At the start the library defines a number of macros. If VE_ENABLE_MULTITHREADING
     */
     #define JWAITTERM vgjs::JobSystem::getInstance()->waitForTermination()
 
+    /**
+  	* \brief A wrapper over return, is empty in singlethreaded use
+  	*/
     #define JRET return
+
+## Using the Job system
+The job system is started by accessing its singleton pointer. See the main() function provided:
+
+    int main()
+    {
+    	init();
+
+    	#ifdef VE_ENABLE_MULTITHREADING
+    	vgjs::JobSystem::getInstance(0, 1);					//create pool without thread 0
+    	#endif
+
+    	JADD(runGameLoop());								//schedule the game loop
+
+    	#ifdef VE_ENABLE_MULTITHREADING
+    	vgjs::JobSystem::getInstance()->threadTask(0);		//put main thread as first thread into pool
+    	JWAITTERM;
+    	#endif
+
+    	return 0;
+    }
+
+The first parameter of the first call to vgjs::JobSystem::getInstance is the number of threads to be spawned. If this is 0 then
+the number of available hardware threads is used (either number of CPU cores, or 2x is SMT is used). The second parameter is either
+0 or 1 and denotes the startindex of the new threads. Use 0 if the main threads does not join the system. Use 1 if the
+main thread will join the job system.
+In the example given, the main threads schedules the first job - the game loop - and then joins the job system.
+
+    ///the main game loop
+    void runGameLoop() {
+    	while (go_on) {
+    		JRESET;							//reset the thread pool!!!
+    		JADDT(computeOneFrame2(0),0);	//run on main thread for GUI polling!
+    		JREP;							//repeat the loop
+    		JRET;							//if multithreading, return, else stay in loop
+    	}
+    	JTERM;
+    }
+
+The main game loop is simply a while() loop that continuously calls computeOneFrame2(). Note that this child is always
+scheduled to task 0 since some GUIs like GLFW must be polled through the main thread.
 
 
 ## Adding and Finishing Jobs
@@ -100,6 +144,10 @@ Functions can be scheduled by calling JADD(). Each function that is scheduled is
 The parent can finish only if all its children have finished. A job that finishes automatically notifies its own parent that one of its children has finished. If the parent has exited its funciton and this is the last child that finishes, the parent job also finishes. A job can schedule a follow-up job to be executed upon finishing by usig JDEP(). This establishes a wait-operation, since this follow-up job will be scheduled only of all children have finished. Follow-up jobs have the same parent as the job that scheduled them. Thus their parents must aso wait for all such follow-up jobs have finished.
 
 Parents waiting for jobs implicitly span a dependecy graph, of jobs depending on subtrees of jobs. This easily anables any kind of dependency structure to be created just by calling JADD() and JDEP().
+
+## Enforcing Specific Threads
+
+
 
 ## Never use Pointers and References to Local Variables!
 It is important to notice that running functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parents should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in a DAG, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures or heaps.
