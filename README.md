@@ -227,7 +227,7 @@ When sharing global variables that might be changed by several jobs in parallel,
 ## Data Parallelism instead of Task Parallelism
 VGJS enables data parallel thinking since it enables focusing on data structures rather than tasks. The system assumes the use of many global data structures that might or might not need computation. So one use case would be to create a job for each data structure, using the mechanisms of VGJS to honor dependencies between computations. Everything that can run in parallel eventually will, and if the STRUCTURE of the data structures does not change (the VALUES might and should change though), previous computations can be simply replayed, thus speeding up the computations significantly.
 
-## Lockfree operations
+## Lockfree Operations
 Lockfree operations can be enforced by defining a specific thread for specific data structures.
 So every time someone wnats to write to a data structure, the job is scheduled to this specific thread, and all write operations
 get sequentialized inside this thread. If several structures should be written to, then the co-routine functionality can be exploited to progress writes and transport intermediary results between the writes.
