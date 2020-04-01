@@ -206,6 +206,9 @@ In parallel, the renderer can begin drawing the next frame as soon as its state 
 The above example shows how to use VGJS to emulate the functionlity of co-routines. The function computeOneFrame() keeps scheulding itself as
 follow-up job (of itself). The parameter step determines where it should pick up its operations. In singlethreaded operations, the function simply calls itself recursively.
 
+Not also how the clock is used in the update step to measure the time. JADD() and JDEP() can accept arbitrary sequences of functions, since they
+put everything into a lambda function that is eventually scheduled as job.
+
 ## Never use Pointers and References to Local Variables!
 It is important to notice that running functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parents should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in a DAG, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures or heaps.
 
