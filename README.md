@@ -150,7 +150,7 @@ The game loop is simply a while() loop waiting for termination. In multithreaded
 ## Adding and Finishing Jobs
 Functions can be scheduled by calling JADD(). Each function that is scheduled is internally represented by a Job structure, pointing also to the function that it represents. Jobs creating other jobs using JADD() establish a parent-child relationship.
 
-The parent can finish only if all its children have finished. A job that finishes automatically notifies its own parent that one of its children has finished. If the parent has exited its funciton and this is the last child that finishes, the parent job also finishes. A job can schedule a follow-up job to be executed upon finishing by usig JDEP(). This establishes a wait-operation, since this follow-up job will be scheduled only of all children have finished. Follow-up jobs have the same parent as the job that scheduled them. Thus their parents must aso wait for all such follow-up jobs have finished.
+The parent can finish only if all its children have finished. A job that finishes automatically notifies its own parent that one of its children has finished. If the parent has exited its function and this is the last child that finishes, the parent job also finishes. A job can schedule a follow-up job to be executed upon finishing by usig JDEP(). This establishes a wait-operation, since this follow-up job will be scheduled only of all children have finished. Follow-up jobs have the same parent as the job that scheduled them. Thus their parents must aso wait for all such follow-up jobs have finished.
 
 Parents waiting for jobs implicitly span a dependecy graph, of jobs depending on subtrees of jobs. This easily anables any kind of dependency structure to be created just by calling JADD() and JDEP().
 
@@ -186,7 +186,7 @@ Consider as an exampe this function:
 
     step1:
     	forwardTime();
-    	JDEP(computeOneFrame(2));		//wait for finishing, then do step3
+    	JDEP(computeOneFrame(2));		//wait for finishing, then do step2
     	return;
 
     step2:
@@ -208,7 +208,7 @@ Consider as an exampe this function:
     	}
     }
 
-This function drives the whole game fucntionality. Time is divided into slots called epochs. Epochs should mimic e.g. monitor frequencies like 60 Hz.
+This function drives the whole game functionality. Time is divided into slots called epochs. Epochs should mimic e.g. monitor frequencies like 60 Hz.
 Game state is only changed at epoch borders, epochs start at current_update_time and end at next_update_time.
 So once a new epoch is entered because "now" (now_time) is inbetween some current_update_time and next_update_time, the game state for the next time point next_update_time is computed as a function of the state at current_update_time, and all inputs that occured before current_update_time.
 In parallel, the renderer can begin drawing the next frame as soon as its state has been computed.
