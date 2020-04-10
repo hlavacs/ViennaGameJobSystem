@@ -155,7 +155,7 @@ int main()
 	JADD(runGameLoop());								//schedule the game loop
 
 	#ifdef VE_ENABLE_MULTITHREADING
-	vgjs::JobSystem::getInstance()->threadTask(0);		//put main thread as first thread into pool
+	vgjs::JobSystem::getInstance()->threadTask(vgjs::VgjsThreadIndex(0));		//put main thread as first thread into pool
 	JWAITTERM;
 	#endif
 
