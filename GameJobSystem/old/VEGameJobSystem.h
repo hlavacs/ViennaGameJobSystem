@@ -150,7 +150,6 @@
 namespace vgjs {
 
 
-
 	class JobMemory;
 	class Job;
 	class JobSystem;
@@ -159,23 +158,22 @@ namespace vgjs {
 
 	using Function = std::function<void()>;	///< Standard function that can be put into a job
 
-	/*typedef uint32_t VgjsThreadIndex;					///< Use for index into job arrays
+	typedef uint32_t VgjsThreadIndex;					///< Use for index into job arrays
 	constexpr VgjsThreadIndex VGJS_NULL_THREAD_IDX = std::numeric_limits<VgjsThreadIndex>::max();	///< No index given
 	typedef uint32_t VgjsThreadLabel;					///< Use for index into job arrays
-	constexpr VgjsThreadLabel VGJS_NULL_THREAD_LABEL =	std::numeric_limits<VgjsThreadLabel>::max(); ///< No label given
+	constexpr VgjsThreadLabel VGJS_NULL_THREAD_LABEL = std::numeric_limits<VgjsThreadLabel>::max(); ///< No label given
 	typedef uint64_t VgjsThreadID;					///< An id contains an index and a label
-	constexpr VgjsThreadID VGJS_NULL_THREAD_ID =	std::numeric_limits<VgjsThreadID>::max();	///< No ID given
+	constexpr VgjsThreadID VGJS_NULL_THREAD_ID = std::numeric_limits<VgjsThreadID>::max();	///< No ID given
+
+	/*enum class  VgjsThreadIndex : uint32_t {};														///< Use for index into job arrays
+	constexpr VgjsThreadIndex VGJS_NULL_THREAD_IDX = std::numeric_limits<VgjsThreadIndex>::max();	///< No index given
+
+	enum class  VgjsThreadLabel : uint32_t {};														///< Use for index into job arrays
+	constexpr VgjsThreadLabel VGJS_NULL_THREAD_LABEL = std::numeric_limits<VgjsThreadLabel>::max();	///< No index given
+
+	enum class  VgjsThreadID : uint64_t {};													///< An id contains an index and a label
+	constexpr VgjsThreadID VGJS_NULL_THREAD_ID = std::numeric_limits<VgjsThreadID>::max();	///< No ID given
 	*/
-
-	enum class VgjsThreadIndex : uint32_t {};
-	constexpr VgjsThreadIndex VGJS_NULL_THREAD_IDX = VgjsThreadIndex(std::numeric_limits<uint32_t>::max());	///< No index given
-
-	enum class VgjsThreadLabel : uint32_t {};				///< Use for index into job arrays
-	constexpr VgjsThreadLabel VGJS_NULL_THREAD_LABEL = VgjsThreadLabel(std::numeric_limits<uint32_t>::max());	///< No index given
-
-	enum class VgjsThreadID : uint64_t {};				///< An id contains an index and a label
-	constexpr VgjsThreadID VGJS_NULL_THREAD_ID = VgjsThreadID(std::numeric_limits<uint64_t>::max());	///< No ID given
-
 
 	/**
 	*
@@ -207,10 +205,12 @@ namespace vgjs {
 	* \param[in] label Label of the thread
 	*
 	*/
-	inline VgjsThreadID TID(VgjsThreadIndex thread_idx, VgjsThreadLabel label = VGJS_NULL_THREAD_LABEL) {
+	inline VgjsThreadID TID(VgjsThreadIndex thread_idx, VgjsThreadLabel label) {
 		return (VgjsThreadID)((uint64_t)label << 32 | (uint64_t)thread_idx);
 	}
-
+	inline VgjsThreadID TID(VgjsThreadIndex thread_idx) {
+		return TID(thread_idx, VGJS_NULL_THREAD_LABEL);
+	}
 
 	/**
 	* \brief This class holds a single job, including a function object and other info.
@@ -383,7 +383,7 @@ namespace vgjs {
 			pJob->m_onFinishedJob = nullptr;				///< no successor Job yet
 			pJob->m_parentJob = nullptr;					///< default is no parent
 			pJob->m_repeatJob = false;						///< default is no repeat
-			pJob->m_thread_idx = VGJS_NULL_THREAD_IDX;		///< can run oon any thread
+			pJob->m_thread_idx = VGJS_NULL_THREAD_IDX;		///< can run on any thread
 			pJob->m_thread_label = VGJS_NULL_THREAD_LABEL;
 			pJob->m_exec_thread = VGJS_NULL_THREAD_IDX;
 			//m_clock.stop();
@@ -818,14 +818,14 @@ namespace vgjs {
 			++m_numJobs;	//keep track of the number of jobs in the system to sync with main thread
 
 			if (pJob->m_thread_idx != VGJS_NULL_THREAD_IDX)  {
-				uint32_t threadNumber = (uint32_t)getThreadIndex();
+				uint32_t threadIdx = (uint32_t)getThreadIndex();
 
 				uint32_t thread_idx = (uint32_t)pJob->m_thread_idx % m_threadCount;
 
-				if(thread_idx == threadNumber )
-					m_jobQueuesLocalFIFO[thread_idx]->push(pJob);	//put into thread local FIFO queue
+				if(thread_idx == threadIdx)
+					m_jobQueuesLocalFIFO[(uint32_t)thread_idx]->push(pJob);	//put into thread local FIFO queue
 				else
-					m_jobQueuesLocal[thread_idx]->push(pJob);		//put into thread local LIFO queue
+					m_jobQueuesLocal[(uint32_t)thread_idx]->push(pJob);		//put into thread local LIFO queue
 				return;
 			}
 
@@ -916,7 +916,7 @@ namespace vgjs {
 namespace vgjs {
 
 	std::unique_ptr<JobSystem> JobSystem::pInstance;			//pointer to singleton
-	thread_local VgjsThreadIndex JobSystem::m_thread_index = VgjsThreadIndex(0);		///< Thread local index of the thread
+	thread_local VgjsThreadIndex JobSystem::m_thread_index = VgjsThreadIndex(0);	///< Thread local index of the thread
 
 
 	/**
