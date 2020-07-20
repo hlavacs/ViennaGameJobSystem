@@ -16,7 +16,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GameJobSystem.h">
+    <ClInclude Include="VEGameJobSystem.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="VEUtilClock.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

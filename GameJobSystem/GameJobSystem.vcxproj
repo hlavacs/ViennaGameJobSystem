@@ -147,7 +147,8 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GameJobSystem.h" />
+    <ClInclude Include="VEGameJobSystem.h" />
+    <ClInclude Include="VEUtilClock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
