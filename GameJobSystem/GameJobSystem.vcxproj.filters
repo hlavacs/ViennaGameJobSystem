@@ -14,12 +14,18 @@
     <ClCompile Include="main.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="gameloop.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VEGameJobSystem.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="VEUtilClock.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="VEGameJobSystem2.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

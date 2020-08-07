@@ -145,9 +145,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="gameloop.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VEGameJobSystem.h" />
+    <ClInclude Include="VEGameJobSystem2.h" />
     <ClInclude Include="VEUtilClock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
