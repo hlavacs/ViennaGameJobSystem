@@ -48,7 +48,7 @@ namespace coro {
     std::atomic<bool> ready1 = false;
 
 
-    class resumable : public std::experimental::suspend_always {
+    class resumable  {
     public:
         struct promise_type {
             using coro_handle = std::experimental::coroutine_handle<promise_type>;
