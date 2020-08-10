@@ -42,12 +42,10 @@ namespace std::experimental {
 namespace coro {
     using namespace std::experimental;
 
+
     std::atomic<bool> abort = false;
     std::atomic<bool> ready0 = false;
     std::atomic<bool> ready1 = false;
-    std::function<void(void)> poolfunction0 = 0;
-    std::function<void(void)> poolfunction1 = 0;
-
 
 
     class resumable : public std::experimental::suspend_always {
@@ -83,14 +81,15 @@ namespace coro {
 
     };
 
-    resumable bar( int i) {
-        //std::cout << "Bar " << i << " old thread " << std::this_thread::get_id() << std::endl;
-        //co_await resume_new_thread{};
-        std::cout << "Bar " << i << " new thread2 " << std::this_thread::get_id() << std::endl;
+    std::function<void(void)> poolfunction0;
+    std::function<void(void)> poolfunction1;
+
+    resumable bar(int i) {
+        std::cout << "Thread " << std::this_thread::get_id() << std::endl;
         co_return;
     }
 
-    class resume_new_thread : public resumable {
+    class resume_new_thread : public std::experimental::suspend_always {
     public:
         void await_suspend(std::experimental::coroutine_handle<> handle)
         {
@@ -99,13 +98,13 @@ namespace coro {
             //std::thread([handle] { handle(); }).detach();
             if (!ready0) {
                 std::cout << "Moving to thread 0" << std::endl;
-                poolfunction0 = poolfunction0;
+                poolfunction0 = handle;
                 ready0 = true;
                 return;
             }
             if (!ready1) {
                 std::cout << "Moving to thread 1" << std::endl;
-                poolfunction1 = poolfunction0;
+                poolfunction1 = handle;
                 ready1 = true;
             }
         }
@@ -114,24 +113,17 @@ namespace coro {
     };
 
 
-
     resumable foo() {
         std::cout << "Old thread " << std::this_thread::get_id() << std::endl;
         std::cout << "Hello" << std::endl;
         co_await suspend_always{};
         std::cout << "World" << std::endl;
 
-        auto b0 = bar(0);
-        co_await b0;
-
-        auto b1 = bar(1);
-        co_await b1;
-
-        /*co_await resume_new_thread{};
+        co_await resume_new_thread{};
         std::cout << "New thread Write0 " << std::this_thread::get_id() << std::endl;
         co_await resume_new_thread{};
         std::cout << "New thread Write1 " << std::this_thread::get_id() << std::endl;
-        */
+        
     }
 
     void func(std::function<void(void)>&& f) {
@@ -152,6 +144,8 @@ namespace coro {
         }
         std::cout << "Ending pool thread " << i << std::endl;
     };
+
+
 
     void test() {
 
