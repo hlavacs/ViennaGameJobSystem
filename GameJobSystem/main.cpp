@@ -9,16 +9,15 @@
 #include <glm.hpp>
 
 
-#define VE_ENABLE_MULTITHREADING
-#define VE_IMPLEMENT_GAMEJOBSYSTEM
-#include "VEUtilClock.h"
-#include "VEGameJobSystem.h"
-
-
+namespace coro {
+	void test();
+}
 
 int main()
 {
 
+
+	coro::test();
 }
 
 
