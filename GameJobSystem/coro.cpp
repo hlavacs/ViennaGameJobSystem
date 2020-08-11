@@ -12,7 +12,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
-
+#include <array>
 
 #include "VEGameJobSystem2.h"
 
@@ -47,17 +47,22 @@ namespace coro {
     std::atomic<bool> ready0 = false;
     std::atomic<bool> ready1 = false;
 
-
+    //coroutine
     class resumable  {
     public:
         struct promise_type {
             using coro_handle = std::experimental::coroutine_handle<promise_type>;
-            auto get_return_object() {
+            auto get_return_object() noexcept {
                 return coro_handle::from_promise(*this);
             }
-            auto initial_suspend() { return std::experimental::suspend_always(); }
-            auto final_suspend() { return std::experimental::suspend_always(); }
-            void return_void() {}
+            auto initial_suspend() noexcept { 
+                return std::experimental::suspend_always();
+            }
+            auto final_suspend() noexcept { 
+                return std::experimental::suspend_always();
+            }
+            void return_void() {
+            }
             void unhandled_exception() {
                 std::terminate();
             }
@@ -74,7 +79,9 @@ namespace coro {
             return ! handle_.done();
         };
 
-        ~resumable() { handle_.destroy(); }
+        ~resumable() { 
+            //handle_.destroy(); 
+        }
 
     private:
         coro_handle handle_;
@@ -89,11 +96,12 @@ namespace coro {
         co_return;
     }
 
+    //awaiter
     class resume_new_thread : public std::experimental::suspend_always {
     public:
         void await_suspend(std::experimental::coroutine_handle<> handle)
         {
-            handle_ = handle;
+            handleAddr_ = handle.address();
 
             //std::thread([handle] { handle(); }).detach();
             if (!ready0) {
@@ -109,7 +117,7 @@ namespace coro {
             }
         }
     private:
-        std::experimental::coroutine_handle<> handle_;
+        void* handleAddr_;
     };
 
 
@@ -119,11 +127,18 @@ namespace coro {
         co_await suspend_always{};
         std::cout << "World" << std::endl;
 
-        co_await resume_new_thread{};
+        std::array<int,2> ar{0,1};
+        for (auto i : ar) {  
+            co_await resume_new_thread{};
+            std::cout << "New thread Write0 " << std::this_thread::get_id() << std::endl;
+        };
+        co_return;
+
+        /*co_await resume_new_thread{};
         std::cout << "New thread Write0 " << std::this_thread::get_id() << std::endl;
         co_await resume_new_thread{};
         std::cout << "New thread Write1 " << std::this_thread::get_id() << std::endl;
-        
+        */
     }
 
     void func(std::function<void(void)>&& f) {
@@ -147,7 +162,7 @@ namespace coro {
 
 
 
-    void test() {
+    void test1() {
 
         std::thread t0( tpool, 0, std::ref(ready0), std::ref(poolfunction0) );
         t0.detach();
@@ -157,8 +172,7 @@ namespace coro {
 
         std::this_thread::sleep_for((std::chrono::seconds)1);
 
-        auto f = foo();
-
+        resumable f = foo(); //f is now the return object (handle)
         f.resume();
         f.resume();
 
@@ -170,6 +184,64 @@ namespace coro {
         std::this_thread::sleep_for((std::chrono::seconds)1);
 
     }
+
+
+    //
+    template<typename T>
+    class task {
+    public:
+       using value_type = T;
+
+       struct promise_type {
+            using coro_handle = std::experimental::coroutine_handle<promise_type>;
+ 
+            auto get_return_object() noexcept {
+                return coro_handle::from_promise(*this);
+            }
+            auto initial_suspend() noexcept {
+                return std::experimental::suspend_always();
+            }
+            auto final_suspend() noexcept {
+                return std::experimental::suspend_always();
+            }
+            void return_void() {
+            }
+            void unhandled_exception() {
+                std::terminate();
+            }
+        };
+        using coro_handle = std::experimental::coroutine_handle<promise_type>;
+
+        task(coro_handle handle) : handle_(handle) { }
+        task(task&) = delete;
+        task(task&&) = delete;
+
+        bool resume() {
+            if (!handle_.done())
+                handle_.resume();
+            return !handle_.done();
+        };
+
+        ~task() {
+            handle_.destroy(); 
+        }
+
+    private:
+        coro_handle handle_;
+
+    };
+
+
+
+
+
+
+
+    void test() {
+        test1();
+
+    }
+
 
 
 }
