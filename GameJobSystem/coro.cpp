@@ -190,56 +190,141 @@ namespace coro {
     template<typename T>
     class task {
     public:
-       using value_type = T;
+        class awaiter;
 
-       struct promise_type {
-            using coro_handle = std::experimental::coroutine_handle<promise_type>;
- 
-            auto get_return_object() noexcept {
-                return coro_handle::from_promise(*this);
+        class promise_type {
+        public:
+
+            promise_type() : value_(0) {};
+
+            task<T> get_return_object() noexcept {
+                return task<T>{ std::experimental::coroutine_handle<promise_type>::from_promise(*this) };
             }
-            auto initial_suspend() noexcept {
-                return std::experimental::suspend_always();
+
+            std::experimental::suspend_always initial_suspend() noexcept {
+                return {};
             }
-            auto final_suspend() noexcept {
-                return std::experimental::suspend_always();
+
+            void return_value(T t) noexcept {
+                value_ = t;
             }
-            void return_void() {
+
+            T result() {
+                return value_;
             }
-            void unhandled_exception() {
+
+            void unhandled_exception() noexcept {
                 std::terminate();
             }
-        };
-        using coro_handle = std::experimental::coroutine_handle<promise_type>;
 
-        task(coro_handle handle) : handle_(handle) { }
-        task(task&) = delete;
-        task(task&&) = delete;
+            struct final_awaiter {
+                bool await_ready() noexcept {
+                    return false;
+                }
 
-        bool resume() {
-            if (!handle_.done())
-                handle_.resume();
-            return !handle_.done();
+                void await_suspend(std::experimental::coroutine_handle<promise_type> h) noexcept {
+                    promise_type& promise = h.promise();
+                    if (!promise.continuation_) return;
+
+                    if (promise.ready_.exchange(true, std::memory_order_acq_rel)) {
+                        promise.continuation_.resume();
+                    }
+                }
+
+                void await_resume() noexcept {}
+            };
+
+            final_awaiter final_suspend() noexcept {
+                return {};
+            }
+
+            std::experimental::coroutine_handle<> continuation_;
+            std::atomic<bool> ready_ = false;
+            T value_;
         };
+
+        task(task<T>&& t) noexcept : coro_(std::exchange(t.coro_, {}))
+        {}
 
         ~task() {
-            handle_.destroy(); 
+            if (coro_) coro_.destroy();
         }
 
-    private:
-        coro_handle handle_;
+        T result() {
+            return coro_.promise().result();
+        }
 
+        bool resume() {
+            if (!coro_.done())
+                coro_.resume();
+            return !coro_.done();
+        };
+
+        class awaiter {
+        public:
+            bool await_ready() noexcept {
+                return false;
+            }
+
+            bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+                promise_type& promise = coro_.promise();
+                promise.continuation_ = continuation;
+                coro_.resume();
+                return !promise.ready_.exchange(true, std::memory_order_acq_rel);
+            }
+
+            T await_resume() noexcept {
+                promise_type& promise = coro_.promise();
+                return promise.value_;
+            }
+
+            explicit awaiter(std::experimental::coroutine_handle<task<T>::promise_type> h) noexcept : coro_(h) {
+
+            }
+
+        private:
+            std::experimental::coroutine_handle<task<T>::promise_type> coro_;
+        };
+
+        auto operator co_await() && noexcept {
+            return awaiter{ coro_ };
+        }
+
+        explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : coro_(h)
+        {}
+
+    private:
+        std::experimental::coroutine_handle<promise_type> coro_;
     };
 
 
 
+    task<int> completes_synchronously(int i) {
+        co_return i;
+    }
 
+    task<int> loop_synchronously(int count) {
+        int sum = 0;
+        for (int i = 0; i < count; ++i) {
+            sum += co_await completes_synchronously(i);
+            volatile int k = i;
+
+        }
+        co_return sum;
+    }
+
+    void testTask() {
+        auto ls = loop_synchronously( 100 );
+        ls.resume();
+        int sum = ls.result();
+        int k = sum;
+    }
 
 
 
     void test() {
-        test1();
-
+        testTask();
+        //test1();
     }
 
 
