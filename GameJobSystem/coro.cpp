@@ -279,7 +279,6 @@ namespace coro {
             }
 
             explicit awaiter(std::experimental::coroutine_handle<task<T>::promise_type> h) noexcept : coro_(h) {
-
             }
 
         private:
@@ -287,7 +286,7 @@ namespace coro {
         };
 
         auto operator co_await() && noexcept {
-            return awaiter{ coro_ };
+            return awaiter{ coro_ };    //awaitable is the NEW task that is co_awaited
         }
 
         explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : coro_(h)
