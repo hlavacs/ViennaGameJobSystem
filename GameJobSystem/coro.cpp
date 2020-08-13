@@ -300,24 +300,24 @@ namespace coro {
 
 
     task<int> completes_synchronously(int i) {
-        co_return i;
+        co_return 2*i;
     }
 
     task<int> loop_synchronously(int count) {
         int sum = 0;
+        auto cs = completes_synchronously(0);
+
         for (int i = 0; i < count; ++i) {
             sum += co_await completes_synchronously(i);
-            volatile int k = i;
-
         }
         co_return sum;
     }
 
     void testTask() {
-        auto ls = loop_synchronously( 100 );
+        auto ls = loop_synchronously( 10 );
         ls.resume();
         int sum = ls.result();
-        int k = sum;
+        std::cout << "Sum: " << sum << std::endl;
     }
 
 
