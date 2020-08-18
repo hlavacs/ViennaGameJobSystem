@@ -266,7 +266,7 @@ namespace coro {
                 return false;
             }
 
-            bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+            bool await_suspend(std::experimental::coroutine_handle<promise_type> continuation) noexcept {
                 promise_type& promise = coro_.promise();
                 promise.continuation_ = continuation;
                 coro_.resume();
@@ -278,7 +278,7 @@ namespace coro {
                 return promise.value_;
             }
 
-            explicit awaiter(std::experimental::coroutine_handle<task<T>::promise_type> h) noexcept : coro_(h) {
+            explicit awaiter(std::experimental::coroutine_handle<promise_type> h) noexcept : coro_(h) {
             }
 
         private:
@@ -304,7 +304,6 @@ namespace coro {
 
     task<int> loop_synchronously(int count) {
         int sum = 0;
-        auto cs = completes_synchronously(0);
 
         for (int i = 0; i < count; ++i) {
             sum += co_await completes_synchronously(i);
