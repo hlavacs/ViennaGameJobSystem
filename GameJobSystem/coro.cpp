@@ -13,6 +13,8 @@
 #include <chrono>
 #include <thread>
 #include <array>
+#include <memory_resource>
+
 
 #include "VEGameJobSystem2.h"
 
@@ -185,6 +187,7 @@ namespace coro {
 
     }
 
+    auto g_global_mem = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
     //
     template<typename T>
@@ -196,6 +199,16 @@ namespace coro {
         public:
 
             promise_type() : value_(0) {};
+
+            void* operator new(std::size_t size) {
+                void* ptr = g_global_mem.allocate(size);
+                if (!ptr) throw std::bad_alloc{};
+                return ptr;
+            }
+
+            void operator delete(void* ptr, std::size_t size) {
+                g_global_mem.deallocate(ptr, size);
+            }
 
             task<T> get_return_object() noexcept {
                 return task<T>{ std::experimental::coroutine_handle<promise_type>::from_promise(*this) };
