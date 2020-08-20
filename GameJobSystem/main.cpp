@@ -13,11 +13,16 @@ namespace coro {
 	void test();
 }
 
+namespace mycppcoro {
+	void test();
+}
+
+
 int main()
 {
 
 
-	coro::test();
+	mycppcoro::test();
 }
 
 

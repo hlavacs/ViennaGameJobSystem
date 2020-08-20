@@ -14,9 +14,15 @@
 #include <thread>
 #include <array>
 #include <memory_resource>
+#include <concepts>
+#include <algorithm>
+#include <string>
 
+#include <cppcoro/sync_wait.hpp>
+#include <cppcoro/task.hpp>
+#include <cppcoro/static_thread_pool.hpp>
+#include <cppcoro/when_all.hpp>
 
-#include "VEGameJobSystem2.h"
 
 
 namespace std::experimental {
@@ -332,10 +338,20 @@ namespace coro {
     }
 
 
+    void testRanges() {
+        std::string s{ "hello" };
+
+        // output: h e l l o
+        std::ranges::for_each(s, [](char c) { std::cout << c << ' '; });
+        std::cout << '\n';
+    }
+
+
 
     void test() {
-        testTask();
+        //testTask();
         //test1();
+        testRanges();
     }
 
 
