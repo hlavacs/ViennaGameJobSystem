@@ -1,4 +1,5 @@
 
+
 #include <iostream>
 #include <iomanip>
 #include <stdlib.h>
@@ -9,18 +10,24 @@
 #include <glm.hpp>
 
 
-namespace coro {
-	void test();
-}
+#define VE_IMPLEMENT_GAMEJOBSYSTEM
+#define VE_IMPLEMENT_GAMEJOBSYSTEM
+#include "VEUtilClock.h"
+#include "VEGameJobSystem2.h"
+
+using namespace std::chrono;
+
 
 namespace vgjs {
-	void test();
+
+
+
+
+
+	void test() {
+
+
+
+	}
+
 }
-
-
-int main()
-{
-	coro::test();
-}
-
-

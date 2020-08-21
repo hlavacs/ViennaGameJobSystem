@@ -156,54 +156,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\external\cppcoro\src\async_auto_reset_event.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\async_manual_reset_event.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\async_mutex.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\auto_reset_event.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\cancellation_registration.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\cancellation_source.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\cancellation_state.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\cancellation_token.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\file.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\file_read_operation.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\file_write_operation.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\io_service.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\ipv4_address.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\ipv4_endpoint.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\ipv6_address.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\ipv6_endpoint.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\ip_address.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\ip_endpoint.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\lightweight_manual_reset_event.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\readable_file.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\read_only_file.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\read_write_file.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\socket.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\socket_accept_operation.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\socket_connect_operation.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\socket_disconnect_operation.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\socket_helpers.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\socket_recv_from_operation.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\socket_recv_operation.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\socket_send_operation.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\socket_send_to_operation.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\spin_mutex.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\spin_wait.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\static_thread_pool.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\win32.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\writable_file.cpp" />
-    <ClCompile Include="..\external\cppcoro\src\write_only_file.cpp" />
     <ClCompile Include="coro.cpp" />
-    <ClCompile Include="cppcoro.cpp" />
+    <ClCompile Include="vgjs.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="gameloop.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\external\cppcoro\src\auto_reset_event.hpp" />
-    <ClInclude Include="..\external\cppcoro\src\cancellation_state.hpp" />
-    <ClInclude Include="..\external\cppcoro\src\socket_helpers.hpp" />
-    <ClInclude Include="..\external\cppcoro\src\spin_mutex.hpp" />
-    <ClInclude Include="..\external\cppcoro\src\spin_wait.hpp" />
     <ClInclude Include="VEGameJobSystem.h" />
     <ClInclude Include="VEGameJobSystem2.h" />
     <ClInclude Include="VEUtilClock.h" />
