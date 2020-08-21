@@ -157,6 +157,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="coro.cpp" />
+    <ClCompile Include="coro2.cpp" />
     <ClCompile Include="vgjs.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="gameloop.cpp" />

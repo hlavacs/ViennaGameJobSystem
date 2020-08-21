@@ -23,6 +23,9 @@
     <ClCompile Include="vgjs.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="coro2.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VEGameJobSystem.h">

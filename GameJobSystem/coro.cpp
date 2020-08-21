@@ -40,11 +40,8 @@ namespace std::experimental {
 
 };
 
-
-
 namespace coro {
     using namespace std::experimental;
-
 
     std::atomic<bool> abort = false;
     std::atomic<bool> ready0 = false;
@@ -188,74 +185,85 @@ namespace coro {
 
     }
 
+    //-------------------------------------------------------------------------------------------------------------------
+
     auto g_global_mem = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
+
+
+    template<typename T> class task;
+
+    template<typename T>
+    class my_promise_type {
+    public:
+
+        my_promise_type() : value_(0) {};
+
+        void* operator new(std::size_t size) {
+            void* ptr = g_global_mem.allocate(size);
+            if (!ptr) throw std::bad_alloc{};
+            return ptr;
+        }
+
+        void operator delete(void* ptr, std::size_t size) {
+            g_global_mem.deallocate(ptr, size);
+        }
+
+
+        task<T> get_return_object() noexcept {
+            return task<T>{ std::experimental::coroutine_handle<my_promise_type<T>>::from_promise(*this) };
+        }
+
+        std::experimental::suspend_always initial_suspend() noexcept {
+            return {};
+        }
+
+        void return_value(T t) noexcept {
+            value_ = t;
+        }
+
+        T result() {
+            return value_;
+        }
+
+        void unhandled_exception() noexcept {
+            std::terminate();
+        }
+
+        struct final_awaiter {
+            bool await_ready() noexcept {
+                return false;
+            }
+
+            void await_suspend(std::experimental::coroutine_handle<my_promise_type<T>> h) noexcept {
+                my_promise_type<T>& promise = h.promise();
+                if (!promise.continuation_) return;
+
+                if (promise.ready_.exchange(true, std::memory_order_acq_rel)) {
+                    promise.continuation_.resume();
+                }
+            }
+
+            void await_resume() noexcept {}
+        };
+
+        final_awaiter final_suspend() noexcept {
+            return {};
+        }
+
+        std::experimental::coroutine_handle<> continuation_;
+        std::atomic<bool> ready_ = false;
+        T value_;
+    };
+
+
 
     //
     template<typename T>
     class task {
     public:
         class awaiter;
-
-        class promise_type {
-        public:
-
-            promise_type() : value_(0) {};
-
-            void* operator new(std::size_t size) {
-                void* ptr = g_global_mem.allocate(size);
-                if (!ptr) throw std::bad_alloc{};
-                return ptr;
-            }
-
-            void operator delete(void* ptr, std::size_t size) {
-                g_global_mem.deallocate(ptr, size);
-            }
-
-            task<T> get_return_object() noexcept {
-                return task<T>{ std::experimental::coroutine_handle<promise_type>::from_promise(*this) };
-            }
-
-            std::experimental::suspend_always initial_suspend() noexcept {
-                return {};
-            }
-
-            void return_value(T t) noexcept {
-                value_ = t;
-            }
-
-            T result() {
-                return value_;
-            }
-
-            void unhandled_exception() noexcept {
-                std::terminate();
-            }
-
-            struct final_awaiter {
-                bool await_ready() noexcept {
-                    return false;
-                }
-
-                void await_suspend(std::experimental::coroutine_handle<promise_type> h) noexcept {
-                    promise_type& promise = h.promise();
-                    if (!promise.continuation_) return;
-
-                    if (promise.ready_.exchange(true, std::memory_order_acq_rel)) {
-                        promise.continuation_.resume();
-                    }
-                }
-
-                void await_resume() noexcept {}
-            };
-
-            final_awaiter final_suspend() noexcept {
-                return {};
-            }
-
-            std::experimental::coroutine_handle<> continuation_;
-            std::atomic<bool> ready_ = false;
-            T value_;
-        };
+        using promise_type = my_promise_type<T>;
+        using value_type = T;
 
         task(task<T>&& t) noexcept : coro_(std::exchange(t.coro_, {}))
         {}
@@ -280,7 +288,7 @@ namespace coro {
                 return false;
             }
 
-            bool await_suspend(std::experimental::coroutine_handle<promise_type> continuation) noexcept {
+            bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 promise_type& promise = coro_.promise();
                 promise.continuation_ = continuation;
                 coro_.resume();
@@ -296,7 +304,7 @@ namespace coro {
             }
 
         private:
-            std::experimental::coroutine_handle<task<T>::promise_type> coro_;
+            std::experimental::coroutine_handle<promise_type> coro_;
         };
 
         auto operator co_await() && noexcept {
@@ -309,7 +317,6 @@ namespace coro {
     private:
         std::experimental::coroutine_handle<promise_type> coro_;
     };
-
 
 
     task<int> completes_synchronously(int i) {
@@ -344,7 +351,7 @@ namespace coro {
 
 
     void test() {
-        //testTask();
+        testTask();
         //test1();
         testRanges();
     }
@@ -352,6 +359,8 @@ namespace coro {
 
 
 }
+
+
 
 
 
