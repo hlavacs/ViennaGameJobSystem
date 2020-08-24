@@ -152,7 +152,7 @@ namespace coro2 {
             }
             catch (...)
             {
-                allocator.free(mem);
+                allocator.deallocate(mem);
                 throw;
             }
             return mem;
@@ -164,7 +164,7 @@ namespace coro2 {
             Allocator& allocator = *reinterpret_cast<Allocator*>(mem + allocatorOffset);
             Allocator allocatorCopy = std::move(allocator); // assuming noexcept copy here.
             allocator.~Allocator();
-            allocatorCopy.free(mem);
+            allocatorCopy.deallocate(mem);
         }
 
         task<T> get_return_object()
@@ -205,7 +205,7 @@ namespace coro2 {
         MyAllocator(const MyAllocator&) {};
         ~MyAllocator() {};
         void* allocate(std::size_t sz) { return new uint8_t[10]; };
-        void free(void* p) { delete[] p; };
+        void deallocate(void* p) { delete[] p; };
     private:
         void* m_state;
     };
