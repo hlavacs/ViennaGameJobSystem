@@ -38,15 +38,17 @@ namespace coro2 {
             template<typename P>
             std::experimental::coroutine_handle<> await_suspend(std::experimental::coroutine_handle<P> coro)
             {
-                return coro.promise().m_continuation;
+                auto co = coro.promise().m_continuation;
+                return co;
             }
             void await_resume() {}
         };
     public:
-        task_promise_base() : m_state(state::empty) {}
+        task_promise_base() {}; // : m_state(state::empty) {}
+
         ~task_promise_base()
         {
-            switch (m_state)
+            /*switch (m_state)
             {
             case state::value:
                 reinterpret_cast<T*>(&m_storage)->~T();
@@ -56,41 +58,49 @@ namespace coro2 {
                 break;
             case state::empty:
                 break;
-            }
+            }*/
         }
         task<T> get_return_object()
         {
             return task<T>{ *this, std::experimental::coroutine_handle<task_promise_base>::from_promise(*this) };
         }
+        
         std::experimental::suspend_always initial_suspend() { return{}; }
+        
         final_awaitable final_suspend() { return{}; }
+
         template<typename U, std::enable_if_t<std::is_convertible_v<U&&, T>, int> = 0>
         void return_value(U&& value)
         {
-            new (&m_storage) T(std::forward<U>(value));
-            m_state = state::value;
+            //new (&m_storage) T(std::forward<U>(value));
+            //m_state = state::value;
         }
+
         void unhandled_exception()
         {
-            new (&m_storage) std::exception_ptr(std::current_exception());
-            m_state = state::exception;
+            //new (&m_storage) std::exception_ptr(std::current_exception());
+            //m_state = state::exception;
         }
         T& value()
         {
-            if (m_state == state::exception)
+            /*if (m_state == state::exception)
             {
                 std::rethrow_exception(*reinterpret_cast<std::exception_ptr*>(&m_storage));
             }
 
-            return *reinterpret_cast<T*>(&m_storage);
+            return *reinterpret_cast<T*>(&m_storage);*/
+            return {};
         }
     private:
         friend class task<T>;
-        enum class state { empty, value, exception };
+        //enum class state { empty, value, exception };
         std::experimental::coroutine_handle<> m_continuation;
-        state m_state;
-        std::aligned_union_t<0, T, std::exception_ptr> m_storage;
+        //state m_state;
+        //std::aligned_union_t<0, T, std::exception_ptr> m_storage;
     };
+
+
+
 
     template<typename T>
     class task
@@ -122,8 +132,9 @@ namespace coro2 {
 
         T await_resume()
         {
-            if (!m_promise) throw std::exception{};
-            return m_promise->value();
+            /*if (!m_promise) throw std::exception{};
+            return m_promise->value();*/
+            return {};
         }
 
         bool resume() {
@@ -141,14 +152,14 @@ namespace coro2 {
     class task_promise : public task_promise_base<T>
     {
     public:
-        template<typename... Args>
+        /*template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, Allocator& allocator, Args&&...)
         {
             auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
             char* mem = (char*)allocator.allocate(allocatorOffset + sizeof(Allocator));
             try
             {
-                new (&mem) Allocator(allocator);
+                new (&mem + sz) Allocator(allocator);
             }
             catch (...)
             {
@@ -165,7 +176,7 @@ namespace coro2 {
             Allocator allocatorCopy = std::move(allocator); // assuming noexcept copy here.
             allocator.~Allocator();
             allocatorCopy.deallocate(mem);
-        }
+        }*/
 
         task<T> get_return_object()
         {
@@ -204,8 +215,12 @@ namespace coro2 {
         MyAllocator() {};
         MyAllocator(const MyAllocator&) {};
         ~MyAllocator() {};
-        void* allocate(std::size_t sz) { return new uint8_t[10]; };
-        void deallocate(void* p) { delete[] p; };
+        void* allocate(std::size_t sz) { 
+            return new uint8_t[sz]; 
+        };
+        void deallocate(void* p) { 
+            delete[] p; 
+        };
     private:
         void* m_state;
     };
@@ -215,15 +230,16 @@ namespace coro2 {
         co_return 2;
     }
 
-    task<int> foo()
+    task<int> foo(std::allocator_arg_t, MyAllocator allocator)
     {
-        MyAllocator a;
-        int result = co_await bar(std::allocator_arg, a);
-        co_return result + 1;
+        //int result = co_await bar(std::allocator_arg, allocator);
+        co_return 2;
     }
 
-    void testCoro2() {
-        auto f = foo();
+    void test() {
+        MyAllocator allocator;
+
+        auto f = foo(std::allocator_arg, allocator);
         std::cout << f.resume() << std::endl;
     }
 }

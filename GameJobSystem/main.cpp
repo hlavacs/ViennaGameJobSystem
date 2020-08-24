@@ -13,6 +13,14 @@ namespace coro {
 	void test();
 }
 
+namespace coro2 {
+	void test();
+}
+
+namespace coro3 {
+	void test();
+}
+
 namespace vgjs {
 	void test();
 }
@@ -20,7 +28,7 @@ namespace vgjs {
 
 int main()
 {
-	coro::test();
+	coro3::test();
 }
 
 
