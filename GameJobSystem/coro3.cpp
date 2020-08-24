@@ -49,28 +49,17 @@ namespace coro3 {
     template<typename T> class task;
 
 
-
     //---------------------------------------------------------------------------------------------------
 
     template<typename T>
-    class my_promise_type {
+    class task_promise_base {
     public:
 
-        my_promise_type() : value_(0) {};
-
-        void* operator new(std::size_t size) {
-            void* ptr = g_global_mem3.allocate(size);
-            if (!ptr) throw std::bad_alloc{};
-            return ptr;
-        }
-
-        void operator delete(void* ptr, std::size_t size) {
-            g_global_mem3.deallocate(ptr, size);
-        }
+        task_promise_base() : value_(0) {};
 
 
         task<T> get_return_object() noexcept {
-            return task<T>{ std::experimental::coroutine_handle<my_promise_type<T>>::from_promise(*this) };
+            return task<T>{ std::experimental::coroutine_handle<task_promise_base<T>>::from_promise(*this) };
         }
 
         std::experimental::suspend_always initial_suspend() noexcept {
@@ -94,8 +83,8 @@ namespace coro3 {
                 return false;
             }
 
-            void await_suspend(std::experimental::coroutine_handle<my_promise_type<T>> h) noexcept {
-                my_promise_type<T>& promise = h.promise();
+            void await_suspend(std::experimental::coroutine_handle<task_promise_base<T>> h) noexcept {
+                task_promise_base<T>& promise = h.promise();
                 if (!promise.continuation_) return;
 
                 if (promise.ready_.exchange(true, std::memory_order_acq_rel)) {
@@ -115,68 +104,8 @@ namespace coro3 {
         T value_;
     };
 
-
-
-    //---------------------------------------------------------------------------------------------------
-    template<typename T>
-    class task {
-    public:
-        class awaiter;
-        using promise_type = my_promise_type<T>;
-        using value_type = T;
-
-        task(task<T>&& t) noexcept : coro_(std::exchange(t.coro_, {}))
-        {}
-
-        ~task() {
-            if (coro_) coro_.destroy();
-        }
-
-        T result() {
-            return coro_.promise().result();
-        }
-
-        bool resume() {
-            if (!coro_.done())
-                coro_.resume();
-            return !coro_.done();
-        };
-
-        class awaiter {
-        public:
-            bool await_ready() noexcept {
-                return false;
-            }
-
-            bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                promise_type& promise = coro_.promise();
-                promise.continuation_ = continuation;
-                coro_.resume();
-                return !promise.ready_.exchange(true, std::memory_order_acq_rel);
-            }
-
-            T await_resume() noexcept {
-                promise_type& promise = coro_.promise();
-                return promise.value_;
-            }
-
-            explicit awaiter(std::experimental::coroutine_handle<promise_type> h) noexcept : coro_(h) {
-            }
-
-        private:
-            std::experimental::coroutine_handle<promise_type> coro_;
-        };
-
-        auto operator co_await() && noexcept {
-            return awaiter{ coro_ };    //awaitable is the NEW task that is co_awaited
-        }
-
-        explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : coro_(h)
-        {}
-
-    private:
-        std::experimental::coroutine_handle<promise_type> coro_;
-    };
+    template<typename T, typename Allocator>
+    class task_promise;
 
 }
 
@@ -204,6 +133,110 @@ namespace std
         };
     }
 }
+
+
+namespace coro3 {
+    //---------------------------------------------------------------------------------------------------
+    template<typename T>
+    class task {
+    public:
+        class awaiter;
+        using promise_type = task_promise_base<T>;
+        using value_type = T;
+
+        task(task<T>&& t) noexcept : coro_(std::exchange(t.coro_, {}))
+        {}
+
+        ~task() {
+            if (coro_) coro_.destroy();
+        }
+
+        T result() {
+            return coro_.promise().result();
+        }
+
+        bool resume() {
+            if (!coro_.done())
+                coro_.resume();
+            return !coro_.done();
+        };
+
+        bool await_ready() noexcept {
+            return false;
+        }
+
+        bool await_suspend(std::experimental::coroutine_handle<promise_type> continuation) noexcept {
+            promise_type& promise = coro_.promise();
+            promise.continuation_ = continuation;
+            coro_.resume();
+            return !promise.ready_.exchange(true, std::memory_order_acq_rel);
+        }
+
+        T await_resume() noexcept {
+            promise_type& promise = coro_.promise();
+            return promise.value_;
+        }
+
+        explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : coro_(h)
+        {}
+
+    private:
+        std::experimental::coroutine_handle<promise_type> coro_;
+    };
+
+
+    //---------------------------------------------------------------------------------------------------
+
+
+    template<typename T, typename Allocator>
+    class task_promise : public task_promise_base<T>
+    {
+    public:
+
+        void* operator new(std::size_t size) {
+            void* ptr = g_global_mem3.allocate(size);
+            if (!ptr) throw std::bad_alloc{};
+            return ptr;
+        }
+
+        void operator delete(void* ptr, std::size_t size) {
+            g_global_mem3.deallocate(ptr, size);
+        }
+
+        /*template<typename... Args>
+        void* operator new(std::size_t sz, std::allocator_arg_t, Allocator& allocator, Args&&...)
+        {
+            auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
+            char* mem = (char*)allocator.allocate(allocatorOffset + sizeof(Allocator));
+            try
+            {
+                new (&mem + sz) Allocator(allocator);
+            }
+            catch (...)
+            {
+                allocator.deallocate(mem);
+                throw;
+            }
+            return mem;
+        }
+        void operator delete(void* p, std::size_t sz)
+        {
+            auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
+            char* mem = static_cast<char*>(p);
+            Allocator& allocator = *reinterpret_cast<Allocator*>(mem + allocatorOffset);
+            Allocator allocatorCopy = std::move(allocator); // assuming noexcept copy here.
+            allocator.~Allocator();
+            allocatorCopy.deallocate(mem);
+        }*/
+
+        task<T> get_return_object()
+        {
+            return task<T>{ *this, std::experimental::coroutine_handle<task_promise>::from_promise(*this) };
+        }
+    };
+
+}
+
 
 
 namespace coro3 {
