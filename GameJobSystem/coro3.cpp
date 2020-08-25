@@ -80,7 +80,7 @@ namespace coro3 {
             value_ = t;
         }
 
-        T result() {
+        T get() {
             return value_;
         }
 
@@ -130,8 +130,8 @@ namespace coro3 {
             if (coro_) coro_.destroy();
         }
 
-        T result() {
-            return coro_.promise().result();
+        T get() {
+            return coro_.promise().get();
         }
 
         bool resume() {
@@ -178,12 +178,13 @@ namespace coro3 {
         void* m_state;
     };
 
-
-    task<int> completes_synchronously(std::allocator_arg_t, MyAllocator allocator, int i) {
+    template<typename ALLOCATOR>
+    task<int> completes_synchronously(std::allocator_arg_t, ALLOCATOR allocator, int i) {
         co_return 2 * i;
     }
 
-    task<int> loop_synchronously(std::allocator_arg_t, MyAllocator allocator, int count) {
+    template<typename ALLOCATOR>
+    task<int> loop_synchronously(std::allocator_arg_t, ALLOCATOR allocator, int count) {
         int sum = 0;
 
         for (int i = 0; i < count; ++i) {
@@ -195,9 +196,11 @@ namespace coro3 {
     void testTask() {
         MyAllocator allocator;
 
-        auto ls = loop_synchronously(std::allocator_arg, allocator, 10);
+        std::pmr::polymorphic_allocator<char> allocator2;
+
+        auto ls = loop_synchronously(std::allocator_arg, allocator2, 10);
         ls.resume();
-        int sum = ls.result();
+        int sum = ls.get();
         std::cout << "Sum: " << sum << std::endl;
     }
 

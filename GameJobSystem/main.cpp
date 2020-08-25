@@ -28,7 +28,7 @@ namespace vgjs {
 
 int main()
 {
-	coro3::test();
+	coro2::test();
 }
 
 

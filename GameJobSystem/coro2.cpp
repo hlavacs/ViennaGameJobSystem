@@ -43,6 +43,7 @@ namespace coro2 {
             }
             void await_resume() {}
         };
+
     public:
         task_promise_base() {}; // : m_state(state::empty) {}
 
@@ -81,6 +82,7 @@ namespace coro2 {
             //new (&m_storage) std::exception_ptr(std::current_exception());
             //m_state = state::exception;
         }
+
         T& value()
         {
             /*if (m_state == state::exception)
@@ -100,7 +102,7 @@ namespace coro2 {
     };
 
 
-
+    //--------------------------------------------------------------------------------------
 
     template<typename T>
     class task
@@ -148,10 +150,26 @@ namespace coro2 {
         std::experimental::coroutine_handle<> m_coro;
     };
 
+
+    //--------------------------------------------------------------------------------------
+
+
     template<typename T, typename Allocator>
     class task_promise : public task_promise_base<T>
     {
     public:
+
+        void* operator new(std::size_t size) {
+            void* ptr = g_global_mem2.allocate(size);
+            if (!ptr) throw std::bad_alloc{};
+            return ptr;
+        }
+
+        void operator delete(void* ptr, std::size_t size) {
+            g_global_mem2.deallocate(ptr, size);
+        }
+
+
         /*template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, Allocator& allocator, Args&&...)
         {
@@ -225,21 +243,25 @@ namespace coro2 {
         void* m_state;
     };
 
-    task<int> bar(std::allocator_arg_t, MyAllocator allocator)
+    //task<int> bar(std::allocator_arg_t, ALLOCATOR allocator)
+
+    //template<typename ALLOCATOR>
+    task<int> bar()
     {
         co_return 2;
     }
 
-    task<int> foo(std::allocator_arg_t, MyAllocator allocator)
+    //template<typename ALLOCATOR>
+    task<int> foo()
     {
-        //int result = co_await bar(std::allocator_arg, allocator);
+        int result = co_await bar();
         co_return 2;
     }
 
     void test() {
         MyAllocator allocator;
 
-        auto f = foo(std::allocator_arg, allocator);
+        auto f = foo();
         std::cout << f.resume() << std::endl;
     }
 }
