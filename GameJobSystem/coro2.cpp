@@ -152,17 +152,30 @@ namespace coro2 {
     {
     public:
 
+        template<typename Class, typename... Args>
+        void* operator new(std::size_t sz, Class, std::allocator_arg_t, Allocator& allocator, Args&&...)
+        {
+            auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
+            char* mem = (char*)allocator.allocate(allocatorOffset + sizeof(Allocator));
+            try {
+                new (mem + allocatorOffset) Allocator(allocator);
+            }
+            catch (...) {
+                allocator.deallocate(mem, allocatorOffset + sizeof(Allocator));
+                throw;
+            }
+            return mem;
+        }
+
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, Allocator& allocator, Args&&...)
         {
             auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
             char* mem = (char*)allocator.allocate(allocatorOffset + sizeof(Allocator));
-            try
-            {
+            try {
                 new (mem + allocatorOffset) Allocator(allocator);
             }
-            catch (...)
-            {
+            catch (...) {
                 allocator.deallocate(mem,allocatorOffset + sizeof(Allocator));
                 throw;
             }
@@ -212,8 +225,30 @@ namespace std
 
 namespace coro2 {
 
-    task<int> completes_synchronously(int i) {
-        co_return 2 * i;
+    class TestClass {
+    public:
+        TestClass() {};
+
+        task<int> getState( int i ) {
+            m_state = 2*i;
+            co_return m_state;
+        }
+
+        template<typename ALLOCATOR>
+        task<int> getState(std::allocator_arg_t, ALLOCATOR allocator, int i) {
+            m_state = 2*i;
+            co_return m_state;
+        }
+
+        int m_state = 0;
+    };
+
+    TestClass tc;
+
+    template<typename ALLOCATOR>
+    task<int> completes_synchronously(std::allocator_arg_t, ALLOCATOR allocator, int i) {
+        int j = co_await tc.getState(std::allocator_arg_t{}, allocator, i);
+        co_return 2 * j;
     }
 
     template<typename ALLOCATOR>
@@ -221,7 +256,7 @@ namespace coro2 {
         int sum = 0;
 
         for (int i = 0; i < count; ++i) {
-            sum += co_await completes_synchronously(i);
+            sum += co_await completes_synchronously(std::allocator_arg_t{}, allocator, i);
         }
         co_return sum;
     }
