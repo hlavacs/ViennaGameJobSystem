@@ -122,7 +122,8 @@ namespace coro2 {
         {}
 
         ~task() {
-            if (m_coro && !m_coro.done()) m_coro.destroy();
+            if (m_coro) 
+                m_coro.destroy();
         }
 
         T get() {
@@ -165,17 +166,6 @@ namespace coro2 {
     {
     public:
 
-        /*void* operator new(std::size_t size) {
-            void* ptr = g_global_mem2.allocate(size);
-            if (!ptr) throw std::bad_alloc{};
-            return ptr;
-        }
-
-        void operator delete(void* ptr, std::size_t size) {
-            g_global_mem2.deallocate(ptr, size);
-        }*/
-
-
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, Allocator& allocator, Args&&...)
         {
@@ -183,11 +173,11 @@ namespace coro2 {
             char* mem = (char*)allocator.allocate(allocatorOffset + sizeof(Allocator));
             try
             {
-                new (&mem + sz) Allocator(allocator);
+                new (mem + allocatorOffset) Allocator(allocator);
             }
             catch (...)
             {
-                allocator.deallocate(mem,1);
+                allocator.deallocate(mem,allocatorOffset + sizeof(Allocator));
                 throw;
             }
             return mem;
@@ -197,10 +187,10 @@ namespace coro2 {
         {
             auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
             char* mem = static_cast<char*>(p);
-            Allocator& allocator = *reinterpret_cast<Allocator*>(mem + sz);
+            Allocator& allocator = Allocator( *reinterpret_cast<Allocator*>(mem + allocatorOffset) );
             Allocator allocatorCopy = std::move(allocator); // assuming noexcept copy here.
             allocator.~Allocator();
-            allocatorCopy.deallocate(mem,1);
+            allocatorCopy.deallocate(mem, allocatorOffset + sizeof(Allocator));
         }
 
         task<T> get_return_object() {
@@ -236,17 +226,27 @@ namespace std
 
 namespace coro2 {
     struct MyAllocator {
-        MyAllocator() {};
-        MyAllocator(const MyAllocator&) {};
+        MyAllocator() { 
+            m_state = 55; 
+        };
+        MyAllocator(const MyAllocator&) {
+            m_state = 56;
+        };
         ~MyAllocator() {};
         void* allocate(std::size_t sz) { 
             return new uint8_t[sz]; 
         };
-        void deallocate(void* p) { 
+        void deallocate(void* p, std::size_t sz) {
             delete[] p; 
         };
+        void* allocate_bytes(std::size_t sz) {
+            return new uint8_t[sz];
+        };
+        void deallocate_bytes(void* p, std::size_t sz) {
+            delete[] p;
+        };
     private:
-        void* m_state;
+        int m_state;
     };
 
     template<typename ALLOCATOR>
@@ -268,7 +268,7 @@ namespace coro2 {
         MyAllocator allocator;
         std::pmr::polymorphic_allocator<char> allocator2(&g_global_mem2);
 
-        auto f = loop_synchronously(std::allocator_arg_t{}, allocator2, 10);
+        auto f = loop_synchronously(std::allocator_arg_t{}, allocator2, 100);
         std::cout << f.resume() << std::endl;
         std::cout << f.get() << std::endl;
 

@@ -127,7 +127,8 @@ namespace coro3 {
         {}
 
         ~task() {
-            if (coro_) coro_.destroy();
+            if (coro_) 
+                coro_.destroy();
         }
 
         T get() {
