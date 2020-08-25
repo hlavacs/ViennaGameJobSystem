@@ -141,8 +141,7 @@ namespace coro2 {
             return false;
         }
 
-        template<typename PROMISE>
-        bool await_suspend(std::experimental::coroutine_handle<PROMISE> continuation) noexcept {
+        bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
             m_promise->continuation_ = continuation;
             m_coro.resume();
             return !m_promise->ready_.exchange(true, std::memory_order_acq_rel);
@@ -251,22 +250,25 @@ namespace coro2 {
     };
 
     template<typename ALLOCATOR>
-    task<int> bar(std::allocator_arg_t, ALLOCATOR allocator)
-    {
-        co_return 45;
+    task<int> completes_synchronously(std::allocator_arg_t, ALLOCATOR allocator, int i) {
+        co_return 2 * i;
     }
 
     template<typename ALLOCATOR>
-    task<int> foo(std::allocator_arg_t, ALLOCATOR allocator)
-    {
-        int result = co_await bar(std::allocator_arg_t{}, allocator);
-        co_return result * 2;
+    task<int> loop_synchronously(std::allocator_arg_t, ALLOCATOR allocator, int count) {
+        int sum = 0;
+
+        for (int i = 0; i < count; ++i) {
+            sum += co_await completes_synchronously(std::allocator_arg, allocator, i);
+        }
+        co_return sum;
     }
 
     void test() {
         MyAllocator allocator;
+        std::pmr::polymorphic_allocator<char> allocator2;
 
-        auto f = foo(std::allocator_arg_t{}, allocator);
+        auto f = loop_synchronously(std::allocator_arg_t{}, allocator2, 10);
         std::cout << f.resume() << std::endl;
         std::cout << f.get() << std::endl;
 
