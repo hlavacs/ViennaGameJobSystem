@@ -165,7 +165,7 @@ namespace coro2 {
     {
     public:
 
-        void* operator new(std::size_t size) {
+        /*void* operator new(std::size_t size) {
             void* ptr = g_global_mem2.allocate(size);
             if (!ptr) throw std::bad_alloc{};
             return ptr;
@@ -173,10 +173,10 @@ namespace coro2 {
 
         void operator delete(void* ptr, std::size_t size) {
             g_global_mem2.deallocate(ptr, size);
-        }
+        }*/
 
 
-        /*template<typename... Args>
+        template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, Allocator& allocator, Args&&...)
         {
             auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
@@ -187,23 +187,23 @@ namespace coro2 {
             }
             catch (...)
             {
-                allocator.deallocate(mem);
+                allocator.deallocate(mem,1);
                 throw;
             }
             return mem;
         }
+
         void operator delete(void* p, std::size_t sz)
         {
             auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
             char* mem = static_cast<char*>(p);
-            Allocator& allocator = *reinterpret_cast<Allocator*>(mem + allocatorOffset);
+            Allocator& allocator = *reinterpret_cast<Allocator*>(mem + sz);
             Allocator allocatorCopy = std::move(allocator); // assuming noexcept copy here.
             allocator.~Allocator();
-            allocatorCopy.deallocate(mem);
-        }*/
+            allocatorCopy.deallocate(mem,1);
+        }
 
-        task<T> get_return_object()
-        {
+        task<T> get_return_object() {
             return task<T>{ *this, std::experimental::coroutine_handle<task_promise>::from_promise(*this) };
         }
     };
@@ -266,7 +266,7 @@ namespace coro2 {
 
     void test() {
         MyAllocator allocator;
-        std::pmr::polymorphic_allocator<char> allocator2;
+        std::pmr::polymorphic_allocator<char> allocator2(&g_global_mem2);
 
         auto f = loop_synchronously(std::allocator_arg_t{}, allocator2, 10);
         std::cout << f.resume() << std::endl;
