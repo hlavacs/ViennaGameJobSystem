@@ -148,48 +148,36 @@ namespace coro2 {
 
 
     template<typename T, typename Allocator>
-    class task_promise : public task_promise_base<T>
-    {
+    class task_promise : public task_promise_base<T> {
     public:
 
-        template<typename Class, typename... Args>
-        void* operator new(std::size_t sz, Class, std::allocator_arg_t, Allocator& allocator, Args&&...)
-        {
-            auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
-            char* mem = (char*)allocator.allocate(allocatorOffset + sizeof(Allocator));
-            try {
-                new (mem + allocatorOffset) Allocator(allocator);
-            }
-            catch (...) {
-                allocator.deallocate(mem, allocatorOffset + sizeof(Allocator));
-                throw;
-            }
-            return mem;
-        }
-
         template<typename... Args>
-        void* operator new(std::size_t sz, std::allocator_arg_t, Allocator& allocator, Args&&...)
-        {
+        void* operator new(std::size_t sz, std::allocator_arg_t, Allocator& allocator, Args&&...) {
             auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
-            char* mem = (char*)allocator.allocate(allocatorOffset + sizeof(Allocator));
+            char* p = (char*)allocator.allocate(allocatorOffset + sizeof(Allocator));
             try {
-                new (mem + allocatorOffset) Allocator(allocator);
+                new (p + allocatorOffset) Allocator(allocator);
             }
             catch (...) {
-                allocator.deallocate(mem,allocatorOffset + sizeof(Allocator));
+                allocator.deallocate(p, allocatorOffset + sizeof(Allocator));
                 throw;
             }
-            return mem;
+            return p;
         }
 
-        void operator delete(void* p, std::size_t sz)
+        template<typename Class, typename... Args>
+        void* operator new(std::size_t sz, Class, std::allocator_arg_t, Allocator& allocator, Args&&... args) {
+            return operator new(sz, std::allocator_arg_t{}, allocator, args...);
+        }
+
+        void operator delete(void* pVoid, std::size_t sz)
         {
             auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
-            char* mem = static_cast<char*>(p);
-            Allocator& allocator = Allocator( *reinterpret_cast<Allocator*>(mem + allocatorOffset) );
+            char* p = static_cast<char*>(pVoid);
+            Allocator& allocator = Allocator( *reinterpret_cast<Allocator*>(p + allocatorOffset) );
             Allocator allocatorCopy = std::move(allocator); // assuming noexcept copy here.
             allocator.~Allocator();
-            allocatorCopy.deallocate(mem, allocatorOffset + sizeof(Allocator));
+            allocatorCopy.deallocate(p, allocatorOffset + sizeof(Allocator));
         }
 
         task<T> get_return_object() {
