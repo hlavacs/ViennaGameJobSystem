@@ -33,20 +33,7 @@ namespace coro2 {
 
 
     template<typename T>
-    class task_promise_base
-    {
-        /*struct final_awaitable
-        {
-            bool await_ready() { return false; }
-
-            template<typename P>
-            std::experimental::coroutine_handle<> await_suspend(std::experimental::coroutine_handle<P> coro)
-            {
-                auto co = coro.promise().continuation_;
-                return co;
-            }
-            void await_resume() {}
-        };*/
+    class task_promise_base  {
 
     public:
         task_promise_base() : value_{} {}
@@ -107,8 +94,7 @@ namespace coro2 {
     //--------------------------------------------------------------------------------------
 
     template<typename T>
-    class task
-    {
+    class task {
     public:
 
         task(task_promise_base<T>& promise, std::experimental::coroutine_handle<> coro)
@@ -225,32 +211,8 @@ namespace std
 }
 
 namespace coro2 {
-    struct MyAllocator {
-        MyAllocator() { 
-            m_state = 55; 
-        };
-        MyAllocator(const MyAllocator&) {
-            m_state = 56;
-        };
-        ~MyAllocator() {};
-        void* allocate(std::size_t sz) { 
-            return new uint8_t[sz]; 
-        };
-        void deallocate(void* p, std::size_t sz) {
-            delete[] p; 
-        };
-        void* allocate_bytes(std::size_t sz) {
-            return new uint8_t[sz];
-        };
-        void deallocate_bytes(void* p, std::size_t sz) {
-            delete[] p;
-        };
-    private:
-        int m_state;
-    };
 
-    template<typename ALLOCATOR>
-    task<int> completes_synchronously(std::allocator_arg_t, ALLOCATOR allocator, int i) {
+    task<int> completes_synchronously(int i) {
         co_return 2 * i;
     }
 
@@ -259,13 +221,12 @@ namespace coro2 {
         int sum = 0;
 
         for (int i = 0; i < count; ++i) {
-            sum += co_await completes_synchronously(std::allocator_arg, allocator, i);
+            sum += co_await completes_synchronously(i);
         }
         co_return sum;
     }
 
     void test() {
-        MyAllocator allocator;
         std::pmr::polymorphic_allocator<char> allocator2(&g_global_mem2);
 
         auto f = loop_synchronously(std::allocator_arg_t{}, allocator2, 100);
