@@ -29,76 +29,78 @@ namespace coro2 {
     template<typename T>
     class task;
 
+    auto g_global_mem2 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
+
+
     template<typename T>
     class task_promise_base
     {
-        struct final_awaitable
+        /*struct final_awaitable
         {
             bool await_ready() { return false; }
+
             template<typename P>
             std::experimental::coroutine_handle<> await_suspend(std::experimental::coroutine_handle<P> coro)
             {
-                auto co = coro.promise().m_continuation;
+                auto co = coro.promise().continuation_;
                 return co;
             }
             void await_resume() {}
-        };
+        };*/
 
     public:
-        task_promise_base() {}; // : m_state(state::empty) {}
+        task_promise_base() : value_{} {}
 
-        ~task_promise_base()
-        {
-            /*switch (m_state)
-            {
-            case state::value:
-                reinterpret_cast<T*>(&m_storage)->~T();
-                break;
-            case state::exception:
-                reinterpret_cast<std::exception_ptr*>(&m_storage)->~exception_ptr();
-                break;
-            case state::empty:
-                break;
-            }*/
-        }
-        task<T> get_return_object()
-        {
+        ~task_promise_base() {}
+
+        task<T> get_return_object() {
             return task<T>{ *this, std::experimental::coroutine_handle<task_promise_base>::from_promise(*this) };
         }
         
-        std::experimental::suspend_always initial_suspend() { return{}; }
+        std::experimental::suspend_always initial_suspend() { 
+            return{}; 
+        }
         
-        final_awaitable final_suspend() { return{}; }
-
         template<typename U, std::enable_if_t<std::is_convertible_v<U&&, T>, int> = 0>
-        void return_value(U&& value)
-        {
-            //new (&m_storage) T(std::forward<U>(value));
-            //m_state = state::value;
+        void return_value(U&& value) {
+            value_ = value;
         }
 
-        void unhandled_exception()
-        {
-            //new (&m_storage) std::exception_ptr(std::current_exception());
-            //m_state = state::exception;
+        void unhandled_exception() {
+            std::terminate();
         }
 
-        T& value()
-        {
-            /*if (m_state == state::exception)
-            {
-                std::rethrow_exception(*reinterpret_cast<std::exception_ptr*>(&m_storage));
+        T& get() {
+            return value_;
+        }
+
+        struct final_awaiter {
+            bool await_ready() noexcept {
+                return false;
             }
 
-            return *reinterpret_cast<T*>(&m_storage);*/
+            template<typename PROMISE>
+            void await_suspend(std::experimental::coroutine_handle<PROMISE> h) noexcept {
+                auto& promise = h.promise();
+                if (!promise.continuation_) return;
+
+                if (promise.ready_.exchange(true, std::memory_order_acq_rel)) {
+                    promise.continuation_.resume();
+                }
+            }
+
+            void await_resume() noexcept {}
+        };
+
+        final_awaiter final_suspend() noexcept {
             return {};
         }
+
     private:
         friend class task<T>;
-        //enum class state { empty, value, exception };
-        std::experimental::coroutine_handle<> m_continuation;
-        //state m_state;
-        //std::aligned_union_t<0, T, std::exception_ptr> m_storage;
+        std::experimental::coroutine_handle<> continuation_;
+        std::atomic<bool> ready_ = false;
+        T value_;
     };
 
 
@@ -119,24 +121,12 @@ namespace coro2 {
             , m_coro(std::exchange(other.m_coro, {}))
         {}
 
-        ~task()
-        {
-            if (m_coro) m_coro.destroy();
+        ~task() {
+            if (m_coro && !m_coro.done()) m_coro.destroy();
         }
 
-        bool await_ready() noexcept { return !m_coro || m_coro.done(); }
-
-        std::experimental::coroutine_handle<> await_suspend(std::experimental::coroutine_handle<> continuation)
-        {
-            m_promise->m_continuation = continuation;
-            return m_coro;
-        }
-
-        T await_resume()
-        {
-            /*if (!m_promise) throw std::exception{};
-            return m_promise->value();*/
-            return {};
+        T get() {
+            return m_promise->get();
         }
 
         bool resume() {
@@ -144,6 +134,23 @@ namespace coro2 {
                 m_coro.resume();
             return !m_coro.done();
         };
+
+        //----------------------------------------------------------------------------------------------------------
+
+        bool await_ready() noexcept {
+            return false;
+        }
+
+        template<typename PROMISE>
+        bool await_suspend(std::experimental::coroutine_handle<PROMISE> continuation) noexcept {
+            m_promise->continuation_ = continuation;
+            m_coro.resume();
+            return !m_promise->ready_.exchange(true, std::memory_order_acq_rel);
+        }
+
+        T await_resume() noexcept {
+            return m_promise->value_;
+        }
 
     private:
         task_promise_base<T>* m_promise;
@@ -243,26 +250,26 @@ namespace coro2 {
         void* m_state;
     };
 
-    //task<int> bar(std::allocator_arg_t, ALLOCATOR allocator)
-
-    //template<typename ALLOCATOR>
-    task<int> bar()
+    template<typename ALLOCATOR>
+    task<int> bar(std::allocator_arg_t, ALLOCATOR allocator)
     {
-        co_return 2;
+        co_return 45;
     }
 
-    //template<typename ALLOCATOR>
-    task<int> foo()
+    template<typename ALLOCATOR>
+    task<int> foo(std::allocator_arg_t, ALLOCATOR allocator)
     {
-        int result = co_await bar();
-        co_return 2;
+        int result = co_await bar(std::allocator_arg_t{}, allocator);
+        co_return result * 2;
     }
 
     void test() {
         MyAllocator allocator;
 
-        auto f = foo();
+        auto f = foo(std::allocator_arg_t{}, allocator);
         std::cout << f.resume() << std::endl;
+        std::cout << f.get() << std::endl;
+
     }
 }
 
