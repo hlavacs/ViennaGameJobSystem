@@ -19,36 +19,12 @@
 #include <string>
 
 
-
-namespace std::experimental {
-
-    template <>
-    struct coroutine_traits<void> {
-        struct promise_type {
-            using coro_handle = std::experimental::coroutine_handle<promise_type>;
-            auto get_return_object() {
-                return coro_handle::from_promise(*this);
-            }
-            auto initial_suspend() { return std::experimental::suspend_always(); }
-            auto final_suspend() { return std::experimental::suspend_always(); }
-            void return_void() {}
-            void unhandled_exception() {
-                std::terminate();
-            }
-        };
-    };
-
-};
-
 namespace coro3 {
     using namespace std::experimental;
 
     auto g_global_mem3 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
-
     template<typename T> class task;
-
-    struct MyAllocator;
 
     //---------------------------------------------------------------------------------------------------
 
@@ -184,8 +160,31 @@ namespace coro3 {
         std::experimental::coroutine_handle<promise_type> coro_;
     };
 
+
+
+    class TestClass {
+    public:
+        TestClass() {};
+
+        task<int> getState(int i) {
+            m_state = 2 * i;
+            co_return m_state;
+        }
+
+        task<int> getState(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+            m_state = 2 * i;
+            co_return m_state;
+        }
+
+        int m_state = 0;
+    };
+
+    TestClass tc;
+
+
     task<int> completes_synchronously(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
-        co_return 2 * i;
+        int j = co_await tc.getState( i);
+        co_return j;
     }
 
     task<int> loop_synchronously(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
