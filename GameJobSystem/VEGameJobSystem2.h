@@ -34,33 +34,75 @@ namespace vgjs {
 
     template<typename T> class task;
 
-    template<typename T>
     class task_promise_base {
-
     public:
-        task_promise_base() : value_{} {}
+        std::atomic<task_promise_base*>         m_next = nullptr;
+        std::atomic<int>                        m_children = 0;
+        std::experimental::coroutine_handle<>   m_continuation;
+        std::atomic<bool>                       m_ready = false;
 
-        ~task_promise_base() {}
+        task_promise_base() { };
 
-        task<T> get_return_object() {
-            return task<T>{ *this, std::experimental::coroutine_handle<task_promise_base>::from_promise(*this) };
-        }
-
-        std::experimental::suspend_always initial_suspend() {
-            return{};
-        }
-
-        template<typename U, std::enable_if_t<std::is_convertible_v<U&&, T>, int> = 0>
-        void return_value(U&& value) {
-            value_ = value;
-        }
-
-        void unhandled_exception() {
+        void unhandled_exception() noexcept {
             std::terminate();
         }
 
-        T& get() {
-            return value_;
+        template<typename... Args>
+        void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) {
+            auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
+            char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
+            if (ptr == nullptr) {
+                std::terminate();
+            }
+            *reinterpret_cast<std::pmr::memory_resource**>(ptr + allocatorOffset) = mr;
+            return ptr;
+        }
+
+        template<typename Class, typename... Args>
+        void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) {
+            return operator new(sz, std::allocator_arg, mr, args...);
+        }
+
+        template<typename Class, typename... Args>
+        void* operator new(std::size_t sz, Class, Args&&... args) {
+            return operator new(sz, std::allocator_arg, std::pmr::get_default_resource(), args...);
+        }
+
+        template<typename... Args>
+        void* operator new(std::size_t sz, Args&&... args) {
+            return operator new(sz, std::allocator_arg, std::pmr::get_default_resource(), args...);
+        }
+
+        void operator delete(void* ptr, std::size_t sz) {
+            auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
+            auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
+            (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
+        }
+
+    };
+
+    template<typename T>
+    class task_promise : public task_promise_base {
+    private:
+        T m_value;
+
+    public:
+        task_promise() : task_promise_base(), m_value{} {};
+
+        std::experimental::suspend_always initial_suspend() noexcept {
+            return {};
+        }
+
+        task<T> get_return_object() noexcept {
+            return task<T>{ std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this) };
+        }
+
+        void return_value(T t) noexcept {
+            m_value = t;
+        }
+
+        T get() {
+            return m_value;
         }
 
         struct final_awaiter {
@@ -68,13 +110,12 @@ namespace vgjs {
                 return false;
             }
 
-            template<typename PROMISE>
-            void await_suspend(std::experimental::coroutine_handle<PROMISE> h) noexcept {
-                auto& promise = h.promise();
-                if (!promise.continuation_) return;
+            void await_suspend(std::experimental::coroutine_handle<task_promise<T>> h) noexcept {
+                task_promise<T>& promise = h.promise();
+                if (!promise.m_continuation) return;
 
-                if (promise.ready_.exchange(true, std::memory_order_acq_rel)) {
-                    promise.continuation_.resume();
+                if (promise.m_ready.exchange(true, std::memory_order_acq_rel)) {
+                    promise.m_continuation.resume();
                 }
             }
 
@@ -84,30 +125,20 @@ namespace vgjs {
         final_awaiter final_suspend() noexcept {
             return {};
         }
-
-    private:
-        friend class task<T>;
-        std::experimental::coroutine_handle<> continuation_;
-        std::atomic<bool> ready_ = false;
-        T value_;
     };
 
 
-    //--------------------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
 
     template<typename T>
     class task {
+        using promise_type = task_promise<T>;
+
+    private:
+        std::experimental::coroutine_handle<promise_type> m_coro;
+
     public:
-
-        task(task_promise_base<T>& promise, std::experimental::coroutine_handle<> coro)
-            : m_promise(std::addressof(promise))
-            , m_coro(coro)
-        {}
-
-        task(task&& other)
-            : m_promise(std::exchange(other.m_promise, nullptr))
-            , m_coro(std::exchange(other.m_coro, {}))
-        {}
+        task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
         ~task() {
             if (m_coro)
@@ -115,7 +146,7 @@ namespace vgjs {
         }
 
         T get() {
-            return m_promise->get();
+            return m_coro.promise().get();
         }
 
         bool resume() {
@@ -124,95 +155,31 @@ namespace vgjs {
             return !m_coro.done();
         };
 
-        //----------------------------------------------------------------------------------------------------------
-
         bool await_ready() noexcept {
             return false;
         }
 
-        bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-            m_promise->continuation_ = continuation;
+        bool await_suspend(std::experimental::coroutine_handle<promise_type> continuation) noexcept {
+            promise_type& promise = m_coro.promise();
+            promise.m_continuation = continuation;
             m_coro.resume();
-            return !m_promise->ready_.exchange(true, std::memory_order_acq_rel);
+            return !promise.m_ready.exchange(true, std::memory_order_acq_rel);
         }
 
         T await_resume() noexcept {
-            return m_promise->value_;
+            promise_type& promise = m_coro.promise();
+            return promise.m_value;
         }
 
-    private:
-        task_promise_base<T>* m_promise;
-        std::experimental::coroutine_handle<> m_coro;
+        explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
+
     };
 
 
-    //--------------------------------------------------------------------------------------
-
-
-    template<typename T, typename Allocator>
-    class task_promise : public task_promise_base<T> {
-    public:
-
-        template<typename... Args>
-        void* operator new(std::size_t sz, std::allocator_arg_t, Allocator& allocator, Args&&...) {
-            auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
-            char* p = (char*)allocator.allocate(allocatorOffset + sizeof(Allocator));
-            try {
-                new (p + allocatorOffset) Allocator(allocator);
-            }
-            catch (...) {
-                allocator.deallocate(p, allocatorOffset + sizeof(Allocator));
-                throw;
-            }
-            return p;
-        }
-
-        template<typename Class, typename... Args>
-        void* operator new(std::size_t sz, Class, std::allocator_arg_t, Allocator& allocator, Args&&... args) {
-            return operator new(sz, std::allocator_arg_t{}, allocator, args...);
-        }
-
-        void operator delete(void* pVoid, std::size_t sz)
-        {
-            auto allocatorOffset = (sz + alignof(Allocator) - 1) & ~(alignof(Allocator) - 1);
-            char* p = static_cast<char*>(pVoid);
-            Allocator& allocator = Allocator(*reinterpret_cast<Allocator*>(p + allocatorOffset));
-            Allocator allocatorCopy = std::move(allocator); // assuming noexcept copy here.
-            allocator.~Allocator();
-            allocatorCopy.deallocate(p, allocatorOffset + sizeof(Allocator));
-        }
-
-        task<T> get_return_object() {
-            return task<T>{ *this, std::experimental::coroutine_handle<task_promise>::from_promise(*this) };
-        }
-    };
-}
-
-
-namespace std
-{
-    namespace experimental
-    {
-        template<typename T, typename... Args>
-        struct coroutine_traits<vgjs::task<T>, Args...> {
-            using promise_type = vgjs::task_promise_base<T>;
-        };
-
-        template<typename T, typename Allocator, typename... Args>
-        struct coroutine_traits<vgjs::task<T>, std::allocator_arg_t, Allocator, Args...> {
-            using promise_type = vgjs::task_promise<T, Allocator>;
-        };
-
-        template<typename T, typename Class, typename Allocator, typename... Args>
-        struct coroutine_traits<vgjs::task<T>, Class, std::allocator_arg_t, Allocator, Args...> {
-            using promise_type = vgjs::task_promise<T, Allocator>;
-        };
-    }
-}
 
 
 
-namespace vgjs {
+
 
 
 
