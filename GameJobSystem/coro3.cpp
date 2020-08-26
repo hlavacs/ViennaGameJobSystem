@@ -58,14 +58,36 @@ namespace coro3 {
 
         task_promise() : value_(0) {};
 
-        void* operator new(std::size_t size) {
-            void* ptr = g_global_mem3.allocate(size);
-            if (!ptr) throw std::bad_alloc{};
+        template<typename... Args>
+        void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) {
+            auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
+            char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
+            if (ptr == nullptr) {
+                std::terminate();
+            }
+            *reinterpret_cast<std::pmr::memory_resource**>(ptr + allocatorOffset) = mr;
             return ptr;
         }
 
-        void operator delete(void* ptr, std::size_t size) {
-            g_global_mem3.deallocate(ptr, size);
+        template<typename Class, typename... Args>
+        void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) {
+            return operator new(sz, std::allocator_arg, mr, args...);
+        }
+
+       template<typename Class, typename... Args>
+        void* operator new(std::size_t sz, Class, Args&&... args) {
+            return operator new(sz, std::allocator_arg, std::pmr::get_default_resource(), args...);
+        }
+
+        template<typename... Args>
+        void* operator new(std::size_t sz, Args&&... args) {
+            return operator new(sz, std::allocator_arg, std::pmr::get_default_resource(), args...);
+        }
+
+        void operator delete(void* ptr, std::size_t sz) {
+            auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
+            auto allocator = (std::pmr::memory_resource**)((char*)(ptr) + allocatorOffset);
+            (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
         }
 
         task<T> get_return_object() noexcept {
@@ -123,8 +145,7 @@ namespace coro3 {
         using promise_type = task_promise<T>;
         using value_type = T;
 
-        task(task<T>&& t) noexcept : coro_(std::exchange(t.coro_, {}))
-        {}
+        task(task<T>&& t) noexcept : coro_(std::exchange(t.coro_, {})) {}
 
         ~task() {
             if (coro_) 
@@ -157,49 +178,27 @@ namespace coro3 {
             return promise.value_;
         }
 
-        explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : coro_(h)
-        {}
+        explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : coro_(h) {}
 
     private:
         std::experimental::coroutine_handle<promise_type> coro_;
     };
 
-
-    struct MyAllocator {
-        MyAllocator() {};
-        MyAllocator(const MyAllocator&) {};
-        ~MyAllocator() {};
-        void* allocate(std::size_t sz) {
-            return new uint8_t[sz];
-        };
-        void deallocate(void* p) {
-            delete[] p;
-        };
-    private:
-        void* m_state;
-    };
-
-    template<typename ALLOCATOR>
-    task<int> completes_synchronously(std::allocator_arg_t, ALLOCATOR allocator, int i) {
+    task<int> completes_synchronously(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
         co_return 2 * i;
     }
 
-    template<typename ALLOCATOR>
-    task<int> loop_synchronously(std::allocator_arg_t, ALLOCATOR allocator, int count) {
+    task<int> loop_synchronously(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
 
         for (int i = 0; i < count; ++i) {
-            sum += co_await completes_synchronously(std::allocator_arg, allocator, i);
+            sum += co_await completes_synchronously(std::allocator_arg, mr, i);
         }
         co_return sum;
     }
 
     void testTask() {
-        MyAllocator allocator;
-
-        std::pmr::polymorphic_allocator<char> allocator2;
-
-        auto ls = loop_synchronously(std::allocator_arg, allocator2, 10);
+        auto ls = loop_synchronously(std::allocator_arg, &g_global_mem3, 30);
         ls.resume();
         int sum = ls.get();
         std::cout << "Sum: " << sum << std::endl;
