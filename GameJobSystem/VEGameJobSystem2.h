@@ -36,7 +36,7 @@ namespace vgjs {
 
     class task_promise_base {
     public:
-        std::atomic<task_promise_base*>         m_next = nullptr;
+        task_promise_base*                      m_next = nullptr;
         std::atomic<int>                        m_children = 0;
         std::experimental::coroutine_handle<>   m_continuation;
         std::atomic<bool>                       m_ready = false;
@@ -84,7 +84,7 @@ namespace vgjs {
     template<typename T>
     class task_promise : public task_promise_base {
     private:
-        T m_value;
+        T m_value{};
 
     public:
         task_promise() : task_promise_base(), m_value{} {};
@@ -130,8 +130,16 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
+
+    class task_base {
+    public:
+        task_base() {};
+        virtual bool await_ready() = 0;
+    };
+
+
     template<typename T>
-    class task {
+    class task : public task_base {
         using promise_type = task_promise<T>;
 
     private:
@@ -177,6 +185,47 @@ namespace vgjs {
 
 
 
+    /**
+    * \brief A lockfree LIFO stack
+    *
+    * This queue can be accessed by any thread, it is synchronized by STL CAS operations.
+    * However it is only a LIFO stack, not a FIFO queue.
+    *
+    */
+    class JobQueue {
+
+        std::atomic<task_promise_base*> m_head = nullptr;	///< Head of the stack
+
+    public:
+        JobQueue() {};	///<JobQueueLockFree class constructor
+
+        /**
+        *
+        * \brief Pushes a job onto the queue
+        *
+        * \param[in] pJob The job to be pushed into the queue
+        *
+        */
+        void push(task_promise_base* pJob) {
+            pJob->m_next = m_head.load(std::memory_order_relaxed);
+            while (!std::atomic_compare_exchange_weak(&m_head, &pJob->m_next, pJob)) {};
+        };
+
+        /**
+        *
+        * \brief Pops a job from the queue
+        *
+        * \returns a job or nullptr
+        *
+        */
+        task_promise_base* pop() {
+            task_promise_base* head = m_head.load(std::memory_order_relaxed);
+            if (head == nullptr) return nullptr;
+            while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
+            return head;
+        };
+
+    };
 
 
 
