@@ -21,13 +21,12 @@ using namespace std::chrono;
 namespace vgjs {
 
 
-
-
-
 	void test() {
 
+		JobSystem::instance();
 
-
+		std::string str;
+		std::cin >> str;
 	}
 
 }

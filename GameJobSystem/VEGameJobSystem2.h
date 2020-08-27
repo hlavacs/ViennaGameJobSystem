@@ -30,11 +30,15 @@
 #include <memory_resource>
 
 
+
 namespace vgjs {
 
     template<typename T> class task;
 
     class task_promise_base {
+
+        friend task;
+
     public:
         task_promise_base*                      m_next = nullptr;
         std::atomic<int>                        m_children = 0;
@@ -46,6 +50,14 @@ namespace vgjs {
         void unhandled_exception() noexcept {
             std::terminate();
         }
+
+        virtual bool resume() = 0;
+
+        bool continue_parent() {
+            if (!m_continuation.done())
+                m_continuation.resume();
+            return !m_continuation.done();
+        };
 
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) {
@@ -96,6 +108,15 @@ namespace vgjs {
         task<T> get_return_object() noexcept {
             return task<T>{ std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this) };
         }
+
+        bool resume() {
+            auto coro = std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this);
+
+            if (!(coro))
+                coro.resume();
+            return !coro.done();
+        };
+
 
         void return_value(T t) noexcept {
             m_value = t;
@@ -170,7 +191,10 @@ namespace vgjs {
         bool await_suspend(std::experimental::coroutine_handle<promise_type> continuation) noexcept {
             promise_type& promise = m_coro.promise();
             promise.m_continuation = continuation;
-            m_coro.resume();
+            
+            //m_coro.resume();
+            JobSystem::
+
             return !promise.m_ready.exchange(true, std::memory_order_acq_rel);
         }
 
@@ -193,10 +217,12 @@ namespace vgjs {
     *
     */
     class JobQueue {
+        using job_type = task_promise_base;
 
-        std::atomic<task_promise_base*> m_head = nullptr;	///< Head of the stack
+        std::atomic<job_type*> m_head = nullptr;	///< Head of the stack
 
     public:
+
         JobQueue() {};	///<JobQueueLockFree class constructor
 
         /**
@@ -206,7 +232,7 @@ namespace vgjs {
         * \param[in] pJob The job to be pushed into the queue
         *
         */
-        void push(task_promise_base* pJob) {
+        void push(job_type* pJob) {
             pJob->m_next = m_head.load(std::memory_order_relaxed);
             while (!std::atomic_compare_exchange_weak(&m_head, &pJob->m_next, pJob)) {};
         };
@@ -218,8 +244,8 @@ namespace vgjs {
         * \returns a job or nullptr
         *
         */
-        task_promise_base* pop() {
-            task_promise_base* head = m_head.load(std::memory_order_relaxed);
+        job_type* pop() {
+            job_type* head = m_head.load(std::memory_order_relaxed);
             if (head == nullptr) return nullptr;
             while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
             return head;
@@ -237,14 +263,15 @@ namespace vgjs {
     *
     */
     class JobSystem {
+        using job_type = task_promise_base;
 
     private:
         std::vector<std::unique_ptr<std::thread>>	m_threads;	            ///< array of thread structures
-        uint32_t									m_thread_count;		    ///< number of threads in the pool
+        uint32_t						            m_thread_count = 0;     ///< number of threads in the pool
         uint32_t									m_start_idx = 0;        ///< idx of first thread that is created
-        static thread_local uint32_t			    m_thread_index;			///< each thread has its own number
+        static inline thread_local uint32_t		    m_thread_index;			///< each thread has its own number
         std::atomic<bool>							m_terminate = false;	///< Flag for terminating the pool
-        static std::unique_ptr<JobSystem>           m_instance;	            ///<pointer to singleton
+        static inline std::unique_ptr<JobSystem>    m_instance;	            ///<pointer to singleton
         std::vector<std::unique_ptr<JobQueue>>		m_local_queues;	        ///< Each thread has its own Job queue
         std::unique_ptr<JobQueue>                   m_central_queue;        ///<Main central job queue
 
@@ -267,9 +294,8 @@ namespace vgjs {
             }
 
             m_central_queue = std::make_unique<JobQueue>();
-            m_local_queues.resize(m_thread_count);						//reserve mem for job queue pointers
             for (uint32_t i = 0; i < m_thread_count; i++) {
-                m_local_queues[i] = std::make_unique<JobQueue>();		//local job queue
+                m_local_queues.push_back(std::make_unique<JobQueue>());	//local job queue
             }
 
             for (uint32_t i = start_idx; i < m_thread_count; i++) {
@@ -300,8 +326,7 @@ namespace vgjs {
         *
         */
         static bool instance_created() {
-            if (m_instance) return true;
-            return false;
+            return (m_instance != nullptr);
         };
 
         JobSystem(const JobSystem&) = delete;				// non-copyable,
@@ -312,8 +337,10 @@ namespace vgjs {
         /**
         * \brief JobSystem class destructor
         */
-        ~JobSystem() {};
-
+        ~JobSystem() {
+            m_terminate = true;
+            wait_for_termination();
+        };
 
         /**
         *
@@ -323,19 +350,48 @@ namespace vgjs {
         *
         */
         void thread_task(uint32_t threadIndex = 0) {
-            static std::atomic<uint32_t> threadIndexCounter = 0;	//Counted up when started
+            m_thread_index = threadIndex;	                                //Remember your own thread index number
+            static std::atomic<uint32_t> thread_counter = m_thread_count;	//Counted up when started
 
-            m_thread_index = threadIndex;	//Remember your own thread index number
+            thread_counter--;			                                            //count down
+            while (thread_counter.load() > 0)	                        //Continuous only if all threads are running
+                std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 
-            threadIndexCounter++;			//count up at start
-            while (threadIndexCounter.load() < m_thread_count)	//Continuous only if all threads are running
-                std::this_thread::sleep_for(std::chrono::nanoseconds(1000));
-
-            while (!m_terminate) {			//Run until the job system is terminated
-
-
+            while (!m_terminate) {			                                //Run until the job system is terminated
+                auto* job = m_local_queues[m_thread_index]->pop();
+                if(!job)
+                    job = m_central_queue->pop();
+                if (job) {
+                    job->resume();
+                }
+                else {
+                }
             };
         };
+
+
+        /**
+        *
+        * \brief Wait for termination of all jobs
+        *
+        * Can be called by the main thread to wait for all threads to terminate.
+        * Returns as soon as all threads have exited.
+        *
+        */
+        void wait_for_termination() {
+            for (std::unique_ptr<std::thread>& pThread : m_threads) {
+                pThread->join();
+            }
+        };
+
+        void schedule( job_type *job, int32_t thd ) {
+            if (thd >= 0 && thd < (int)m_thread_count) {
+                m_local_queues[m_thread_index]->push( job );
+                return;
+            }
+            m_central_queue->push(job);
+        }
+
     };
 
 
