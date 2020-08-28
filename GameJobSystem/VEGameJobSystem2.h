@@ -37,12 +37,15 @@ namespace vgjs {
 
     class task_promise_base {
     public:
+        task_promise_base*                      m_next = nullptr;
         std::atomic<int>                        m_children = 0;
         std::experimental::coroutine_handle<>   m_continuation;
         std::atomic<bool>                       m_ready = false;
 
         task_promise_base()
         {};
+
+        virtual bool resume() { return true; };
 
         void unhandled_exception() noexcept {
             std::terminate();
@@ -106,6 +109,13 @@ namespace vgjs {
             return task<T>{ std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this) };
         }
 
+        bool resume() {
+            auto coro = std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this);
+            if (coro && !coro.done())
+                coro.resume();
+            return !coro.done();
+        };
+
         void return_value(T t) noexcept {
             m_value = t;
         }
@@ -143,9 +153,9 @@ namespace vgjs {
 
     class task_base {
     public:
-        task_base* m_next = nullptr;
         task_base() {};
-        virtual bool resume() { return true; };
+        virtual bool resume() = 0 ;
+        virtual task_promise_base* promise() = 0;
     };
 
     template<typename T>
@@ -161,12 +171,16 @@ namespace vgjs {
         task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
         ~task() {
-            //if (m_coro)
-            //    m_coro.destroy();
+            if (m_coro && m_coro.done())
+                m_coro.destroy();
         }
 
         T get() {
             return m_coro.promise().get();
+        }
+
+        task_promise_base* promise() {
+            return &m_coro.promise();
         }
 
         bool resume() {
@@ -199,7 +213,7 @@ namespace vgjs {
     };
 
 
-    using job_type = task_base;
+    using job_type = task_promise_base;
 
     /**
     * \brief A lockfree LIFO stack
@@ -236,7 +250,7 @@ namespace vgjs {
         * \returns a job or nullptr
         *
         */
-        task_base* pop() {
+        job_type* pop() {
             job_type* head = m_head.load(std::memory_order_relaxed);
             if (head == nullptr) return nullptr;
             while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
@@ -255,7 +269,6 @@ namespace vgjs {
     *
     */
     class JobSystem {
-        using job_type = task_promise_base;
 
     private:
         std::vector<std::unique_ptr<std::thread>>	m_threads;	            ///< array of thread structures
@@ -378,7 +391,7 @@ namespace vgjs {
         };
 
         template<typename T>
-        void schedule( T* job, int32_t thd = -1 ) {
+        void schedule(T* job, int32_t thd = -1 ) {
             if (thd >= 0 && thd < (int)m_thread_count) {
                 m_local_queues[m_thread_index]->push( job );
                 return;
@@ -390,7 +403,7 @@ namespace vgjs {
 
     template<typename T>
     void schedule(T* job, int32_t thd = -1) {
-        JobSystem::instance()->schedule( job, thd );
+        JobSystem::instance()->schedule( job->promise(), thd );
     }
 
 
