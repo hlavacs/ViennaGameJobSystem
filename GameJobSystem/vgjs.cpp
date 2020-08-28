@@ -54,13 +54,10 @@ namespace vgjs {
         auto lf = loop(std::allocator_arg, &g_global_mem4, 10);
         schedule(&lf);
 
-        //auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
-        //doco.resume();
+        auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
+        doco.resume();
 
         //join task pool here
-
-        char s[100];
-        std::cin >> s;
 
 	}
 

@@ -37,25 +37,26 @@ namespace vgjs {
 
     class task_promise_base {
     public:
-        task_promise_base*                      m_next = nullptr;
-        std::atomic<int>                        m_children = 0;
-        std::experimental::coroutine_handle<>   m_continuation;
-        std::atomic<bool>                       m_ready = false;
+        task_promise_base*   m_next = nullptr;
+        std::atomic<int>     m_children = 0;
+        task_promise_base*   m_continuation = nullptr;
+        std::atomic<bool>    m_ready = false;
 
         task_promise_base()
         {};
 
         virtual bool resume() { return true; };
+        task_promise_base* promise() { return this; };
 
         void unhandled_exception() noexcept {
             std::terminate();
         }
 
-        bool continue_parent() {
+        /*bool continue_parent() {
             if (m_continuation && !m_continuation.done())
                 m_continuation.resume();
             return !m_continuation.done();
-        };
+        };*/
 
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) {
@@ -134,7 +135,8 @@ namespace vgjs {
                 if (!promise.m_continuation) return;
 
                 if (promise.m_ready.exchange(true, std::memory_order_acq_rel)) {
-                    promise.m_continuation.resume();
+                    //promise.m_continuation.resume();
+                    JobSystem::instance()->schedule(promise.m_continuation);
                 }
             }
 
@@ -194,13 +196,13 @@ namespace vgjs {
         }
 
         bool await_suspend(std::experimental::coroutine_handle<promise_type> continuation) noexcept {
-            promise_type& promise = m_coro.promise();
-            promise.m_continuation = continuation;
+            auto* promise = &m_coro.promise();
+            promise->m_continuation = &continuation.promise();
             
-            m_coro.resume();
-            //JobSystem::
+            //m_coro.resume();
+            schedule( promise );
 
-            return !promise.m_ready.exchange(true, std::memory_order_acq_rel);
+            return !promise->m_ready.exchange(true, std::memory_order_acq_rel);
         }
 
         T await_resume() noexcept {
@@ -237,8 +239,7 @@ namespace vgjs {
         * \param[in] pJob The job to be pushed into the queue
         *
         */
-        template<typename T>
-        void push(T* pJob) {
+        void push(job_type* pJob) {
             pJob->m_next = m_head.load(std::memory_order_relaxed);
             while (!std::atomic_compare_exchange_weak(&m_head, &pJob->m_next, pJob)) {};
         };
@@ -390,8 +391,7 @@ namespace vgjs {
             }
         };
 
-        template<typename T>
-        void schedule(T* job, int32_t thd = -1 ) {
+        void schedule(job_type* job, int32_t thd = -1 ) {
             if (thd >= 0 && thd < (int)m_thread_count) {
                 m_local_queues[m_thread_index]->push( job );
                 return;

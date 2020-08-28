@@ -30,7 +30,8 @@ int main()
 {
 	vgjs::test();
 
-
+	std::string t;
+	std::cin >> t;
 }
 
 
