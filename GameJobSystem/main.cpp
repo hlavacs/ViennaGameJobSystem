@@ -29,6 +29,8 @@ namespace vgjs {
 int main()
 {
 	vgjs::test();
+
+
 }
 
 

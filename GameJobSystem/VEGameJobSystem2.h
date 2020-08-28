@@ -36,25 +36,20 @@ namespace vgjs {
     template<typename T> class task;
 
     class task_promise_base {
-
-        friend task;
-
     public:
-        task_promise_base*                      m_next = nullptr;
         std::atomic<int>                        m_children = 0;
         std::experimental::coroutine_handle<>   m_continuation;
         std::atomic<bool>                       m_ready = false;
 
-        task_promise_base() { };
+        task_promise_base()
+        {};
 
         void unhandled_exception() noexcept {
             std::terminate();
         }
 
-        virtual bool resume() = 0;
-
         bool continue_parent() {
-            if (!m_continuation.done())
+            if (m_continuation && !m_continuation.done())
                 m_continuation.resume();
             return !m_continuation.done();
         };
@@ -93,13 +88,15 @@ namespace vgjs {
 
     };
 
+
     template<typename T>
     class task_promise : public task_promise_base {
     private:
         T m_value{};
 
     public:
-        task_promise() : task_promise_base(), m_value{} {};
+
+        task_promise() : task_promise_base{}, m_value {} {};
 
         std::experimental::suspend_always initial_suspend() noexcept {
             return {};
@@ -108,15 +105,6 @@ namespace vgjs {
         task<T> get_return_object() noexcept {
             return task<T>{ std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this) };
         }
-
-        bool resume() {
-            auto coro = std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this);
-
-            if (!(coro))
-                coro.resume();
-            return !coro.done();
-        };
-
 
         void return_value(T t) noexcept {
             m_value = t;
@@ -146,6 +134,7 @@ namespace vgjs {
         final_awaiter final_suspend() noexcept {
             return {};
         }
+
     };
 
 
@@ -154,13 +143,15 @@ namespace vgjs {
 
     class task_base {
     public:
+        task_base* m_next = nullptr;
         task_base() {};
-        virtual bool await_ready() = 0;
+        virtual bool resume() { return true; };
     };
-
 
     template<typename T>
     class task : public task_base {
+    public:
+
         using promise_type = task_promise<T>;
 
     private:
@@ -192,15 +183,15 @@ namespace vgjs {
             promise_type& promise = m_coro.promise();
             promise.m_continuation = continuation;
             
-            //m_coro.resume();
-            JobSystem::
+            m_coro.resume();
+            //JobSystem::
 
             return !promise.m_ready.exchange(true, std::memory_order_acq_rel);
         }
 
         T await_resume() noexcept {
             promise_type& promise = m_coro.promise();
-            return promise.m_value;
+            return promise.get();
         }
 
         explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
@@ -208,6 +199,7 @@ namespace vgjs {
     };
 
 
+    using job_type = task_base;
 
     /**
     * \brief A lockfree LIFO stack
@@ -217,7 +209,6 @@ namespace vgjs {
     *
     */
     class JobQueue {
-        using job_type = task_promise_base;
 
         std::atomic<job_type*> m_head = nullptr;	///< Head of the stack
 
@@ -232,7 +223,8 @@ namespace vgjs {
         * \param[in] pJob The job to be pushed into the queue
         *
         */
-        void push(job_type* pJob) {
+        template<typename T>
+        void push(T* pJob) {
             pJob->m_next = m_head.load(std::memory_order_relaxed);
             while (!std::atomic_compare_exchange_weak(&m_head, &pJob->m_next, pJob)) {};
         };
@@ -244,7 +236,7 @@ namespace vgjs {
         * \returns a job or nullptr
         *
         */
-        job_type* pop() {
+        task_base* pop() {
             job_type* head = m_head.load(std::memory_order_relaxed);
             if (head == nullptr) return nullptr;
             while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
@@ -359,8 +351,9 @@ namespace vgjs {
 
             while (!m_terminate) {			                                //Run until the job system is terminated
                 auto* job = m_local_queues[m_thread_index]->pop();
-                if(!job)
+                if (!job) {
                     job = m_central_queue->pop();
+                }
                 if (job) {
                     job->resume();
                 }
@@ -384,7 +377,8 @@ namespace vgjs {
             }
         };
 
-        void schedule( job_type *job, int32_t thd ) {
+        template<typename T>
+        void schedule( T* job, int32_t thd = -1 ) {
             if (thd >= 0 && thd < (int)m_thread_count) {
                 m_local_queues[m_thread_index]->push( job );
                 return;
@@ -393,6 +387,11 @@ namespace vgjs {
         }
 
     };
+
+    template<typename T>
+    void schedule(T* job, int32_t thd = -1) {
+        JobSystem::instance()->schedule( job, thd );
+    }
 
 
 }

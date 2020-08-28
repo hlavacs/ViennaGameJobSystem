@@ -252,7 +252,7 @@ namespace coro2 {
     void test() {
         std::pmr::polymorphic_allocator<char> allocator2(&g_global_mem2);
 
-        auto f = loop_synchronously(std::allocator_arg_t{}, allocator2, 100);
+        auto f = loop_synchronously(std::allocator_arg, allocator2, 100);
         std::cout << f.resume() << std::endl;
         std::cout << f.get() << std::endl;
 
