@@ -191,24 +191,34 @@ namespace vgjs {
             return !m_coro.done();
         };
 
-        bool await_ready() noexcept {
-            return false;
-        }
 
-        bool await_suspend(std::experimental::coroutine_handle<promise_type> continuation) noexcept {
-            auto* promise = &m_coro.promise();
-            promise->m_continuation = &continuation.promise();
-            
-            //m_coro.resume();
-            schedule( promise );
+        struct awaiter {
+            std::experimental::coroutine_handle<promise_type> m_coro;
 
-            return !promise->m_ready.exchange(true, std::memory_order_acq_rel);
-        }
+            awaiter(std::experimental::coroutine_handle<promise_type> coro) : m_coro(coro) {};
 
-        T await_resume() noexcept {
-            promise_type& promise = m_coro.promise();
-            return promise.get();
-        }
+            bool await_ready() noexcept {
+                return false;
+            }
+
+            bool await_suspend(std::experimental::coroutine_handle<promise_type> continuation) noexcept {
+                auto* promise = &m_coro.promise();
+                promise->m_continuation = &continuation.promise();
+
+                //m_coro.resume();
+                schedule(promise);
+
+                return !promise->m_ready.exchange(true, std::memory_order_acq_rel);
+            }
+
+            T await_resume() noexcept {
+                promise_type& promise = m_coro.promise();
+                return promise.get();
+            }
+
+        };
+
+        awaiter operator co_await( ) { return awaiter{m_coro}; };
 
         explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
 
