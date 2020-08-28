@@ -39,7 +39,7 @@ namespace vgjs {
     public:
         task_promise_base*   m_next = nullptr;
         std::atomic<int>     m_children = 0;
-        task_promise_base*   m_continuation = nullptr;
+        std::experimental::coroutine_handle<> m_continuation;
         std::atomic<bool>    m_ready = false;
 
         task_promise_base()
@@ -136,7 +136,7 @@ namespace vgjs {
 
                 if (promise.m_ready.exchange(true, std::memory_order_acq_rel)) {
                     //promise.m_continuation.resume();
-                    JobSystem::instance()->schedule(promise.m_continuation);
+                    //JobSystem::instance()->schedule(promise.m_continuation);
                 }
             }
 
@@ -154,6 +154,9 @@ namespace vgjs {
 
 
     class task_base {
+    private:
+        task_base* m_next = nullptr;
+
     public:
         task_base() {};
         virtual bool resume() = 0 ;
@@ -173,7 +176,7 @@ namespace vgjs {
         task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
         ~task() {
-            if (m_coro && m_coro.done())
+            if (m_coro && !m_coro.done())
                 m_coro.destroy();
         }
 
@@ -201,12 +204,12 @@ namespace vgjs {
                 return false;
             }
 
-            bool await_suspend(std::experimental::coroutine_handle<promise_type> continuation) noexcept {
+            bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 auto* promise = &m_coro.promise();
-                promise->m_continuation = &continuation.promise();
+                promise->m_continuation = continuation;
 
                 //m_coro.resume();
-                schedule(promise);
+                //schedule(promise);
 
                 return !promise->m_ready.exchange(true, std::memory_order_acq_rel);
             }
@@ -225,7 +228,20 @@ namespace vgjs {
     };
 
 
-    using job_type = task_promise_base;
+    class JobQueue;
+
+    class Job {
+        friend JobQueue;
+
+    private:
+        Job* m_next = nullptr;
+        std::function<void(void)> m_f;
+    public:
+        Job(std::function<void(void)>&& f ) : m_f(std::forward<std::function<void(void)>>(f)) {}
+        void resume() { m_f(); };
+    };
+
+
 
     /**
     * \brief A lockfree LIFO stack
@@ -236,7 +252,7 @@ namespace vgjs {
     */
     class JobQueue {
 
-        std::atomic<job_type*> m_head = nullptr;	///< Head of the stack
+        std::atomic<Job*> m_head = nullptr;	///< Head of the stack
 
     public:
 
@@ -249,7 +265,7 @@ namespace vgjs {
         * \param[in] pJob The job to be pushed into the queue
         *
         */
-        void push(job_type* pJob) {
+        void push(Job* pJob) {
             pJob->m_next = m_head.load(std::memory_order_relaxed);
             while (!std::atomic_compare_exchange_weak(&m_head, &pJob->m_next, pJob)) {};
         };
@@ -261,8 +277,8 @@ namespace vgjs {
         * \returns a job or nullptr
         *
         */
-        job_type* pop() {
-            job_type* head = m_head.load(std::memory_order_relaxed);
+        Job* pop() {
+            Job* head = m_head.load(std::memory_order_relaxed);
             if (head == nullptr) return nullptr;
             while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
             return head;
@@ -301,7 +317,7 @@ namespace vgjs {
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
         *
         */
-        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0) {
+        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0 ) {
 
             m_start_idx = start_idx;
             m_thread_count = threadCount;
@@ -310,6 +326,7 @@ namespace vgjs {
             }
 
             m_central_queue = std::make_unique<JobQueue>();
+
             for (uint32_t i = 0; i < m_thread_count; i++) {
                 m_local_queues.push_back(std::make_unique<JobQueue>());	//local job queue
             }
@@ -401,19 +418,27 @@ namespace vgjs {
             }
         };
 
-        void schedule(job_type* job, int32_t thd = -1 ) {
+        /*void schedule(auto job, int32_t thd = -1) {
             if (thd >= 0 && thd < (int)m_thread_count) {
-                m_local_queues[m_thread_index]->push( job );
+                m_local_queues[m_thread_index]->push(job);
                 return;
             }
             m_central_queue->push(job);
-        }
+        };*/
 
     };
 
-    template<typename T>
+    /*template<typename T>
     void schedule(T* job, int32_t thd = -1) {
         JobSystem::instance()->schedule( job->promise(), thd );
+    };*/
+
+    void wait_all() {
+
+    };
+
+    void resume_on() {
+
     }
 
 
