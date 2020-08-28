@@ -161,8 +161,8 @@ namespace vgjs {
         task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
         ~task() {
-            if (m_coro)
-                m_coro.destroy();
+            //if (m_coro)
+            //    m_coro.destroy();
         }
 
         T get() {
