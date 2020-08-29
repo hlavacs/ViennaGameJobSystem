@@ -26,10 +26,10 @@ namespace vgjs {
 
     class task_promise_base {
     public:
-        task_promise_base* m_next = nullptr;
-        std::atomic<int>     m_children = 0;
-        task_promise_base* m_continuation;
-        std::atomic<bool>    m_ready = false;
+        task_promise_base*  m_next = nullptr;
+        std::atomic<int>    m_children = 0;
+        task_promise_base*  m_continuation;
+        std::atomic<bool>   m_ready = false;
 
         task_promise_base()
         {};
@@ -44,7 +44,7 @@ namespace vgjs {
             resume();
         }
 
-        /*bool continue_parent() {
+        /*void continuation() {
             if (m_continuation && !m_continuation.done())
                 m_continuation.resume();
             return !m_continuation.done();
