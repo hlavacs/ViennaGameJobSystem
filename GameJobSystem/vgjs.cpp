@@ -52,14 +52,14 @@ namespace vgjs {
 		JobSystem::instance();
 
         auto lf = loop(std::allocator_arg, &g_global_mem4, 10);
-        //schedule(&lf);
+        schedule(&lf);
 
         auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
         doco.resume();
 
         //join task pool here or setup callbacks from UI
 
-        JobSystem::instance()->wait_for_termination();
+        //JobSystem::instance()->wait_for_termination();
 	}
 
 }

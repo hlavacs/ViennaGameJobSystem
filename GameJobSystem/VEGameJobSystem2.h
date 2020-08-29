@@ -39,7 +39,7 @@ namespace vgjs {
     public:
         task_promise_base*   m_next = nullptr;
         std::atomic<int>     m_children = 0;
-        std::experimental::coroutine_handle<> m_continuation;
+        task_promise_base*   m_continuation;
         std::atomic<bool>    m_ready = false;
 
         task_promise_base()
@@ -176,8 +176,8 @@ namespace vgjs {
         task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
         ~task() {
-            if (m_coro && !m_coro.done())
-                m_coro.destroy();
+            //if (m_coro && m_coro.done())
+            //    m_coro.destroy();
         }
 
         T get() {
@@ -206,10 +206,10 @@ namespace vgjs {
 
             bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 auto* promise = &m_coro.promise();
-                promise->m_continuation = continuation;
+                promise->m_continuation = JobSystem::instance()->current_job();
 
                 //m_coro.resume();
-                //schedule(promise);
+                schedule(promise);
 
                 return !promise->m_ready.exchange(true, std::memory_order_acq_rel);
             }
@@ -228,19 +228,7 @@ namespace vgjs {
     };
 
 
-    class JobQueue;
-
-    class Job {
-        friend JobQueue;
-
-    private:
-        Job* m_next = nullptr;
-        std::function<void(void)> m_f;
-    public:
-        Job(std::function<void(void)>&& f ) : m_f(std::forward<std::function<void(void)>>(f)) {}
-        void resume() { m_f(); };
-    };
-
+    using Job = task_promise_base;
 
 
     /**
@@ -298,14 +286,15 @@ namespace vgjs {
     class JobSystem {
 
     private:
+        static inline std::unique_ptr<JobSystem>    m_instance;	            ///<pointer to singleton
         std::vector<std::unique_ptr<std::thread>>	m_threads;	            ///< array of thread structures
         uint32_t						            m_thread_count = 0;     ///< number of threads in the pool
         uint32_t									m_start_idx = 0;        ///< idx of first thread that is created
         static inline thread_local uint32_t		    m_thread_index;			///< each thread has its own number
         std::atomic<bool>							m_terminate = false;	///< Flag for terminating the pool
-        static inline std::unique_ptr<JobSystem>    m_instance;	            ///<pointer to singleton
         std::vector<std::unique_ptr<JobQueue>>		m_local_queues;	        ///< Each thread has its own Job queue
         std::unique_ptr<JobQueue>                   m_central_queue;        ///<Main central job queue
+        static inline thread_local Job*             m_current_job = nullptr;
 
     public:
 
@@ -391,12 +380,12 @@ namespace vgjs {
                 std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 
             while (!m_terminate) {			                                //Run until the job system is terminated
-                auto* job = m_local_queues[m_thread_index]->pop();
-                if (!job) {
-                    job = m_central_queue->pop();
+                m_current_job = m_local_queues[m_thread_index]->pop();
+                if (!m_current_job) {
+                    m_current_job = m_central_queue->pop();
                 }
-                if (job) {
-                    job->resume();
+                if (m_current_job) {
+                    m_current_job->resume();
                 }
                 else {
                 }
@@ -418,27 +407,62 @@ namespace vgjs {
             }
         };
 
-        /*void schedule(auto job, int32_t thd = -1) {
+
+        Job* current_job() {
+            return m_current_job;
+        }
+
+
+        void schedule(Job* job, int32_t thd = -1) {
             if (thd >= 0 && thd < (int)m_thread_count) {
                 m_local_queues[m_thread_index]->push(job);
                 return;
             }
             m_central_queue->push(job);
-        };*/
+        };
 
     };
 
-    /*template<typename T>
-    void schedule(T* job, int32_t thd = -1) {
-        JobSystem::instance()->schedule( job->promise(), thd );
-    };*/
 
-    void wait_all() {
+    struct awaiter {
+
+        bool await_ready() noexcept {
+            return false;
+        }
+
+        bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+            //auto* promise = &m_coro.promise();
+            //promise->m_continuation = JobSystem::instance()->current_job();
+
+            //m_coro.resume();
+            //schedule(promise);
+
+            return false; // !promise->m_ready.exchange(true, std::memory_order_acq_rel);
+        }
+
+        void await_resume() noexcept {
+            //promise_type& promise = m_coro.promise();
+            return; // promise.get();
+        }
 
     };
 
-    void resume_on() {
 
+    template<typename T>
+    awaiter schedule(T* task, int32_t thd = -1) {
+        JobSystem::instance()->schedule( task->promise(), thd );
+        return {};
+    };
+
+    template<typename T>
+    awaiter wait_all( std::pmr::vector<T> tasks ) {
+        return {};
+
+    };
+
+    template<typename T>
+    awaiter resume_on() {
+        return {};
     }
 
 
