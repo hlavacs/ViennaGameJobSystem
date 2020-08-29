@@ -52,7 +52,7 @@ namespace vgjs {
 		JobSystem<task_promise_base>::instance();
 
         auto lf = loop(std::allocator_arg, &g_global_mem4, 10);
-        schedule(&lf);
+        schedule(lf.promise());
 
         auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
         doco.resume();

@@ -46,10 +46,13 @@ namespace vgjs {
         {};
 
         virtual bool resume() { return true; };
-        task_promise_base* promise() { return this; };
 
         void unhandled_exception() noexcept {
             std::terminate();
+        }
+
+        void operator() () {
+            resume();
         }
 
         /*bool continue_parent() {
@@ -464,7 +467,7 @@ namespace vgjs {
 
     template<typename T>
     awaiter schedule(T* task, int32_t thd = -1) {
-        JobSystem<task_promise_base>::instance()->schedule( task->promise(), thd );
+        JobSystem<task_promise_base>::instance()->schedule( task, thd );
         return {};
     };
 
