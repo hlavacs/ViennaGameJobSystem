@@ -206,7 +206,7 @@ namespace vgjs {
 
             bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 auto* promise = &m_coro.promise();
-                promise->m_continuation = JobSystem::instance()->current_job();
+                promise->m_continuation = JobSystem<task_promise_base>::instance()->current_job();
 
                 //m_coro.resume();
                 schedule(promise);
@@ -238,6 +238,7 @@ namespace vgjs {
     * However it is only a LIFO stack, not a FIFO queue.
     *
     */
+    template<typename JOB = Job, bool FIFO = false>
     class JobQueue {
 
         std::atomic<Job*> m_head = nullptr;	///< Head of the stack
@@ -253,7 +254,7 @@ namespace vgjs {
         * \param[in] pJob The job to be pushed into the queue
         *
         */
-        void push(Job* pJob) {
+        void push(JOB* pJob) {
             pJob->m_next = m_head.load(std::memory_order_relaxed);
             while (!std::atomic_compare_exchange_weak(&m_head, &pJob->m_next, pJob)) {};
         };
@@ -266,9 +267,22 @@ namespace vgjs {
         *
         */
         Job* pop() {
-            Job* head = m_head.load(std::memory_order_relaxed);
+            JOB* head = m_head.load(std::memory_order_relaxed);
             if (head == nullptr) return nullptr;
+
+            if constexpr (FIFO) {
+                while (head->m_next) {
+                    JOB* last = head;
+                    head = head->m_next;
+                    if (!head->m_next) {
+                        last->m_next = nullptr;
+                        return head;
+                    }
+                }
+            }
+
             while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
+            
             return head;
         };
 
@@ -283,6 +297,7 @@ namespace vgjs {
     * It can add new jobs, and wait until they are done.
     *
     */
+    template<typename JOB = Job>
     class JobSystem {
 
     private:
@@ -292,9 +307,9 @@ namespace vgjs {
         uint32_t									m_start_idx = 0;        ///< idx of first thread that is created
         static inline thread_local uint32_t		    m_thread_index;			///< each thread has its own number
         std::atomic<bool>							m_terminate = false;	///< Flag for terminating the pool
-        std::vector<std::unique_ptr<JobQueue>>		m_local_queues;	        ///< Each thread has its own Job queue
-        std::unique_ptr<JobQueue>                   m_central_queue;        ///<Main central job queue
-        static inline thread_local Job*             m_current_job = nullptr;
+        std::vector<std::unique_ptr<JobQueue<JOB,true>>>		m_local_queues;	        ///< Each thread has its own Job queue
+        std::unique_ptr<JobQueue<JOB,false>>                   m_central_queue;        ///<Main central job queue
+        static inline thread_local JOB*             m_current_job = nullptr;
 
     public:
 
@@ -314,10 +329,10 @@ namespace vgjs {
                 m_thread_count = std::thread::hardware_concurrency();		///< main thread is also running
             }
 
-            m_central_queue = std::make_unique<JobQueue>();
+            m_central_queue = std::make_unique<JobQueue<JOB,false>>();
 
             for (uint32_t i = 0; i < m_thread_count; i++) {
-                m_local_queues.push_back(std::make_unique<JobQueue>());	//local job queue
+                m_local_queues.push_back(std::make_unique<JobQueue<JOB,true>>());	//local job queue
             }
 
             for (uint32_t i = start_idx; i < m_thread_count; i++) {
@@ -447,10 +462,9 @@ namespace vgjs {
 
     };
 
-
     template<typename T>
     awaiter schedule(T* task, int32_t thd = -1) {
-        JobSystem::instance()->schedule( task->promise(), thd );
+        JobSystem<task_promise_base>::instance()->schedule( task->promise(), thd );
         return {};
     };
 
