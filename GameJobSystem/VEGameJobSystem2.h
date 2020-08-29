@@ -28,10 +28,21 @@
 #include <algorithm>
 #include <assert.h>
 #include <memory_resource>
+#include <type_traits>
 
 
 
 namespace vgjs {
+
+
+    // primary template:
+    template<typename, typename = std::void_t<>>
+    struct HasContinuationT : std::false_type {};
+
+    // partial specialization (may be SFINAE’d away):
+    template<typename T>
+    struct HasContinuationT<T, std::void_t<decltype(std::declval<T>().continuation())>> : std::true_type { };
+
 
 
     /**
@@ -207,6 +218,10 @@ namespace vgjs {
                 }
                 if (m_current_job) {
                     (*m_current_job)();
+
+                    if constexpr (HasContinuationT<JOB>::value) {
+                        m_current_job->continuation();
+                    }
                 }
                 else if (--noop == 0 && m_thread_index > 0) {
                     noop = NOOP;
