@@ -14,6 +14,7 @@
 #define VE_IMPLEMENT_GAMEJOBSYSTEM
 #include "VEUtilClock.h"
 #include "VEGameJobSystem2.h"
+#include "task.h"
 
 using namespace std::chrono;
 
