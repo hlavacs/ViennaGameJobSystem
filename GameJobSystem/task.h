@@ -28,13 +28,12 @@ namespace vgjs {
     public:
         task_promise_base*  m_next = nullptr;
         std::atomic<int>    m_children = 0;
-        task_promise_base*  m_continuation;
+        task_promise_base*  m_continuation = nullptr;
         std::atomic<bool>   m_ready = false;
 
-        task_promise_base()
-        {};
+        task_promise_base() {};
 
-        virtual bool resume() { return true; };
+        virtual bool resume() = 0;
 
         void unhandled_exception() noexcept {
             std::terminate();
@@ -43,12 +42,6 @@ namespace vgjs {
         void operator() () {
             resume();
         }
-
-        /*void continuation() {
-            if (m_continuation && !m_continuation.done())
-                m_continuation.resume();
-            return !m_continuation.done();
-        };*/
 
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) {
@@ -118,17 +111,20 @@ namespace vgjs {
         }
 
         struct final_awaiter {
+            task_promise_base* m_promise;
+
+            final_awaiter(task_promise_base* promise) : m_promise(promise) {}
+
             bool await_ready() noexcept {
                 return false;
             }
 
             void await_suspend(std::experimental::coroutine_handle<task_promise<T>> h) noexcept {
-                task_promise<T>& promise = h.promise();
-                if (!promise.m_continuation) return;
-
-                if (promise.m_ready.exchange(true, std::memory_order_acq_rel)) {
-                    //promise.m_continuation.resume();
-                    //JobSystem::instance()->schedule(promise.m_continuation);
+                if (m_promise->m_continuation) {
+                    auto children = m_promise->m_continuation->m_children.fetch_sub(1);
+                    if (children <= 1) {
+                        schedule(m_promise->m_continuation);
+                    }
                 }
             }
 
@@ -136,7 +132,7 @@ namespace vgjs {
         };
 
         final_awaiter final_suspend() noexcept {
-            return {};
+            return { this };
         }
 
     };
@@ -168,8 +164,8 @@ namespace vgjs {
         task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
         ~task() {
-            //if (m_coro && m_coro.done())
-            //    m_coro.destroy();
+            if (m_coro)             //use done() only if coro suspended
+                m_coro.destroy();   //if you do not want this then move task
         }
 
         T get() {
