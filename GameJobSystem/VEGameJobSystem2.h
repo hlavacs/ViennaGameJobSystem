@@ -34,6 +34,7 @@
 
 namespace vgjs {
 
+    //test at compile time whether a class has member fucntion void continuation()
 
     // primary template:
     template<typename, typename = std::void_t<>>
