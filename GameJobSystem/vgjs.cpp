@@ -31,6 +31,8 @@ namespace vgjs {
         int sum = 0;
         std::cout << "Starting loop\n";
 
+        unique_ptr_vector<task<int>> tv;
+
         for (int i = 0; i < count; ++i) {
 
             auto t = make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i));
@@ -39,14 +41,14 @@ namespace vgjs {
 
             std::cout << "Before loop " << i << " " << t->get() << std::endl;
 
-            unique_ptr_vector<task<int>> tv;
             tv.emplace_back(make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i)) );
 
-            co_await tv;
-
-            std::cout << "After loop " << tv[0]->get() << std::endl;
+            std::cout << "After loop " << t->get() << std::endl;
         }
-        std::cout << "Ending loop\n";
+
+        co_await tv;
+
+        std::cout << "Ending loop " << tv[tv.size()-1]->get() << std::endl;
         co_return sum;
     }
 
