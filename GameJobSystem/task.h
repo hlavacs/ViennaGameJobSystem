@@ -22,24 +22,13 @@
 
 namespace vgjs {
 
-    class task_base;
     template<typename T> class task;
-    class task_promise_base;
 
 
     template<typename T>
     void schedule(T* task, int32_t thd = -1) {
         JobSystem<task_promise_base>::instance()->schedule(task, thd);
         return;
-    };
-
-    //---------------------------------------------------------------------------------------------------
-
-    class task_base {
-    public:
-        task_base() {};
-        virtual bool resume() = 0;
-        virtual task_promise_base* promise() = 0;
     };
 
     //---------------------------------------------------------------------------------------------------
@@ -95,6 +84,15 @@ namespace vgjs {
             (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
         }
 
+    };
+
+    //---------------------------------------------------------------------------------------------------
+
+    class task_base {
+    public:
+        task_base() {};
+        virtual bool resume() = 0;
+        virtual task_promise_base* promise() = 0;
     };
 
     //---------------------------------------------------------------------------------------------------
@@ -238,7 +236,7 @@ namespace vgjs {
 
     };
 
-
+    //---------------------------------------------------------------------------------------------------
 
     template<typename T>
     void wait_all(std::pmr::vector<T> tasks) {
