@@ -33,18 +33,18 @@ namespace vgjs {
 
         for (int i = 0; i < count; ++i) {
 
-            auto t = make_unique_task<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i));
-            auto u = make_unique_task<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, 10*i));
+            auto t = make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i));
+            auto u = make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, 10 * i));
             co_await std::pmr::vector<task_base*>{ t.get(), u.get() };
 
-            std::cout << "Before loop " << i << std::endl;
+            std::cout << "Before loop " << i << " " << t->get() << std::endl;
 
-            task_unique_ptr_vector<task<int>> tv;
-            tv.push_back( make_unique_task<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i)) );
+            unique_ptr_vector<task<int>> tv;
+            tv.push_back(make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i)) );
 
-            //co_await tv;
+            co_await tv;
 
-            std::cout << "After loop " << t->get() << std::endl;
+            std::cout << "After loop " << tv[0]->get() << std::endl;
         }
         std::cout << "Ending loop\n";
         co_return sum;

@@ -40,20 +40,15 @@ namespace vgjs {
     };
 
     template<typename T, typename... ARGS>
-    auto make_unique_task(std::pmr::memory_resource* mr, ARGS&&... args) {
+    auto make_unique_ptr(std::pmr::memory_resource* mr, ARGS&&... args) {
         std::pmr::polymorphic_allocator<T> allocator(mr);
         T* p = allocator.allocate(1);
         new (p) T(std::forward<ARGS>(args)...);
         return std::unique_ptr<T, deleter<T>>(p, mr);
     }
 
-    template<typename T, typename... ARGS>
-    auto make_unique_task_base(std::pmr::memory_resource* mr, ARGS&&... args) {
-        std::pmr::polymorphic_allocator<T> allocator(mr);
-        T* p = allocator.allocate(1);
-        new (p) T(std::forward<ARGS>(args)...);
-        return std::unique_ptr<task_base, deleter<T>>((task_base*)p, mr);
-    }
+    template<typename T>
+    using unique_ptr_vector = std::pmr::vector<std::unique_ptr<T, deleter<T>>>;
 
     //---------------------------------------------------------------------------------------------------
 
@@ -136,11 +131,6 @@ namespace vgjs {
         virtual task_promise_base* promise() { return nullptr; };
     };
 
-    using task_base_ptr_vector = std::pmr::vector<task_base*>;
-
-    template<typename T>
-    using task_unique_ptr_vector = std::pmr::vector<std::unique_ptr<T, deleter<T>>>;
-
     //---------------------------------------------------------------------------------------------------
 
     /**
@@ -192,7 +182,7 @@ namespace vgjs {
         template<typename U>
         struct awaiter : awaiter_base {
             task_promise_base* m_promise;
-            task_unique_ptr_vector<U>& m_children;
+            unique_ptr_vector<U>& m_children;
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 m_promise->m_children.store((uint32_t)m_children.size());
@@ -202,14 +192,14 @@ namespace vgjs {
                 }
             }
 
-            awaiter(task_promise_base* promise, task_unique_ptr_vector<T>& children) noexcept
+            awaiter(task_promise_base* promise, unique_ptr_vector<T>& children) noexcept
                 : m_promise(promise), m_children(children) {};
         };
 
         task_promise_base* m_promise;
-        task_unique_ptr_vector<T>& m_children;
+        unique_ptr_vector<T>& m_children;
 
-        awaitable_vector_unique(task_promise_base* promise, task_unique_ptr_vector<T>& children) noexcept
+        awaitable_vector_unique(task_promise_base* promise, unique_ptr_vector<T>& children) noexcept
             : m_promise(promise), m_children(children) {};
 
         awaiter<T> operator co_await() noexcept { return { m_promise, m_children }; };
@@ -273,7 +263,7 @@ namespace vgjs {
         }
 
         template<typename T>
-        awaitable_vector_unique<T> await_transform(task_unique_ptr_vector<T>& tasks) noexcept {
+        awaitable_vector_unique<T> await_transform(unique_ptr_vector<T>& tasks) noexcept {
             return { this, tasks };
         }
 
