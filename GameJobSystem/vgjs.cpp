@@ -23,47 +23,9 @@ namespace vgjs {
 
     auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
-
     task<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
         co_return 2 * i;
     }
-
-    /*template<typename U>
-    struct poly_deleter {
-        std::pmr::memory_resource* m_mr;
-        
-        poly_deleter(std::pmr::memory_resource* mr) : m_mr(mr) {}
-
-        void operator()(U* b) { 
-            std::pmr::polymorphic_allocator<U> allocator(m_mr);
-            allocator.deallocate(b, 1); 
-        }
-    };*/
-
-
-
-    template<typename U>
-    struct poly_deleter {
-        std::pmr::memory_resource* m_mr;
-
-        poly_deleter(std::pmr::memory_resource* mr) : m_mr(mr) {}
-
-        void operator()(U* b) {
-            std::pmr::polymorphic_allocator<U> allocator(m_mr);
-            allocator.deallocate(b, 1);
-        }
-    };
-
-    template<typename T, typename... ARGS>
-    auto make_poly_unique(std::pmr::memory_resource* mr, ARGS&&... args) {
-
-
-        std::pmr::polymorphic_allocator<T> allocator(mr);
-        T* p = allocator.allocate(1);
-        new (p) T(std::forward<ARGS>(args)...);
-        return std::unique_ptr<T, poly_deleter<T>>(p, mr);
-    }
-
 
     task<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
@@ -71,10 +33,17 @@ namespace vgjs {
 
         for (int i = 0; i < count; ++i) {
 
-            auto t = make_poly_unique<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i));
+            auto t = make_unique_task<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i));
+            auto u = make_unique_task<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, 10*i));
+            co_await std::pmr::vector<task_base*>{ t.get(), u.get() };
 
             std::cout << "Before loop " << i << std::endl;
-            co_await std::pmr::vector<task_base*>{ t.get() };
+
+            task_unique_ptr_vector<task<int>> tv;
+            tv.push_back( make_unique_task<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i)) );
+
+            //co_await tv;
+
             std::cout << "After loop " << t->get() << std::endl;
         }
         std::cout << "Ending loop\n";

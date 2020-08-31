@@ -22,7 +22,41 @@
 
 namespace vgjs {
 
+    class task_base;
     template<typename T> class task;
+
+    //---------------------------------------------------------------------------------------------------
+
+    template<typename U>
+    struct deleter {
+        std::pmr::memory_resource* m_mr;
+
+        deleter(std::pmr::memory_resource* mr) : m_mr(mr) {}
+
+        void operator()(U* b) {
+            std::pmr::polymorphic_allocator<U> allocator(m_mr);
+            allocator.deallocate(b, 1);
+        }
+    };
+
+    template<typename T, typename... ARGS>
+    auto make_unique_task(std::pmr::memory_resource* mr, ARGS&&... args) {
+        std::pmr::polymorphic_allocator<T> allocator(mr);
+        T* p = allocator.allocate(1);
+        new (p) T(std::forward<ARGS>(args)...);
+        return std::unique_ptr<T, deleter<T>>(p, mr);
+    }
+
+    template<typename T, typename... ARGS>
+    auto make_unique_task_base(std::pmr::memory_resource* mr, ARGS&&... args) {
+        std::pmr::polymorphic_allocator<T> allocator(mr);
+        T* p = allocator.allocate(1);
+        new (p) T(std::forward<ARGS>(args)...);
+        return std::unique_ptr<task_base, deleter<T>>((task_base*)p, mr);
+    }
+
+    //---------------------------------------------------------------------------------------------------
+
 
     /**
     * \brief Schedule a task promise into the job system
@@ -98,9 +132,14 @@ namespace vgjs {
     class task_base {
     public:
         task_base() noexcept {};
-        virtual bool resume() = 0;
-        virtual task_promise_base* promise() = 0;
+        virtual bool resume() { return true; };
+        virtual task_promise_base* promise() { return nullptr; };
     };
+
+    using task_base_ptr_vector = std::pmr::vector<task_base*>;
+
+    template<typename T>
+    using task_unique_ptr_vector = std::pmr::vector<std::unique_ptr<T, deleter<T>>>;
 
     //---------------------------------------------------------------------------------------------------
 
@@ -123,6 +162,7 @@ namespace vgjs {
     * the return values can be retrieved by calling get().
     */
     struct awaitable_vector {
+
         struct awaiter : awaiter_base {
             task_promise_base* m_promise;
             std::pmr::vector<task_base*>& m_children;
@@ -145,6 +185,36 @@ namespace vgjs {
 
         awaiter operator co_await() noexcept { return { m_promise, m_children }; };
     };
+
+    template<typename T>
+    struct awaitable_vector_unique {
+
+        template<typename U>
+        struct awaiter : awaiter_base {
+            task_promise_base* m_promise;
+            task_unique_ptr_vector<U>& m_children;
+
+            void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+                m_promise->m_children.store((uint32_t)m_children.size());
+                for (auto& ptr : m_children) {
+                    ptr->promise()->m_continuation = m_promise;
+                    JobSystem::instance()->schedule(ptr->promise());
+                }
+            }
+
+            awaiter(task_promise_base* promise, task_unique_ptr_vector<T>& children) noexcept
+                : m_promise(promise), m_children(children) {};
+        };
+
+        task_promise_base* m_promise;
+        task_unique_ptr_vector<T>& m_children;
+
+        awaitable_vector_unique(task_promise_base* promise, task_unique_ptr_vector<T>& children) noexcept
+            : m_promise(promise), m_children(children) {};
+
+        awaiter<T> operator co_await() noexcept { return { m_promise, m_children }; };
+    };
+
 
     /**
     * \brief Awaiter for changing the thread that the job is run on
@@ -200,6 +270,11 @@ namespace vgjs {
 
         T get() noexcept {
             return m_value;
+        }
+
+        template<typename T>
+        awaitable_vector_unique<T> await_transform(task_unique_ptr_vector<T>& tasks) noexcept {
+            return { this, tasks };
         }
 
         awaitable_vector await_transform( std::pmr::vector<task_base*>& tasks) noexcept {
