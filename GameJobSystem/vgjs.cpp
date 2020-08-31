@@ -23,6 +23,7 @@ namespace vgjs {
 
     auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
+
     task<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
         co_return 2 * i;
     }
@@ -34,22 +35,17 @@ namespace vgjs {
         for (int i = 0; i < count; ++i) {
             auto t = compute(std::allocator_arg, &g_global_mem4, i);
 
-            std::pmr::vector<task_base*> tasks = { &t };
-
-            co_await tasks;
+            std::cout << "Before loop " << i << std::endl;
+            co_await std::pmr::vector<task_base*>{ &t };
+            std::cout << "After loop " << t.get() << std::endl;
         }
+        std::cout << "Ending loop\n";
         co_return sum;
     }
 
     task<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
-        std::vector<task<int>*> tasks;
-        auto tk1 = compute( std::allocator_arg, mr, 1 );
-        tasks.push_back(&tk1);
-
-        auto re = tasks[0]->resume();
-        auto res = tasks[0]->get();
-
-        co_return 0;
+        auto tk1 = compute(std::allocator_arg, mr, 1);
+        co_return tk1.get();
     }
 
 	void test() {
@@ -57,10 +53,10 @@ namespace vgjs {
 		JobSystem<task_promise_base>::instance();
 
         auto lf = loop(std::allocator_arg, &g_global_mem4, 10);
-        schedule(lf.promise());
+        schedule(lf);
 
-        auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
-        doco.resume();
+        //auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
+        //doco.resume();
 
         //join task pool here or setup callbacks from UI
 

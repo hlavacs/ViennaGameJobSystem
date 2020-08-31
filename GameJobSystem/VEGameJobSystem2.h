@@ -53,6 +53,15 @@ namespace vgjs {
     * However it is only a LIFO stack, not a FIFO queue.
     *
     */
+
+    class Job {
+    public:
+        Job*                m_next = nullptr;
+        std::atomic<int>    m_children = 0;
+        Job*                m_continuation = nullptr;
+    };
+
+
     template<typename JOB, bool FIFO = false>
     class JobQueue {
 
@@ -70,8 +79,8 @@ namespace vgjs {
         *
         */
         void push(JOB* pJob) {
-            pJob->m_next = m_head.load(std::memory_order_relaxed);
-            while (!std::atomic_compare_exchange_weak(&m_head, &pJob->m_next, pJob)) {};
+            pJob->next = m_head.load(std::memory_order_relaxed);
+            while (!std::atomic_compare_exchange_weak(&m_head, &pJob->next, pJob)) {};
         };
 
         /**
@@ -86,17 +95,17 @@ namespace vgjs {
             if (head == nullptr) return nullptr;
 
             if constexpr (FIFO) {
-                while (head->m_next) {
+                while (head->next) {
                     JOB* last = head;
-                    head = head->m_next;
-                    if (!head->m_next) {
-                        last->m_next = nullptr;
+                    head = head->next;
+                    if (!head->next) {
+                        last->next = nullptr;
                         return head;
                     }
                 }
             }
 
-            while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
+            while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->next)) {};
             
             return head;
         };
