@@ -33,12 +33,12 @@ namespace vgjs {
         std::cout << "Starting loop\n";
 
         for (int i = 0; i < count; ++i) {
-            auto t = new task<int> (compute(std::allocator_arg, &g_global_mem4, i));
+            auto t = std::make_unique<task<int>>(compute(std::allocator_arg, &g_global_mem4, i));
 
             std::cout << "Before loop " << i << std::endl;
-            co_await std::pmr::vector<task_base*>{ t };
+            co_await std::pmr::vector<task_base*>{ t.get() };
             std::cout << "After loop " << t->get() << std::endl;
-            delete t;
+            //delete t;
         }
         std::cout << "Ending loop\n";
         co_return sum;
