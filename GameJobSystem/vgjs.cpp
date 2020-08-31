@@ -28,17 +28,54 @@ namespace vgjs {
         co_return 2 * i;
     }
 
+    /*template<typename U>
+    struct poly_deleter {
+        std::pmr::memory_resource* m_mr;
+        
+        poly_deleter(std::pmr::memory_resource* mr) : m_mr(mr) {}
+
+        void operator()(U* b) { 
+            std::pmr::polymorphic_allocator<U> allocator(m_mr);
+            allocator.deallocate(b, 1); 
+        }
+    };*/
+
+
+
+    template<typename U>
+    struct poly_deleter {
+        std::pmr::memory_resource* m_mr;
+
+        poly_deleter(std::pmr::memory_resource* mr) : m_mr(mr) {}
+
+        void operator()(U* b) {
+            std::pmr::polymorphic_allocator<U> allocator(m_mr);
+            allocator.deallocate(b, 1);
+        }
+    };
+
+    template<typename T, typename... ARGS>
+    auto make_poly_unique(std::pmr::memory_resource* mr, ARGS&&... args) {
+
+
+        std::pmr::polymorphic_allocator<T> allocator(mr);
+        T* p = allocator.allocate(1);
+        new (p) T(std::forward<ARGS>(args)...);
+        return std::unique_ptr<T, poly_deleter<T>>(p, mr);
+    }
+
+
     task<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
         std::cout << "Starting loop\n";
 
         for (int i = 0; i < count; ++i) {
-            auto t = std::make_unique<task<int>>(compute(std::allocator_arg, &g_global_mem4, i));
+
+            auto t = make_poly_unique<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i));
 
             std::cout << "Before loop " << i << std::endl;
             co_await std::pmr::vector<task_base*>{ t.get() };
             std::cout << "After loop " << t->get() << std::endl;
-            //delete t;
         }
         std::cout << "Ending loop\n";
         co_return sum;
@@ -53,7 +90,7 @@ namespace vgjs {
 
 		JobSystem::instance();
 
-        auto lf = loop(std::allocator_arg, &g_global_mem4, 10);
+        auto lf = loop(std::allocator_arg, &g_global_mem4, 100);
         schedule(lf);
 
         //auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
