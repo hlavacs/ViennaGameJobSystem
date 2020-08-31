@@ -23,6 +23,39 @@
 namespace vgjs {
 
     template<typename T> class task;
+    class task_promise_base;
+
+
+    template<typename T>
+    struct awaitable {
+        struct awaiter {
+            task_promise_base* m_promise;
+            std::pmr::vector<task_base_promise>* m_children;
+
+            bool await_ready() noexcept {
+                return false;
+            }
+
+            bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+
+                return false; 
+            }
+
+            T await_resume() noexcept {
+                return m_promise.get();
+            }
+
+            awaiter(task_promise_base* promise) : m_promise(promise) {};
+
+        };
+
+        task_promise_base* m_promise;
+
+        awaitable(task_promise_base* promise) : m_promise(promise) {};
+
+        awaiter operator co_await() { return { m_promise }; };
+    };
+
 
     class task_promise_base {
     public:
@@ -108,6 +141,10 @@ namespace vgjs {
 
         T get() {
             return m_value;
+        }
+
+        awaiter<T> await_transform( std::pmr::vector<task_promise_base>& tasks) {
+            return {};
         }
 
         struct final_awaiter {
@@ -216,44 +253,20 @@ namespace vgjs {
     };
 
 
-
-    struct awaiter {
-
-        bool await_ready() noexcept {
-            return false;
-        }
-
-        bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-            //auto* promise = &m_coro.promise();
-            //promise->m_continuation = JobSystem::instance()->current_job();
-
-            //m_coro.resume();
-            //schedule(promise);
-
-            return false; // !promise->m_ready.exchange(true, std::memory_order_acq_rel);
-        }
-
-        void await_resume() noexcept {
-            //promise_type& promise = m_coro.promise();
-            return; // promise.get();
-        }
-
-    };
-
     template<typename T>
-    awaiter schedule(T* task, int32_t thd = -1) {
+    awaiter<T> schedule(T* task, int32_t thd = -1) {
         JobSystem<task_promise_base>::instance()->schedule(task, thd);
         return {};
     };
 
     template<typename T>
-    awaiter wait_all(std::pmr::vector<T> tasks) {
+    awaiter<T> wait_all(std::pmr::vector<T> tasks) {
         return {};
 
     };
 
     template<typename T>
-    awaiter resume_on() {
+    awaiter<T> resume_on() {
         return {};
     }
 
