@@ -27,13 +27,13 @@ namespace vgjs {
 
     template<typename T>
     void schedule(T& task, int32_t thd = -1) noexcept {
-        JobSystem<task_promise_base>::instance()->schedule(task.promise(), thd);
+        JobSystem::instance()->schedule(task.promise(), thd);
         return;
     };
 
     //---------------------------------------------------------------------------------------------------
 
-    class task_promise_base {
+    class task_promise_base : public Job {
     public:
         task_promise_base*  next = nullptr;
         std::atomic<int>    m_children = 0;
@@ -41,14 +41,8 @@ namespace vgjs {
 
         task_promise_base() noexcept {};
 
-        virtual bool resume() = 0;
-
         void unhandled_exception() noexcept {
             std::terminate();
-        }
-
-        void operator() () noexcept {
-            resume();
         }
 
         template<typename... Args>
@@ -113,7 +107,7 @@ namespace vgjs {
                 m_promise->m_children.store( (uint32_t)m_children.size() );
                 for (auto ptr : m_children) {
                     ptr->promise()->m_continuation = m_promise;
-                    JobSystem<task_promise_base>::instance()->schedule(ptr->promise());
+                    JobSystem::instance()->schedule(ptr->promise());
                 }
             }
 
@@ -135,7 +129,7 @@ namespace vgjs {
             uint32_t            m_thread_index;
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                JobSystem<task_promise_base>::instance()->schedule(m_promise, m_thread_index);
+                JobSystem::instance()->schedule(m_promise, m_thread_index);
             }
 
             awaiter(task_promise_base* promise, uint32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
@@ -206,7 +200,7 @@ namespace vgjs {
                 if (m_promise->m_continuation) {
                     auto children = m_promise->m_continuation->m_children.fetch_sub(1);
                     if (children == 1) {
-                        JobSystem<task_promise_base>::instance()->schedule(m_promise->m_continuation);
+                        JobSystem::instance()->schedule(m_promise->m_continuation);
                     }
                 }
             }
