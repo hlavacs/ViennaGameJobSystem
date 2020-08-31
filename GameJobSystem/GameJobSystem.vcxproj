@@ -164,7 +164,7 @@
     <ClCompile Include="gameloop.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="task.h" />
+    <ClInclude Include="VETask.h" />
     <ClInclude Include="VEGameJobSystem.h" />
     <ClInclude Include="VEGameJobSystem2.h" />
     <ClInclude Include="VEUtilClock.h" />

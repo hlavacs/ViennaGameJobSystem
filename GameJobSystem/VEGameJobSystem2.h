@@ -36,15 +36,11 @@ namespace vgjs {
 
 
     /**
-    * \brief A lockfree LIFO stack
-    *
-    * This queue can be accessed by any thread, it is synchronized by STL CAS operations.
-    * However it is only a LIFO stack, not a FIFO queue.
+    * \brief Base job class
     */
-
     class Job {
     public:
-        Job*                m_next = nullptr;
+        Job* m_next = nullptr;
         std::atomic<int>    m_children = 0;
         Job*                m_continuation = nullptr;
 
@@ -54,10 +50,16 @@ namespace vgjs {
             resume();
         }
 
-        virtual void continuation() noexcept {};  //can be removed if not needed
+        virtual void continuation() noexcept;
     };
 
-
+    /**
+    * \brief A lockfree queue.
+    *
+    * This queue can be accessed by any thread, it is synchronized by STL CAS operations.
+    * If there is only ONE consumer, then FIFO can be set true, and the queue is a FIFO queue.
+    * If FIFO is false the queue is a LIFO stack and there can be multiple consumers if need be.
+    */
     template<bool FIFO = false>
     class JobQueue {
 
@@ -95,7 +97,7 @@ namespace vgjs {
                 }
             }
 
-            while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};  
+            while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
             return head;
         };
     };
@@ -116,7 +118,7 @@ namespace vgjs {
         uint32_t									m_start_idx = 0;        ///< idx of first thread that is created
         static inline thread_local uint32_t		    m_thread_index;			///< each thread has its own number
         std::atomic<bool>							m_terminate = false;	///< Flag for terminating the pool
-        static inline thread_local Job*             m_current_job = nullptr;
+        static inline thread_local Job* m_current_job = nullptr;
         std::vector<std::unique_ptr<JobQueue<true>>> m_local_queues;	    ///< Each thread has its own Job queue, multiple produce, single consume
         std::unique_ptr<JobQueue<false>>            m_central_queue;        ///<Main central job queue is multiple produce multiple consume
 
@@ -127,7 +129,7 @@ namespace vgjs {
         * \param[in] threadCount Number of threads in the system
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
         */
-        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0 ) {
+        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0) {
 
             m_start_idx = start_idx;
             m_thread_count = threadCount;
@@ -174,7 +176,7 @@ namespace vgjs {
 
         /**
         * \brief JobSystem class destructor
-        * 
+        *
         * By default shuts down the system and waits for the threads to terminate
         */
         ~JobSystem() {
@@ -246,7 +248,23 @@ namespace vgjs {
             m_central_queue->push(job);
         };
     };
+
+    /**
+    * \brief Default Job continuation
+    * 
+    * If there is a contionuation stored in m_continuation, and it has no more children left
+    * to wait for, it is scheduled into the job system for running
+    */
+    void Job::continuation() noexcept {
+        if (m_continuation) {
+            if (m_continuation->m_children.fetch_sub(1) == 1) {
+                JobSystem::instance()->schedule(m_continuation);
+            }
+        }
+    }
 }
+
+
 
 
 

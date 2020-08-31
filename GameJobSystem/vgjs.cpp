@@ -14,7 +14,7 @@
 #define VE_IMPLEMENT_GAMEJOBSYSTEM
 #include "VEUtilClock.h"
 #include "VEGameJobSystem2.h"
-#include "task.h"
+#include "VETask.h"
 
 using namespace std::chrono;
 
@@ -33,11 +33,12 @@ namespace vgjs {
         std::cout << "Starting loop\n";
 
         for (int i = 0; i < count; ++i) {
-            auto t = compute(std::allocator_arg, &g_global_mem4, i);
+            auto t = new task<int> (compute(std::allocator_arg, &g_global_mem4, i));
 
             std::cout << "Before loop " << i << std::endl;
-            co_await std::pmr::vector<task_base*>{ &t };
-            std::cout << "After loop " << t.get() << std::endl;
+            co_await std::pmr::vector<task_base*>{ t };
+            std::cout << "After loop " << t->get() << std::endl;
+            delete t;
         }
         std::cout << "Ending loop\n";
         co_return sum;

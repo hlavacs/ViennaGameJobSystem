@@ -24,7 +24,13 @@ namespace vgjs {
 
     template<typename T> class task;
 
-
+    /**
+    * \brief Schedule a task promise into the job system
+    *
+    * Basic function for scheduling a coroutine task into the job system
+    * \param[in] task A coroutine task, whose promise is a job that is scheduled into the job system
+    * \param[in] thd Optional thread index to run the task
+    */
     template<typename T>
     void schedule(T& task, int32_t thd = -1) noexcept {
         JobSystem::instance()->schedule(task.promise(), thd);
@@ -33,16 +39,21 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
+    /**
+    * \brief Base class of coroutine task_promise. Independent of promise return type
+    */
     class task_promise_base : public Job {
     public:
-        task_promise_base*  next = nullptr;
-        std::atomic<int>    m_children = 0;
-        task_promise_base*  m_continuation = nullptr;
-
         task_promise_base() noexcept {};
+
+        void continuation() noexcept {};    //do not use the default Job continuation
 
         void unhandled_exception() noexcept {
             std::terminate();
+        }
+
+        std::experimental::suspend_always initial_suspend() noexcept {
+            return {};
         }
 
         template<typename... Args>
@@ -81,6 +92,9 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
+    /**
+    * \brief Base class of coroutine task. Independent of promise return type
+    */
     class task_base {
     public:
         task_base() noexcept {};
@@ -90,6 +104,9 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
+    /**
+    * \brief Base class of awaiter, contains default behavior
+    */
     struct awaiter_base {
         bool await_ready() noexcept {
             return false;
@@ -98,6 +115,13 @@ namespace vgjs {
         void await_resume() noexcept {}
     };
 
+    /**
+    * \brief Awaiter for awaiting a vector of tasks.
+    * 
+    * The vector must contain pointers pointing to tasks to be run as jobs.
+    * The caller will then await the completion of the tasks. Afterwards,
+    * the return values can be retrieved by calling get().
+    */
     struct awaitable_vector {
         struct awaiter : awaiter_base {
             task_promise_base* m_promise;
@@ -122,7 +146,9 @@ namespace vgjs {
         awaiter operator co_await() noexcept { return { m_promise, m_children }; };
     };
 
-
+    /**
+    * \brief Awaiter for changing the thread that the job is run on
+    */
     struct awaitable_resume_on {
         struct awaiter : awaiter_base {
             task_promise_base*  m_promise;
@@ -143,10 +169,11 @@ namespace vgjs {
         awaiter operator co_await() noexcept { return { m_promise, m_thread_index }; };
     };
 
-
-
     //---------------------------------------------------------------------------------------------------
 
+    /**
+    * \brief Promise of the task. Depends on the return type.
+    */
     template<typename T>
     class task_promise : public task_promise_base {
     private:
@@ -155,10 +182,6 @@ namespace vgjs {
     public:
 
         task_promise() noexcept : task_promise_base{}, m_value{} {};
-
-        std::experimental::suspend_always initial_suspend() noexcept {
-            return {};
-        }
 
         task<T> get_return_object() noexcept {
             return task<T>{ std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this) };
@@ -196,13 +219,8 @@ namespace vgjs {
                 return false;
             }
 
-            void await_suspend(std::experimental::coroutine_handle<task_promise<T>> h) noexcept {
-                if (m_promise->m_continuation) {
-                    auto children = m_promise->m_continuation->m_children.fetch_sub(1);
-                    if (children == 1) {
-                        JobSystem::instance()->schedule(m_promise->m_continuation);
-                    }
-                }
+            void await_suspend(std::experimental::coroutine_handle<> h) noexcept {
+                m_promise->Job::continuation();
             }
 
             void await_resume() noexcept {}

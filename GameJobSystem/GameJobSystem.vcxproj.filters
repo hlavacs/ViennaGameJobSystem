@@ -40,7 +40,7 @@
     <ClInclude Include="VEGameJobSystem2.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="task.h">
+    <ClInclude Include="VETask.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
