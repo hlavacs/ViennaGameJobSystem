@@ -22,40 +22,27 @@
 
 namespace vgjs {
 
+    class task_base;
     template<typename T> class task;
     class task_promise_base;
 
 
     template<typename T>
-    struct awaitable {
-        struct awaiter {
-            task_promise_base* m_promise;
-            std::pmr::vector<task_base_promise>* m_children;
-
-            bool await_ready() noexcept {
-                return false;
-            }
-
-            bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-
-                return false; 
-            }
-
-            T await_resume() noexcept {
-                return m_promise.get();
-            }
-
-            awaiter(task_promise_base* promise) : m_promise(promise) {};
-
-        };
-
-        task_promise_base* m_promise;
-
-        awaitable(task_promise_base* promise) : m_promise(promise) {};
-
-        awaiter operator co_await() { return { m_promise }; };
+    void schedule(T* task, int32_t thd = -1) {
+        JobSystem<task_promise_base>::instance()->schedule(task, thd);
+        return;
     };
 
+    //---------------------------------------------------------------------------------------------------
+
+    class task_base {
+    public:
+        task_base() {};
+        virtual bool resume() = 0;
+        virtual task_promise_base* promise() = 0;
+    };
+
+    //---------------------------------------------------------------------------------------------------
 
     class task_promise_base {
     public:
@@ -110,6 +97,46 @@ namespace vgjs {
 
     };
 
+    //---------------------------------------------------------------------------------------------------
+
+    struct awaiter_base {
+        bool await_ready() noexcept {
+            return false;
+        }
+
+        void await_resume() noexcept {
+            return;
+        }
+    };
+
+    struct awaitable_vector {
+        struct awaiter : awaiter_base {
+            task_promise_base* m_promise;
+            std::pmr::vector<task_base*>& m_children;
+
+            bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+                for (auto ptr : m_children) {
+                    auto promise = ptr->promise();
+                    promise->m_continuation = m_promise;
+                    m_promise->m_children++;
+                    schedule(promise);
+                }
+                return false;
+            }
+
+            awaiter(task_promise_base* promise, std::pmr::vector<task_base*>& children) : m_promise(promise), m_children(children) {};
+        };
+
+        task_promise_base* m_promise;
+        std::pmr::vector<task_base*>& m_children;
+
+        awaitable_vector(task_promise_base* promise, std::pmr::vector<task_base*>& children) : m_promise(promise), m_children(children) {};
+
+        awaiter operator co_await() { return { m_promise, m_children }; };
+    };
+
+
+    //---------------------------------------------------------------------------------------------------
 
     template<typename T>
     class task_promise : public task_promise_base {
@@ -143,8 +170,8 @@ namespace vgjs {
             return m_value;
         }
 
-        awaiter<T> await_transform( std::pmr::vector<task_promise_base>& tasks) {
-            return {};
+        awaitable_vector await_transform( std::pmr::vector<task_base*>& tasks) {
+            return { this, tasks };
         }
 
         struct final_awaiter {
@@ -174,19 +201,7 @@ namespace vgjs {
 
     };
 
-
     //---------------------------------------------------------------------------------------------------
-
-
-    class task_base {
-    private:
-        task_base* m_next = nullptr;
-
-    public:
-        task_base() {};
-        virtual bool resume() = 0;
-        virtual task_promise_base* promise() = 0;
-    };
 
     template<typename T>
     class task : public task_base {
@@ -219,55 +234,21 @@ namespace vgjs {
             return !m_coro.done();
         };
 
-
-        struct awaiter {
-            std::experimental::coroutine_handle<promise_type> m_coro;
-
-            awaiter(std::experimental::coroutine_handle<promise_type> coro) : m_coro(coro) {};
-
-            bool await_ready() noexcept {
-                return false;
-            }
-
-            bool await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                auto* promise = &m_coro.promise();
-                promise->m_continuation = JobSystem<task_promise_base>::instance()->current_job();
-
-                //m_coro.resume();
-                schedule(promise);
-
-                return !promise->m_ready.exchange(true, std::memory_order_acq_rel);
-            }
-
-            T await_resume() noexcept {
-                promise_type& promise = m_coro.promise();
-                return promise.get();
-            }
-
-        };
-
-        awaiter operator co_await() { return awaiter{ m_coro }; };
-
         explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
 
     };
 
 
-    template<typename T>
-    awaiter<T> schedule(T* task, int32_t thd = -1) {
-        JobSystem<task_promise_base>::instance()->schedule(task, thd);
-        return {};
-    };
 
     template<typename T>
-    awaiter<T> wait_all(std::pmr::vector<T> tasks) {
-        return {};
+    void wait_all(std::pmr::vector<T> tasks) {
+        return;
 
     };
 
     template<typename T>
-    awaiter<T> resume_on() {
-        return {};
+    void resume_on() {
+        return;
     }
 
 

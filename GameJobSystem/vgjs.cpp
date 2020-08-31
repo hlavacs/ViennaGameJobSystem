@@ -32,7 +32,11 @@ namespace vgjs {
         std::cout << "Starting loop\n";
 
         for (int i = 0; i < count; ++i) {
-            sum += co_await compute(std::allocator_arg, &g_global_mem4, i);
+            auto t = compute(std::allocator_arg, &g_global_mem4, i);
+
+            std::pmr::vector<task_base*> tasks = { &t };
+
+            co_await tasks;
         }
         co_return sum;
     }
