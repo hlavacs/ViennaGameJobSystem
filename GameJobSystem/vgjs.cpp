@@ -40,7 +40,7 @@ namespace vgjs {
             std::cout << "Before loop " << i << " " << t->get() << std::endl;
 
             unique_ptr_vector<task<int>> tv;
-            tv.push_back(make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i)) );
+            tv.emplace_back(make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i)) );
 
             co_await tv;
 
