@@ -99,17 +99,19 @@ namespace vgjs {
             Job* head = m_head.load(std::memory_order_relaxed);
             if (head == nullptr) return nullptr;
 
-            if constexpr (FIFO) {
-                while (head->m_next) {
-                    Job* last = head;
-                    head = head->m_next;
-                    if (!head->m_next) {
-                        last->m_next = nullptr;
-                        return head;
+            if constexpr (FIFO) {                   //if this is a FIFO queue there can only be one consumer!
+                while (head->m_next) {              //as long as there are more jobs in the list
+                    Job* last = head;               //remember job before that
+                    head = head->m_next;            //goto next job
+                    if (!head->m_next) {            //if this is the last job
+                        last->m_next = nullptr;     //dequeue it
+                        return head;                //return it
                     }
                 }
             }
-
+            //if LIFO or there is only one Job then deqeue it from the start
+            //this might collide with other producers, so use CAS
+            //in rare cases FIFO might be violated
             while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
             return head;
         };
