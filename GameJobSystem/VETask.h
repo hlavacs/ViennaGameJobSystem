@@ -290,7 +290,9 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> h) noexcept {
                 if (m_promise->m_parent) {
-                    JobSystem::instance()->schedule(m_promise->m_parent);
+                    if (m_promise->m_parent->m_children.fetch_sub(1) == 1) {
+                        JobSystem::instance()->schedule(m_promise->m_parent);
+                    }
                 }
             }
 
