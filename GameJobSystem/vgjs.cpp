@@ -24,6 +24,9 @@ namespace vgjs {
     auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
     task<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+
+        co_await 1;
+
         co_return 2 * i;
     }
 
