@@ -37,7 +37,7 @@ namespace vgjs {
 
             auto t = make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i));
             auto u = make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, 10 * i));
-            co_await std::pmr::vector<task_base*>{ t.get(), u.get() };
+            co_await std::pmr::vector<task_base*>{ t.get() }; // , u.get() };
 
             std::cout << "Before loop " << i << " " << t->get() << std::endl;
 
@@ -48,7 +48,7 @@ namespace vgjs {
 
         co_await tv;
 
-        std::cout << "Ending loop " << tv[tv.size()-1]->get() << std::endl;
+        std::cout << "Ending loop " << tv[tv.size() - 1]->get() << std::endl;
         co_return sum;
     }
 
@@ -61,7 +61,7 @@ namespace vgjs {
 
 		JobSystem::instance();
 
-        auto lf = loop(std::allocator_arg, &g_global_mem4, 100);
+        auto lf = loop(std::allocator_arg, &g_global_mem4, 10);
         schedule(lf);
 
         //auto doco = do_compute(std::allocator_arg, &g_global_mem4 );

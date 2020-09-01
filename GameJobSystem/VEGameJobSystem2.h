@@ -40,17 +40,30 @@ namespace vgjs {
     */
     class Job {
     public:
-        Job* m_next = nullptr;
-        std::atomic<int>    m_children = 0;
-        Job*                m_continuation = nullptr;
+        Job*                m_next = nullptr;           //next job in the queue
+        std::atomic<int>    m_children = 1;             //includes the job itself
+        Job*                m_parent = nullptr;         //parent job that created this job
+        Job*                m_continuation = nullptr;   //continuation follows this job
 
-        virtual bool resume() = 0;
-
-        void operator() () noexcept {
-            resume();
+        void reset() {
+            m_next = nullptr;
+            m_children = 1;
+            m_parent = nullptr;
+            m_continuation = nullptr;
         }
 
-        virtual void continuation() noexcept;
+        virtual bool resume() = 0;
+        
+        virtual void operator() () noexcept {
+            m_children = 1;
+            resume();
+            if (m_children.fetch_sub(1) == 1) {
+                on_finished();
+            }
+        }
+
+        void on_finished() noexcept;
+        void child_finished() noexcept;
     };
 
     /**
@@ -206,7 +219,6 @@ namespace vgjs {
                 }
                 if (m_current_job) {
                     (*m_current_job)();
-                    m_current_job->continuation();
                 }
                 else if (--noop == 0 && m_thread_index > 0) {
                     noop = NOOP;
@@ -251,17 +263,38 @@ namespace vgjs {
 
     /**
     * \brief Default Job continuation
-    * 
+    *
     * If there is a contionuation stored in m_continuation, and it has no more children left
     * to wait for, it is scheduled into the job system for running
     */
-    void Job::continuation() noexcept {
-        if (m_continuation) {
-            if (m_continuation->m_children.fetch_sub(1) == 1) {
-                JobSystem::instance()->schedule(m_continuation);
+    void Job::on_finished() noexcept {
+
+        if (m_continuation != nullptr) {						//is there a successor Job?
+            if (m_parent != nullptr) {                          //is there a parent?
+                m_parent->m_children++;
+                m_continuation->m_parent = m_parent;            //add successor as child to the parent
             }
+            JobSystem::instance()->schedule(m_continuation);    //schedule the successor 
+        }
+
+        if (m_parent != nullptr) {		//if there is parent then inform it	
+            m_parent->child_finished();	//if this is the last child job then the parent will also finish
         }
     }
+
+    /**
+    * \brief Child tells its parent that it has finished
+    * 
+    * A child that finished calls this function of its parent, thus decreasing
+    * the number of left children by one. If the last one finishes (including the 
+    * parent itself) then the parent also finishes (and may call its own parent)
+    */
+    void Job::child_finished() noexcept {
+        if (m_children.fetch_sub(1) == 1) {
+            on_finished();
+        }
+    }
+
 }
 
 

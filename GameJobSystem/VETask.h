@@ -70,12 +70,12 @@ namespace vgjs {
 
     /**
     * \brief Base class of coroutine task_promise. Independent of promise return type
+    * 
+    * The base class derives from Job so it can be scheduled on the job system.
     */
     class task_promise_base : public Job {
     public:
         task_promise_base() noexcept {};
-
-        void continuation() noexcept {};    //do not use the default Job continuation
 
         void unhandled_exception() noexcept {
             std::terminate();
@@ -154,26 +154,26 @@ namespace vgjs {
     struct awaitable_vector {
 
         struct awaiter : awaiter_base {
-            task_promise_base* m_promise;
-            std::pmr::vector<task_base*>& m_children;
+            task_promise_base* m_promise;                       //caller of the co_await
+            std::pmr::vector<task_base*>& m_children_vector;   //vector with all children to start
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                m_promise->m_children.store( (uint32_t)m_children.size() );
-                for (auto ptr : m_children) {
-                    ptr->promise()->m_continuation = m_promise;
-                    JobSystem::instance()->schedule(ptr->promise());
+                m_promise->m_children.store( (uint32_t)m_children_vector.size()  );
+                for (auto& ptr : m_children_vector) {                   //loop over all children
+                    ptr->promise()->m_parent = m_promise;               //remember parent
+                    JobSystem::instance()->schedule(ptr->promise());    //schedule the promise as job
                 }
             }
 
-            awaiter(task_promise_base* promise, std::pmr::vector<task_base*>& children) noexcept : m_promise(promise), m_children(children) {};
+            awaiter(task_promise_base* promise, std::pmr::vector<task_base*>& children) noexcept : m_promise(promise), m_children_vector(children) {};
         };
 
-        task_promise_base* m_promise;
-        std::pmr::vector<task_base*>& m_children;
+        task_promise_base* m_promise;                       //caller of the co_await
+        std::pmr::vector<task_base*>& m_children_vector;   //vector with all children to start
 
-        awaitable_vector(task_promise_base* promise, std::pmr::vector<task_base*>& children) noexcept : m_promise(promise), m_children(children) {};
+        awaitable_vector(task_promise_base* promise, std::pmr::vector<task_base*>& children) noexcept : m_promise(promise), m_children_vector(children) {};
 
-        awaiter operator co_await() noexcept { return { m_promise, m_children }; };
+        awaiter operator co_await() noexcept { return { m_promise, m_children_vector }; };
     };
 
     template<typename T>
@@ -187,7 +187,7 @@ namespace vgjs {
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 m_promise->m_children.store((uint32_t)m_children.size());
                 for (auto& ptr : m_children) {
-                    ptr->promise()->m_continuation = m_promise;
+                    ptr->promise()->m_parent = m_promise;
                     JobSystem::instance()->schedule(ptr->promise());
                 }
             }
@@ -247,6 +247,10 @@ namespace vgjs {
             return task<T>{ std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this) };
         }
 
+        void operator() () noexcept {
+            resume();
+        }
+
         bool resume() noexcept {
             auto coro = std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this);
             if (coro && !coro.done())
@@ -285,7 +289,9 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> h) noexcept {
-                m_promise->Job::continuation();
+                if (m_promise->m_parent) {
+                    JobSystem::instance()->schedule(m_promise->m_parent);
+                }
             }
 
             void await_resume() noexcept {}
