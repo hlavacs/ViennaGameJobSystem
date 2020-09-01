@@ -45,20 +45,20 @@ namespace vgjs {
         Job*                m_parent = nullptr;         //parent job that created this job
         Job*                m_continuation = nullptr;   //continuation follows this job
 
-        void reset() {
-            m_next = nullptr;
+        void reset() {                  //call only if you want to wipe out the Job data
+            m_next = nullptr;           //e.g. when recycling from a used Jobs queue
             m_children = 1;
             m_parent = nullptr;
             m_continuation = nullptr;
         }
 
-        virtual bool resume() = 0;
+        virtual bool resume() = 0;              //this is the actual work to be done
         
         virtual void operator() () noexcept {
-            m_children = 1;
+            m_children = 1;                     //Job is its own child
             resume();
-            if (m_children.fetch_sub(1) == 1) {
-                on_finished();
+            if (m_children.fetch_sub(1) == 1) { //reduce number of children by one
+                on_finished();                  //if no more children, then finish
             }
         }
 
@@ -202,7 +202,7 @@ namespace vgjs {
         * \param[in] threadIndex Number of this thread
         */
         void thread_task(uint32_t threadIndex = 0) {
-            constexpr uint32_t NOOP = 20;
+            constexpr uint32_t NOOP = 20;                                   //number of empty loops until threads sleeps
             m_thread_index = threadIndex;	                                //Remember your own thread index number
             static std::atomic<uint32_t> thread_counter = m_thread_count;	//Counted down when started
 
@@ -210,19 +210,18 @@ namespace vgjs {
             while (thread_counter.load() > 0)	                            //Continue only if all threads are running
                 std::this_thread::sleep_for(std::chrono::nanoseconds(100));
 
-            while (!m_terminate) {			                                //Run until the job system is terminated
-                static uint32_t noop = NOOP;
-
-                m_current_job = m_local_queues[m_thread_index]->pop();
+           thread_local uint32_t noop = NOOP;                               //number of empty loops until threads sleeps
+           while (!m_terminate) {			                                //Run until the job system is terminated
+                m_current_job = m_local_queues[m_thread_index]->pop();      //try get a job from the local queue
                 if (!m_current_job) {
-                    m_current_job = m_central_queue->pop();
+                    m_current_job = m_central_queue->pop();                 //if none found try the central queue
                 }
                 if (m_current_job) {
-                    (*m_current_job)();
+                    (*m_current_job)();                                     //if any job found execute it
                 }
-                else if (--noop == 0 && m_thread_index > 0) {
+                else if (--noop == 0 && m_thread_index > 0) {               //if none found too longs let thread sleep
                     noop = NOOP;
-                    std::this_thread::sleep_for(std::chrono::microseconds(10));
+                    std::this_thread::sleep_for(std::chrono::microseconds(5));
                 }
             };
         };
@@ -262,10 +261,12 @@ namespace vgjs {
     };
 
     /**
-    * \brief Default Job continuation
+    * \brief A job and all its children have finished
     *
-    * If there is a contionuation stored in m_continuation, and it has no more children left
-    * to wait for, it is scheduled into the job system for running
+    * This is called when a job and its children has finished.
+    * If there is a continuation stored in the job, then the continuation
+    * gets scheduled. Also the job's parent is notified of this new child.
+    * Then, if there is a parent, the parent's child_finished() function is called.
     */
     void Job::on_finished() noexcept {
 
@@ -287,7 +288,9 @@ namespace vgjs {
     * 
     * A child that finished calls this function of its parent, thus decreasing
     * the number of left children by one. If the last one finishes (including the 
-    * parent itself) then the parent also finishes (and may call its own parent)
+    * parent itself) then the parent also finishes (and may call its own parent).
+    * Note that a Job is also its own child, so it must have also finished before
+    * on_finished() is called.
     */
     void Job::child_finished() noexcept {
         if (m_children.fetch_sub(1) == 1) {
