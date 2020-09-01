@@ -67,7 +67,6 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
-
     /**
     * \brief Schedule a task promise into the job system
     *
@@ -76,8 +75,8 @@ namespace vgjs {
     * \param[in] thread_index Optional thread index to run the task
     */
     template<typename T>
-    void schedule(T& task, int32_t thread_index = -1) noexcept {
-        JobSystem::instance()->schedule(task.promise(), thread_index);
+    void schedule(T& task) noexcept {
+        JobSystem::instance()->schedule(task.promise());
         return;
     };
 
@@ -103,9 +102,12 @@ namespace vgjs {
             return {};
         }
 
-        //Use the given memory resource to create the promise object.
-        //Store the pointer to the memory resource right after the promise, so it can be used later
-        //for deallocating the promise.
+        /**
+        * \brief Use the given memory resource to create the promise object for a normal function.
+        * 
+        * Store the pointer to the memory resource right after the promise, so it can be used later
+        * for deallocating the promise.
+        */
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
@@ -117,30 +119,47 @@ namespace vgjs {
             return ptr;
         }
 
-        //Same, but for coroutines that are member functions of classes
+        /**
+        * \brief Use the given memory resource to create the promise object for a member function.
+        *
+        * Store the pointer to the memory resource right after the promise, so it can be used later
+        * for deallocating the promise.
+        */
         template<typename Class, typename... Args>
         void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
             return operator new(sz, std::allocator_arg, mr, args...);
         }
 
-        //same but use the system standard allocator
+        /**
+        * \brief Create a promise object for a class member function using the system standard allocator.
+        *
+        * Store the pointer to the memory resource right after the promise, so it can be used later
+        * for deallocating the promise.
+        */
         template<typename Class, typename... Args>
         void* operator new(std::size_t sz, Class, Args&&... args) noexcept {
             return operator new(sz, std::allocator_arg, std::pmr::get_default_resource(), args...);
         }
 
+        /**
+        * \brief Create a promise object using the system standard allocator.
+        *
+        * Store the pointer to the memory resource right after the promise, so it can be used later
+        * for deallocating the promise.
+        */
         template<typename... Args>
         void* operator new(std::size_t sz, Args&&... args) noexcept {
             return operator new(sz, std::allocator_arg, std::pmr::get_default_resource(), args...);
         }
 
-        //Use the pointer after the promise as deallocator
+        /**
+        * \brief Use the pointer after the promise as deallocator
+        */
         void operator delete(void* ptr, std::size_t sz) noexcept {
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
             auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
             (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
         }
-
     };
 
     //---------------------------------------------------------------------------------------------------
@@ -248,7 +267,8 @@ namespace vgjs {
             uint32_t            m_thread_index;
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                JobSystem::instance()->schedule(m_promise, m_thread_index);
+                m_promise->m_thread_index = m_thread_index;
+                JobSystem::instance()->schedule(m_promise);
             }
 
             awaiter(task_promise_base* promise, uint32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};

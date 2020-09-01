@@ -44,12 +44,14 @@ namespace vgjs {
         std::atomic<int>    m_children = 1;             //includes the job itself
         Job*                m_parent = nullptr;         //parent job that created this job
         Job*                m_continuation = nullptr;   //continuation follows this job
+        int32_t             m_thread_index = -1;        //thread that the job should run on
 
         void reset() {                  //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
             m_children = 1;
             m_parent = nullptr;
             m_continuation = nullptr;
+            m_thread_index = -1;
         }
 
         virtual bool resume() = 0;              //this is the actual work to be done
@@ -251,15 +253,23 @@ namespace vgjs {
         /**
         * \brief Schedule a job into the job system
         * \param[in] job A pointer to the job to schedule
-        * \param[in] thd Number of the thread to schedule the job to
         */
-        void schedule(Job* job, int32_t thd = -1) {
-            if (thd >= 0 && thd < (int)m_thread_count) {
-                m_local_queues[m_thread_index]->push(job);
+        void schedule(Job* job) {
+            if (job->m_thread_index >= 0 && job->m_thread_index < (int)m_thread_count) {
+                m_local_queues[job->m_thread_index]->push(job);
                 return;
             }
             m_central_queue->push(job);
         };
+
+        /**
+        * \brief Schedule continuation to the current job
+        * \param[in] job A pointer to the job to schedule as continuation
+        */
+        void set_continuation(Job* job) {
+            m_current_job->m_continuation = job;
+        };
+
     };
 
     /**
@@ -301,11 +311,6 @@ namespace vgjs {
     }
 
 }
-
-
-
-
-
 
 
 
