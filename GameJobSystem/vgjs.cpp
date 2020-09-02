@@ -10,9 +10,6 @@
 #include <glm.hpp>
 
 
-#define VE_IMPLEMENT_GAMEJOBSYSTEM
-#define VE_IMPLEMENT_GAMEJOBSYSTEM
-#include "VEUtilClock.h"
 #include "VEGameJobSystem2.h"
 #include "VETask.h"
 

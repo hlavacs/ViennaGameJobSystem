@@ -9,18 +9,6 @@
 #include <glm.hpp>
 
 
-namespace coro {
-	void test();
-}
-
-namespace coro2 {
-	void test();
-}
-
-namespace coro3 {
-	void test();
-}
-
 namespace vgjs {
 	void test();
 }

@@ -68,6 +68,36 @@ namespace vgjs {
         void child_finished() noexcept;
     };
 
+
+    class Job_func : public Job {
+    public:
+        Job*                        m_continuation = nullptr;   //continuation follows this job
+        std::function<void(void)>   m_function;
+
+        void reset() {                  //call only if you want to wipe out the Job data
+            Job::reset();
+            m_continuation = nullptr;
+        }
+
+        bool resume() {
+            m_function();
+        }
+
+        virtual void operator() () noexcept {
+            m_children = 1;                     //Job is its own child
+            resume();
+            if (m_children.fetch_sub(1) == 1) { //reduce number of children by one
+                on_finished();                  //if no more children, then finish
+            }
+        }
+
+        void on_finished() noexcept;
+        void child_finished() noexcept;
+
+    };
+
+
+
     /**
     * \brief A lockfree queue.
     *
