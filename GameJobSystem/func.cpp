@@ -24,16 +24,23 @@ namespace func {
     void printData( int i ) {
         std::cout << i << std::endl;
         if (i < 5) {
-            //schedule( [&]() {printData(i + 1); );
+            Job job([&]() { printData(i+1); });
+            //schedule( &job );
         }
     }
 
 
     void test() {
+        std::cout << "Starting test()\n";
+
         JobSystem::instance();
 
-        //schedule([&]() {printData(1); );
+        Job job( [&]() { printData(1); } );
 
+        schedule(&job);
+
+        std::cout << "Ending test()\n";
+        wait_for_termination();
     }
 
 }

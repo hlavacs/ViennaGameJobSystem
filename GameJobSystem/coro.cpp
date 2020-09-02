@@ -60,6 +60,7 @@ namespace coro {
     }
 
 	void test() {
+        std::cout << "Starting test()\n";
 
 		JobSystem::instance();
 
@@ -71,7 +72,10 @@ namespace coro {
 
         //join task pool here or setup callbacks from UI
 
-        JobSystem::instance()->wait_for_termination();
+        std::cout << "Ending test()\n";
+
+        wait_for_termination();
+
 	}
 
 }

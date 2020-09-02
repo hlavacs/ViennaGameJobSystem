@@ -61,6 +61,8 @@ namespace vgjs {
         Job*                        m_continuation = nullptr;   //continuation follows this job
         std::function<void(void)>   m_function = []() {};       //empty function
 
+        Job(std::function<void(void)> && f) : m_function(std::move(f)) {};
+
         void reset() {                  //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
             m_children = 1;
@@ -76,6 +78,7 @@ namespace vgjs {
             if (m_children.fetch_sub(1) == 1) { //reduce number of children by one
                 on_finished();                  //if no more children, then finish
             }
+            return true;
         }
 
         void on_finished() noexcept;        //called when the job finishes, i.e. all children have finished
@@ -130,7 +133,7 @@ namespace vgjs {
             //if LIFO or there is only one Job then deqeue it from the start
             //this might collide with other producers, so use CAS
             //in rare cases FIFO might be violated
-            while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, head->m_next)) {};
+            while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, (JOB*)head->m_next)) {};
             return head;
         };
     };
@@ -145,6 +148,7 @@ namespace vgjs {
     class JobSystem {
 
     private:
+        std::pmr::memory_resource*                  m_mr;                   ///<use to allocate/deallocate Jobs
         static inline std::unique_ptr<JobSystem>    m_instance;	            ///<pointer to singleton
         std::vector<std::unique_ptr<std::thread>>	m_threads;	            ///< array of thread structures
         uint32_t						            m_thread_count = 0;     ///< number of threads in the pool
@@ -154,6 +158,7 @@ namespace vgjs {
         static inline thread_local Job_base* m_current_job = nullptr;
         std::vector<std::unique_ptr<JobQueue<Job_base,true>>>   m_local_queues;	    ///< Each thread has its own Job queue, multiple produce, single consume
         std::unique_ptr<JobQueue<Job_base,false>>               m_central_queue;    ///<Main central job queue is multiple produce multiple consume
+        std::unique_ptr<JobQueue<Job,false>>                    m_recycle;          ///<save old jobs for recycling
 
     public:
 
@@ -162,7 +167,8 @@ namespace vgjs {
         * \param[in] threadCount Number of threads in the system
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
         */
-        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0) {
+        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource *mr = std::pmr::get_default_resource() ) 
+            : m_mr(mr) {
 
             m_start_idx = start_idx;
             m_thread_count = threadCount;
@@ -277,6 +283,19 @@ namespace vgjs {
             }
             m_central_queue->push(job);
         };
+
+
+        void schedule( std::function<void(void)> && f, int32_t thread_index = -1 ) {
+            Job* job = m_recycle->pop();
+            if (!job) {
+                std::pmr::polymorphic_allocator<Job> allocator(m_mr);
+                job = allocator.allocate(1);                                    //allocate the object
+                new (job) Job(std::forward< std::function<void(void)>>(f));      //call constructor
+            }
+            job->m_thread_index = thread_index;
+            schedule(job);
+        }
+
     };
 
     /**
@@ -315,6 +334,30 @@ namespace vgjs {
         if (m_children.fetch_sub(1) == 1) {
             on_finished();
         }
+    }
+
+    /**
+    * \brief Schedule a task promise into the job system
+    *
+    * Basic function for scheduling a coroutine task into the job system
+    * \param[in] task A coroutine task, whose promise is a job that is scheduled into the job system
+    * \param[in] thread_index Optional thread index to run the task
+    */
+    template<typename T>
+    requires (std::is_base_of<Job, T>::value)
+    inline void schedule(T* job) noexcept {
+        JobSystem::instance()->schedule(job);
+    };
+
+    inline void schedule(std::function<void(void)>&& f, int32_t thd = -1 ) noexcept {
+        JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd );
+    };
+
+    /**
+    * \brief Wait for the job system to terminate
+    */
+    inline void wait_for_termination() {
+        JobSystem::instance()->wait_for_termination();
     }
 
 }
