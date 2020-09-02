@@ -90,7 +90,7 @@ namespace vgjs {
     * It defines default behavior and the operators for allocating and deallocating memory
     * for the promise.
     */
-    class task_promise_base : public Job {
+    class task_promise_base : public Job_base {
     public:
         task_promise_base() noexcept {};        //constructor
 
@@ -301,10 +301,6 @@ namespace vgjs {
 
         task<T> get_return_object() noexcept {  //get task coroutine from promise
             return task<T>{ std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this) };
-        }
-
-        void operator() () noexcept {           //override the default Job operator
-            resume();
         }
 
         bool resume() noexcept {                //resume the task at its suspension point
