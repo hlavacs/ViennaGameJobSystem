@@ -102,6 +102,12 @@ namespace vgjs {
             return {};
         }
 
+        void child_finished() noexcept {
+            if (m_children.fetch_sub(1) == 1) {
+                JobSystem::instance()->schedule(this);    //schedule the promise as job
+            }
+        }
+
         /**
         * \brief Use the given memory resource to create the promise object for a normal function.
         * 

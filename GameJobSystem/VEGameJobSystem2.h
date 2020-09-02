@@ -46,10 +46,10 @@ namespace vgjs {
         int32_t             m_thread_index = -1;        //thread that the job should run on
 
         virtual bool resume() = 0;                      //this is the actual work to be done
-        virtual void operator() () noexcept {
+        virtual void operator() () noexcept {           //wrapper as function operator
             resume();
         }
-        virtual void child_finished() noexcept {};
+        virtual void child_finished() = 0;
     };
 
 
@@ -59,7 +59,7 @@ namespace vgjs {
     class Job : public Job_base {
     public:
         Job*                        m_continuation = nullptr;   //continuation follows this job
-        std::function<void(void)>   m_function;
+        std::function<void(void)>   m_function = []() {};       //empty function
 
         void reset() {                  //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
@@ -67,22 +67,19 @@ namespace vgjs {
             m_parent = nullptr;
             m_thread_index = -1;
             m_continuation = nullptr;
+            m_function = []() {};
         }
 
-        virtual bool resume() {
+        virtual bool resume() {                 //work is to call the function
+            m_children = 1;
             m_function();
-        }
-
-        virtual void operator() () noexcept {
-            m_children = 1;                     //Job is its own child
-            resume();
             if (m_children.fetch_sub(1) == 1) { //reduce number of children by one
                 on_finished();                  //if no more children, then finish
             }
         }
 
-        void on_finished() noexcept;
-        void child_finished() noexcept;
+        void on_finished() noexcept;        //called when the job finishes, i.e. all children have finished
+        void child_finished() noexcept;     //child calls parent to notify that it has finished
     };
 
 
