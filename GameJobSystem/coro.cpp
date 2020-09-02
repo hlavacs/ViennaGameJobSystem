@@ -16,7 +16,9 @@
 using namespace std::chrono;
 
 
-namespace vgjs {
+namespace coro {
+
+    using namespace vgjs;
 
     auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 

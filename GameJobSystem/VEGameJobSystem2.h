@@ -153,7 +153,7 @@ namespace vgjs {
         std::atomic<bool>							m_terminate = false;	///< Flag for terminating the pool
         static inline thread_local Job_base* m_current_job = nullptr;
         std::vector<std::unique_ptr<JobQueue<Job_base,true>>>   m_local_queues;	    ///< Each thread has its own Job queue, multiple produce, single consume
-        std::unique_ptr<JobQueue<Job_base,false>>               m_central_queue;        ///<Main central job queue is multiple produce multiple consume
+        std::unique_ptr<JobQueue<Job_base,false>>               m_central_queue;    ///<Main central job queue is multiple produce multiple consume
 
     public:
 
@@ -287,7 +287,7 @@ namespace vgjs {
     * gets scheduled. Also the job's parent is notified of this new child.
     * Then, if there is a parent, the parent's child_finished() function is called.
     */
-    void Job::on_finished() noexcept {
+    inline void Job::on_finished() noexcept {
 
         if (m_continuation != nullptr) {						//is there a successor Job?
             if (m_parent != nullptr) {                          //is there a parent?
@@ -311,7 +311,7 @@ namespace vgjs {
     * Note that a Job is also its own child, so it must have also finished before
     * on_finished() is called.
     */
-    void Job::child_finished() noexcept {
+    inline void Job::child_finished() noexcept {
         if (m_children.fetch_sub(1) == 1) {
             on_finished();
         }

@@ -14,7 +14,10 @@
     <ClCompile Include="main.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="vgjs.cpp">
+    <ClCompile Include="coro.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="func.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

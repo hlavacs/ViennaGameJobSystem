@@ -75,6 +75,7 @@ namespace vgjs {
     * \param[in] thread_index Optional thread index to run the task
     */
     template<typename T>
+    requires (std::is_base_of<task_base, T>::value)
     void schedule(T& task) noexcept {
         JobSystem::instance()->schedule(task.promise());
         return;

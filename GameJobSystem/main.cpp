@@ -9,14 +9,18 @@
 #include <glm.hpp>
 
 
-namespace vgjs {
+namespace coro {
+	void test();
+}
+
+namespace func {
 	void test();
 }
 
 
 int main()
 {
-	vgjs::test();
+	func::test();
 
 	std::string t;
 	std::cin >> t;
