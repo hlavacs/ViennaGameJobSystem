@@ -35,45 +35,6 @@
 namespace vgjs {
 
 
-    //---------------------------------------------------------------------------------------------------
-
-    /**
-    * \brief A custom deleter using a given memory resource.
-    *
-    * This deleter is used together with a unique ptr that was allocated using a memory resource.
-    * When the unique ptr goes out of scope, the deleter will deallocate its memory
-    * using the used memory resource.
-    */
-    template<typename U>
-    struct deleter {
-        std::pmr::memory_resource* m_mr;    //memory resource
-
-        deleter(std::pmr::memory_resource* mr) : m_mr(mr) {}    //constructor
-
-        void operator()(U* b) {                                 //called for deletion
-            std::pmr::polymorphic_allocator<U> allocator(m_mr); //construct a polymorphic allocator
-            allocator.deallocate(b, 1);                         //use it to delete the pointer
-        }
-    };
-
-    /**
-    * \brief Creates a unique ptr using a given memory resource.
-    *
-    * This function uses a given memory resource to create a unique pointer.
-    * The unique ptr owns an object and will automatically delete it.
-    * The appropriate deleter is also stored with the unique ptr.
-    */
-    template<typename T, typename... ARGS>
-    auto make_unique_ptr(std::pmr::memory_resource* mr, ARGS&&... args) {
-        std::pmr::polymorphic_allocator<T> allocator(mr);   //create a polymorphic allocator for allocation and construction
-        T* p = allocator.allocate(1);                       //allocate the object
-        new (p) T(std::forward<ARGS>(args)...);             //call constructor
-        return std::unique_ptr<T, deleter<T>>(p, mr);       //return the unique ptr holding the object and deleter
-    }
-
-    //define a vector owning tasks (using unique ptrs)
-    template<typename T>
-    using unique_ptr_vector = std::pmr::vector<std::unique_ptr<T, deleter<T>>>;
 
     //---------------------------------------------------------------------------------------------------
 
@@ -130,7 +91,7 @@ namespace vgjs {
         virtual bool recycle() { return true; } //recycle in recycle queue so its not destroyed
     };
 
-
+    class JobSystem;
 
     /**
     * \brief A lockfree queue.
@@ -141,12 +102,26 @@ namespace vgjs {
     */
     template<typename JOB = Job_base, bool FIFO = false>
     class JobQueue {
-
-        std::atomic<JOB*> m_head = nullptr;	///< Head of the stack
+        friend JobSystem;
+        std::pmr::memory_resource* m_mr;        ///<use to allocate/deallocate Jobs
+        std::atomic<JOB*> m_head = nullptr;	    ///< Head of the stack
 
     public:
 
-        JobQueue() {};	///<JobQueue class constructor
+        JobQueue(std::pmr::memory_resource* mr) : m_mr(mr) {};	///<JobQueue class constructor
+
+        ~JobQueue() {                 
+            JOB* job = (JOB*)m_head;                          //deallocate jobs that run a function
+            while (job) {                                     //because they were allocated by the JobSystem
+                if (job->recycle()) {
+                    JOB* next = (JOB*)job->m_next;
+                    std::pmr::polymorphic_allocator<JOB> allocator(m_mr); //construct a polymorphic allocator
+                    job->~JOB();                                          //call destructor
+                    allocator.deallocate(job, 1);                         //use pma to deallocate the memory
+                    job = next;
+                }
+            }
+        }
 
         /**
         * \brief Pushes a job onto the queue
@@ -200,10 +175,10 @@ namespace vgjs {
         uint32_t									m_start_idx = 0;        ///< idx of first thread that is created
         static inline thread_local uint32_t		    m_thread_index;			///< each thread has its own number
         std::atomic<bool>							m_terminate = false;	///< Flag for terminating the pool
-        static inline thread_local Job_base* m_current_job = nullptr;
-        std::vector<std::unique_ptr<JobQueue<Job_base,true>>>   m_local_queues;	    ///<non owning, each thread has its own Job queue, multiple produce, single consume
-        std::unique_ptr<JobQueue<Job_base,false>>               m_central_queue;    ///<non owning, main central job queue is multiple produce multiple consume
-        std::unique_ptr<JobQueue<Job,false>>                    m_recycle;          ///<owning, save old jobs for recycling
+        static inline thread_local Job_base*        m_current_job = nullptr;
+        std::vector<std::unique_ptr<JobQueue<Job_base,true>>>               m_local_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
+        std::unique_ptr<JobQueue<Job_base,false>>                           m_central_queue;    ///<main central job queue is multiple produce multiple consume
+        std::unique_ptr<JobQueue<Job,false>>                                m_recycle;          ///<save old jobs for recycling
 
     public:
 
@@ -221,11 +196,11 @@ namespace vgjs {
                 m_thread_count = std::thread::hardware_concurrency();		///< main thread is also running
             }
 
-            m_central_queue = std::make_unique<JobQueue<Job_base,false>>();
-            m_recycle = std::make_unique<JobQueue<Job, false>>();
+            m_central_queue = std::make_unique<JobQueue<Job_base,false>>(mr);
+            m_recycle = std::make_unique<JobQueue<Job,false>>(mr);
 
             for (uint32_t i = 0; i < m_thread_count; i++) {
-                m_local_queues.push_back(std::make_unique<JobQueue<Job_base,true>>());	//local job queue
+                m_local_queues.push_back(std::make_unique<JobQueue<Job_base,true>>(mr));	//local job queue
             }
 
             for (uint32_t i = start_idx; i < m_thread_count; i++) {
@@ -267,7 +242,6 @@ namespace vgjs {
         ~JobSystem() {
             m_terminate = true;
             wait_for_termination();
-
         };
 
         /**
@@ -291,12 +265,12 @@ namespace vgjs {
                 }
                 if (m_current_job) {
                     (*m_current_job)();                                     //if any job found execute it
-                    if (m_current_job->recycle()) {
-                        m_recycle->push((Job*)m_current_job);
+                    if (m_current_job->recycle()) {                         //if it was a job executing a function
+                        m_recycle->push((Job*)m_current_job);               //save it so it can be reused later
                     }
                 }
                 else if (--noop == 0 && m_thread_index > 0) {               //if none found too longs let thread sleep
-                    noop = NOOP;
+                    noop = NOOP;                                            //thread 0 goes on to make the system reactive
                     std::this_thread::sleep_for(std::chrono::microseconds(5));
                 }
             };
