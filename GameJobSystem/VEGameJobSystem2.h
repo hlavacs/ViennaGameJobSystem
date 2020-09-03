@@ -35,6 +35,49 @@
 namespace vgjs {
 
 
+    //---------------------------------------------------------------------------------------------------
+
+    /**
+    * \brief A custom deleter using a given memory resource.
+    *
+    * This deleter is used together with a unique ptr that was allocated using a memory resource.
+    * When the unique ptr goes out of scope, the deleter will deallocate its memory
+    * using the used memory resource.
+    */
+    template<typename U>
+    struct deleter {
+        std::pmr::memory_resource* m_mr;    //memory resource
+
+        deleter(std::pmr::memory_resource* mr) : m_mr(mr) {}    //constructor
+
+        void operator()(U* b) {                                 //called for deletion
+            std::pmr::polymorphic_allocator<U> allocator(m_mr); //construct a polymorphic allocator
+            allocator.deallocate(b, 1);                         //use it to delete the pointer
+        }
+    };
+
+    /**
+    * \brief Creates a unique ptr using a given memory resource.
+    *
+    * This function uses a given memory resource to create a unique pointer.
+    * The unique ptr owns an object and will automatically delete it.
+    * The appropriate deleter is also stored with the unique ptr.
+    */
+    template<typename T, typename... ARGS>
+    auto make_unique_ptr(std::pmr::memory_resource* mr, ARGS&&... args) {
+        std::pmr::polymorphic_allocator<T> allocator(mr);   //create a polymorphic allocator for allocation and construction
+        T* p = allocator.allocate(1);                       //allocate the object
+        new (p) T(std::forward<ARGS>(args)...);             //call constructor
+        return std::unique_ptr<T, deleter<T>>(p, mr);       //return the unique ptr holding the object and deleter
+    }
+
+    //define a vector owning tasks (using unique ptrs)
+    template<typename T>
+    using unique_ptr_vector = std::pmr::vector<std::unique_ptr<T, deleter<T>>>;
+
+    //---------------------------------------------------------------------------------------------------
+
+
     /**
     * \brief Base class of coro task promises and jobs
     */
@@ -158,9 +201,9 @@ namespace vgjs {
         static inline thread_local uint32_t		    m_thread_index;			///< each thread has its own number
         std::atomic<bool>							m_terminate = false;	///< Flag for terminating the pool
         static inline thread_local Job_base* m_current_job = nullptr;
-        std::vector<std::unique_ptr<JobQueue<Job_base,true>>>   m_local_queues;	    ///< Each thread has its own Job queue, multiple produce, single consume
-        std::unique_ptr<JobQueue<Job_base,false>>               m_central_queue;    ///<Main central job queue is multiple produce multiple consume
-        std::unique_ptr<JobQueue<Job,false>>                    m_recycle;          ///<save old jobs for recycling
+        std::vector<std::unique_ptr<JobQueue<Job_base,true>>>   m_local_queues;	    ///<non owning, each thread has its own Job queue, multiple produce, single consume
+        std::unique_ptr<JobQueue<Job_base,false>>               m_central_queue;    ///<non owning, main central job queue is multiple produce multiple consume
+        std::unique_ptr<JobQueue<Job,false>>                    m_recycle;          ///<owning, save old jobs for recycling
 
     public:
 
@@ -224,6 +267,7 @@ namespace vgjs {
         ~JobSystem() {
             m_terminate = true;
             wait_for_termination();
+
         };
 
         /**
@@ -320,6 +364,8 @@ namespace vgjs {
 
     };
 
+    //----------------------------------------------------------------------------------------------
+
     /**
     * \brief A job and all its children have finished
     *
@@ -366,15 +412,18 @@ namespace vgjs {
     * \param[in] thread_index Optional thread index to run the task
     */
     template<typename T>
-    requires (std::is_base_of<Job, T>::value)
+    requires (std::is_base_of<Job_base, T>::value)
     inline void schedule(T* job) noexcept {
         JobSystem::instance()->schedule(job);
     };
 
+    /**
+    * \brief Schedule a function into the system
+    * \param[in] job A pointer to the job to schedule
+    */
     inline void schedule(std::function<void(void)>&& f, int32_t thd = -1 ) noexcept {
         JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd );
     };
-
 
     /**
     * \brief Terminate the job system
