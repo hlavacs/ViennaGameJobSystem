@@ -24,8 +24,8 @@ namespace func {
     void printData( int i ) {
         std::cout << i << std::endl;
         if (i < 5) {
-            Job job([&]() { printData(i+1); });
-            //schedule( &job );
+            schedule( [=]() { printData(i+1); } );
+            schedule([=]() { printData(i + 1); });
         }
     }
 
@@ -35,9 +35,7 @@ namespace func {
 
         JobSystem::instance();
 
-        Job job( [&]() { printData(1); } );
-
-        schedule(&job);
+        schedule([=]() { printData(1); });
 
         std::cout << "Ending test()\n";
         wait_for_termination();

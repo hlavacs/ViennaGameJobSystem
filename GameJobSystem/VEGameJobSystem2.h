@@ -50,6 +50,7 @@ namespace vgjs {
             resume();
         }
         virtual void child_finished() = 0;
+        virtual bool recycle() { return false; }        //default is do not recycle, e.g. tasks
     };
 
 
@@ -81,8 +82,9 @@ namespace vgjs {
             return true;
         }
 
-        void on_finished() noexcept;        //called when the job finishes, i.e. all children have finished
-        void child_finished() noexcept;     //child calls parent to notify that it has finished
+        void on_finished() noexcept;            //called when the job finishes, i.e. all children have finished
+        void child_finished() noexcept;         //child calls parent to notify that it has finished
+        virtual bool recycle() { return true; } //recycle in recycle queue so its not destroyed
     };
 
 
@@ -109,7 +111,7 @@ namespace vgjs {
         */
         void push(JOB* pJob) {
             pJob->m_next = m_head.load(std::memory_order_relaxed);
-            while (!std::atomic_compare_exchange_weak(&m_head, &pJob->m_next, pJob)) {};
+            while (!std::atomic_compare_exchange_weak(&m_head, (JOB**)&pJob->m_next, pJob)) {};
         };
 
         /**
@@ -177,6 +179,7 @@ namespace vgjs {
             }
 
             m_central_queue = std::make_unique<JobQueue<Job_base,false>>();
+            m_recycle = std::make_unique<JobQueue<Job, false>>();
 
             for (uint32_t i = 0; i < m_thread_count; i++) {
                 m_local_queues.push_back(std::make_unique<JobQueue<Job_base,true>>());	//local job queue
@@ -244,6 +247,9 @@ namespace vgjs {
                 }
                 if (m_current_job) {
                     (*m_current_job)();                                     //if any job found execute it
+                    if (m_current_job->recycle()) {
+                        m_recycle->push((Job*)m_current_job);
+                    }
                 }
                 else if (--noop == 0 && m_thread_index > 0) {               //if none found too longs let thread sleep
                     noop = NOOP;
@@ -251,6 +257,13 @@ namespace vgjs {
                 }
             };
         };
+
+        /**
+        * \brief Terminate the job system
+        */
+        void terminate() {
+            m_terminate = true;
+        }
 
         /**
         * \brief Wait for termination of all jobs
@@ -285,12 +298,21 @@ namespace vgjs {
         };
 
 
+        /**
+        * \brief Schedule a function into the job system
+        * \param[in] f The function to schedule
+        * \param[in] thread_index The thread to run the function
+        */
         void schedule( std::function<void(void)> && f, int32_t thread_index = -1 ) {
             Job* job = m_recycle->pop();
             if (!job) {
                 std::pmr::polymorphic_allocator<Job> allocator(m_mr);
                 job = allocator.allocate(1);                                    //allocate the object
                 new (job) Job(std::forward< std::function<void(void)>>(f));      //call constructor
+            }
+            else {
+                job->reset();
+                job->m_function = std::move(f);
             }
             job->m_thread_index = thread_index;
             schedule(job);
@@ -352,6 +374,14 @@ namespace vgjs {
     inline void schedule(std::function<void(void)>&& f, int32_t thd = -1 ) noexcept {
         JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd );
     };
+
+
+    /**
+    * \brief Terminate the job system
+    */
+    inline void terminate() {
+        JobSystem::instance()->terminate();
+    }
 
     /**
     * \brief Wait for the job system to terminate
