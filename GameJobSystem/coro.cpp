@@ -25,7 +25,8 @@ namespace coro {
     task<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
         //co_await 0;
-        std::cout << "ComputeF " << (float)i << std::endl;
+        float f = i + 0.5f;
+        std::cout << "ComputeF " << f << std::endl;
 
         co_return 10.0f * i;
     }
@@ -69,7 +70,7 @@ namespace coro {
 
 		JobSystem::instance();
 
-        auto lf = loop(std::allocator_arg, &g_global_mem4, 3000);
+        auto lf = loop(std::allocator_arg, &g_global_mem4, 3);
         schedule(lf);
 
         //auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
@@ -77,9 +78,9 @@ namespace coro {
 
         //join task pool here or setup callbacks from UI
 
-        std::cout << "Ending test()\n";
-
         wait_for_termination();
+
+        std::cout << "Ending test()\n";
 
 	}
 

@@ -53,7 +53,7 @@ namespace vgjs {
     */
     class task_promise_base : public Job_base {
     public:
-        task_promise_base() noexcept {};        //constructor
+        task_promise_base() noexcept { m_children = 0; };        //constructor
 
         void unhandled_exception() noexcept {   //in case of an exception terminate the program
             std::terminate();
@@ -155,9 +155,9 @@ namespace vgjs {
     };
 
     /**
-    * \brief Awaiter for awaiting a vector of tasks (T)
+    * \brief Awaiter for awaiting a tuple of vector of tasks of type task<T>
     *
-    * The vector must contain task<U> structs. Tasks must have the same type
+    * The tuple can contain vectors with different types.
     * The caller will then await the completion of the tasks. Afterwards,
     * the return values can be retrieved by calling get().
     */
@@ -165,14 +165,14 @@ namespace vgjs {
     struct awaitable_vector_tuple {
 
         struct awaiter : awaiter_base {
-            task_promise_base*                      m_promise;                       //caller of the co_await (Job and promise at the same time)
+            task_promise_base*                      m_promise;            //caller of the co_await (Job and promise at the same time)
             std::tuple<std::pmr::vector<Ts>...>&    m_children_vector;    //vector with all children to start
 
-            bool await_ready() noexcept {               //default: go on with suspension
+            bool await_ready() noexcept {                               //suspend only there are no tasks
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    bool ret = true;
-                    std::initializer_list<int>{ ( ret = ret && (std::get<Idx>(m_children_vector).size() == 0), 0) ...};
-                    return ret;
+                    std::size_t num = 0;
+                    std::initializer_list<int>{ (  num += std::get<Idx>(m_children_vector).size(), 0) ...};
+                    return num == 0;
                 };
                 bool ret = f(std::make_index_sequence<sizeof...(Ts)>{});
                 return ret;
@@ -182,7 +182,7 @@ namespace vgjs {
 
                 auto g = [&, this]<typename T>(std::pmr::vector<T> & children) {
                     m_promise->m_children.fetch_add((uint32_t)children.size()); //await the completion of all children               
-                    for (auto& t : children) {                   //loop over all children
+                    for (auto& t : children) {                                  //loop over all children
                         t.promise()->m_parent = m_promise;               //remember parent
                         JobSystem::instance()->schedule(t.promise());    //schedule the promise as job
                     }
@@ -208,23 +208,27 @@ namespace vgjs {
     };
 
 
+    /**
+    * \brief Awaiter for awaiting a vector of tasks of type task<T>
+    *
+    * The vector must contain task<T> structs. All tasks must have the same type.
+    * The caller will then await the completion of the tasks. Afterwards,
+    * the return values can be retrieved by calling get().
+    */
     template<typename T>
     struct awaitable_vector {
 
         struct awaiter : awaiter_base {
-            task_promise_base* m_promise;                       //caller of the co_await (Job and promise at the same time)
-            std::pmr::vector<T>& m_children_vector;    //vector with all children to start
+            task_promise_base*      m_promise;              //caller of the co_await (Job and promise at the same time)
+            std::pmr::vector<T>&    m_children_vector;      //vector with all children to start
 
-            bool await_ready() noexcept {               //default: go on with suspension
-                if (m_children_vector.size() == 0) {
-                    return true;
-                }
-                return false;
+            bool await_ready() noexcept {                   //default: go on with suspension
+                return m_children_vector.size() == 0;       //if no children, then do not suspend
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 m_promise->m_children.fetch_add( (uint32_t)m_children_vector.size() ); //await the completion of all children               
-                for (auto& t : m_children_vector) {                   //loop over all children
+                for (auto& t : m_children_vector) {                  //loop over all children
                     t.promise()->m_parent = m_promise;               //remember parent
                     JobSystem::instance()->schedule(t.promise());    //schedule the promise as job
                 }
@@ -234,8 +238,8 @@ namespace vgjs {
                 : m_promise(promise), m_children_vector(children) {};
         };
 
-        task_promise_base* m_promise;                       //caller of the co_await
-        std::pmr::vector<T>& m_children_vector;    //vector with all children to start
+        task_promise_base*      m_promise;                      //caller of the co_await
+        std::pmr::vector<T>&    m_children_vector;              //vector with all children to start
 
         awaitable_vector(task_promise_base* promise, std::pmr::vector<T>& children) noexcept
             : m_promise(promise), m_children_vector(children) {};
