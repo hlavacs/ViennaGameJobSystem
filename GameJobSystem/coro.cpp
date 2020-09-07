@@ -41,6 +41,12 @@ namespace coro {
         co_return 2 * i;
     }
 
+    task<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
+        auto tk1 = compute(std::allocator_arg, mr, 1);
+        std::cout << "DO Compute " << std::endl;
+        co_return tk1.get();
+    }
+
     task<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
         std::cout << "Starting loop\n";
@@ -49,21 +55,21 @@ namespace coro {
         
         for (int i = 0; i < count; ++i) {
             get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
+            //get<0>(tk)[i].thread_index(0);
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
+            //get<1>(tk)[i].thread_index(0);
         }
         
         std::cout << "Before loop " << std::endl;
 
         co_await tk;
 
+        co_await do_compute(std::allocator_arg, &g_global_mem4);
+
         std::cout << "Ending loop " << std::endl;
         co_return sum;
     }
 
-    task<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
-        auto tk1 = compute(std::allocator_arg, mr, 1);
-        co_return tk1.get();
-    }
 
 	void test() {
         std::cout << "Starting test()\n";

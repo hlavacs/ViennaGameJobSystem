@@ -378,19 +378,6 @@ namespace vgjs {
     }
 
     /**
-    * \brief Schedule a task promise into the job system
-    *
-    * Basic function for scheduling a coroutine task into the job system
-    * \param[in] task A coroutine task, whose promise is a job that is scheduled into the job system
-    * \param[in] thread_index Optional thread index to run the task
-    */
-    template<typename T>
-    requires (std::is_base_of<Job_base, T>::value)
-    inline void schedule(T* job) noexcept {
-        JobSystem::instance()->schedule(job);
-    };
-
-    /**
     * \brief Schedule a function into the system
     * \param[in] job A pointer to the job to schedule
     */

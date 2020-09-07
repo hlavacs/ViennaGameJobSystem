@@ -249,6 +249,39 @@ namespace vgjs {
 
 
     /**
+    * \brief Awaiter for awaiting a task of type task<T>
+    *
+    * The caller will await the completion of the task. Afterwards,
+    * the return values can be retrieved by calling get().
+    */
+    template<typename T>
+    struct awaitable_task {
+
+        struct awaiter : awaiter_base {
+            task_promise_base*  m_promise;    //caller of the co_await (Job and promise at the same time)
+            task<T>&            m_child;      //child task
+
+            void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+                m_promise->m_children.fetch_add(1);                    //await the completion the task               
+                m_child.promise()->m_parent = m_promise;               //remember parent
+                JobSystem::instance()->schedule(m_child.promise());    //schedule the promise as job
+            }
+
+            awaiter(task_promise_base* promise, task<T>& child) noexcept
+                : m_promise(promise), m_child(child) {};
+        };
+
+        task_promise_base*  m_promise;            //caller of the co_await
+        task<T>&            m_child;              //child task
+
+        awaitable_task(task_promise_base* promise, task<T>& child) noexcept
+            : m_promise(promise), m_child(child) {};
+
+        awaiter operator co_await() noexcept { return { m_promise, m_child }; };
+    };
+
+
+    /**
     * \brief Awaiter for changing the thread that the job is run on
     */
     struct awaitable_resume_on {
@@ -318,6 +351,11 @@ namespace vgjs {
             return { this, tasks };
         }
 
+        template<typename T>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
+        awaitable_task<T> await_transform(task<T>& task) noexcept {
+            return { this, task };
+        }
+
         awaitable_resume_on await_transform(uint32_t thread_index) noexcept { //called by co_await INT, for changing the thread
             return { this, thread_index };
         }
@@ -339,8 +377,8 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> h) noexcept { //called after suspending
-                if (m_promise->m_parent) {                                      //if there is a parent
-                    m_promise->m_parent->child_finished();
+                if (m_promise->m_parent) {                      //if there is a parent
+                    m_promise->m_parent->child_finished();      //tell parent that this child has finished
                 }
             }
 
@@ -384,6 +422,10 @@ namespace vgjs {
 
         task_promise_base* promise() noexcept { //get a pointer to the promise (can be used as Job)
             return &m_coro.promise();
+        }
+
+        void thread_index(uint32_t ti) {
+            m_coro.promise().m_thread_index = ti;
         }
 
         bool resume() noexcept {    //resume the task by calling resume() on the handle
