@@ -159,6 +159,7 @@
     <ClCompile Include="coro.cpp" />
     <ClCompile Include="func.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="mixed.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VETask.h" />

@@ -17,10 +17,14 @@ namespace func {
 	void test();
 }
 
+namespace mixed {
+	void test();
+}
+
 
 int main()
 {
-	func::test();
+	mixed::test();
 
 	std::string t;
 	std::cin >> t;
