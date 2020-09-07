@@ -54,7 +54,7 @@ namespace vgjs {
             resume();
         }
         virtual void child_finished() = 0;
-        virtual bool recycle() { return false; }        //default is do not recycle, e.g. tasks
+        virtual bool deallocate() { return false; };
     };
 
 
@@ -87,7 +87,7 @@ namespace vgjs {
 
         void on_finished() noexcept;            //called when the job finishes, i.e. all children have finished
         void child_finished() noexcept;         //child calls parent to notify that it has finished
-        virtual bool recycle() { return true; } //recycle in recycle queue so its not destroyed
+        virtual bool deallocate() { return true; };
     };
 
     class JobSystem;
@@ -112,7 +112,7 @@ namespace vgjs {
         ~JobQueue() {                 
             JOB* job = (JOB*)m_head;                          //deallocate jobs that run a function
             while (job) {                                     //because they were allocated by the JobSystem
-                if (job->recycle()) {
+                if (job->deallocate()) {
                     JOB* next = (JOB*)job->m_next;
                     std::pmr::polymorphic_allocator<JOB> allocator(m_mr); //construct a polymorphic allocator
                     job->~JOB();                                          //call destructor
@@ -170,7 +170,7 @@ namespace vgjs {
         std::pmr::memory_resource*                  m_mr;                   ///<use to allocate/deallocate Jobs
         static inline std::unique_ptr<JobSystem>    m_instance;	            ///<pointer to singleton
         std::vector<std::unique_ptr<std::thread>>	m_threads;	            ///< array of thread structures
-        uint32_t						            m_thread_count = 0;     ///< number of threads in the pool
+        std::atomic<uint32_t>   		            m_thread_count = 0;     ///< number of threads in the pool
         uint32_t									m_start_idx = 0;        ///< idx of first thread that is created
         static inline thread_local uint32_t		    m_thread_index;			///< each thread has its own number
         std::atomic<bool>							m_terminate = false;	///< Flag for terminating the pool
@@ -224,7 +224,7 @@ namespace vgjs {
         * \brief Test whether the job system has been started yet
         * \returns true if the instance exists, else false
         */
-        static bool instance_created() {
+        static bool is_instance_created() {
             return (m_instance != nullptr);
         };
 
@@ -250,7 +250,7 @@ namespace vgjs {
         void thread_task(uint32_t threadIndex = 0) {
             constexpr uint32_t NOOP = 20;                                   //number of empty loops until threads sleeps
             m_thread_index = threadIndex;	                                //Remember your own thread index number
-            static std::atomic<uint32_t> thread_counter = m_thread_count;	//Counted down when started
+            static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
 
             thread_counter--;			                                    //count down
             while (thread_counter.load() > 0)	                            //Continue only if all threads are running
@@ -264,16 +264,18 @@ namespace vgjs {
                 }
                 if (m_current_job) {
                     (*m_current_job)();                                     //if any job found execute it
-                    if (m_current_job->recycle()) {                         //if it was a job executing a function
-                        m_recycle->push((Job*)m_current_job);               //save it so it can be reused later
-                    }
                 }
                 else if (--noop == 0 && m_thread_index > 0) {               //if none found too longs let thread sleep
                     noop = NOOP;                                            //thread 0 goes on to make the system reactive
-                    //std::this_thread::sleep_for(std::chrono::microseconds(1));
+                    std::this_thread::sleep_for(std::chrono::microseconds(1));
                 }
             };
+           m_thread_count--;
         };
+
+        void recycle(Job*job) {
+            m_recycle->push(job);               //save it so it can be reused later
+        }
 
         /**
         * \brief Terminate the job system
@@ -289,7 +291,10 @@ namespace vgjs {
         * Returns as soon as all threads have exited.
         */
         void wait_for_termination() {
-            for (std::unique_ptr<std::thread>& pThread : m_threads) {
+            if (m_thread_count == 0) {
+                return;
+            }
+            for (auto& pThread : m_threads) {
                 pThread->join();
             }
         };
@@ -339,6 +344,10 @@ namespace vgjs {
 
     //----------------------------------------------------------------------------------------------
 
+    inline void recycle(Job* job) {
+        JobSystem::instance()->recycle(job);               //save it so it can be reused later
+    }
+
     /**
     * \brief A job and all its children have finished
     *
@@ -360,6 +369,8 @@ namespace vgjs {
         if (m_parent != nullptr) {		//if there is parent then inform it	
             m_parent->child_finished();	//if this is the last child job then the parent will also finish
         }
+
+        recycle(this);
     }
 
     /**
@@ -384,6 +395,7 @@ namespace vgjs {
     inline void schedule(std::function<void(void)>&& f, int32_t thd = -1 ) noexcept {
         JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd );
     };
+
 
     /**
     * \brief Terminate the job system

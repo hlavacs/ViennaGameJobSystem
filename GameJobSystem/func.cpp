@@ -38,7 +38,6 @@ namespace func {
         schedule([=]() { printData(1); });
 
         std::cout << "Ending test()\n";
-        wait_for_termination();
     }
 
 }

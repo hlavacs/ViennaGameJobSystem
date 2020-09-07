@@ -8,6 +8,7 @@
 #include <chrono>
 #include <glm.hpp>
 
+#include "VEGameJobSystem2.h"
 
 namespace coro {
 	void test();
@@ -24,10 +25,15 @@ namespace mixed {
 
 int main()
 {
-	mixed::test();
+	using namespace vgjs;
+
+	func::test();
 
 	std::string t;
 	std::cin >> t;
+
+	vgjs::terminate();
+	wait_for_termination();
 }
 
 
