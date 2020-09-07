@@ -53,7 +53,7 @@ namespace vgjs {
     */
     class task_promise_base : public Job_base {
     public:
-        task_promise_base() noexcept { m_children = 0; };        //constructor
+        task_promise_base() noexcept {};        //constructor
 
         void unhandled_exception() noexcept {   //in case of an exception terminate the program
             std::terminate();

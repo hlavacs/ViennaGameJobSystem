@@ -66,11 +66,10 @@ namespace vgjs {
         Job*                        m_continuation = nullptr;   //continuation follows this job
         std::function<void(void)>   m_function = []() {};       //empty function
 
-        Job(std::function<void(void)>&& f) : m_function(std::move(f)) { m_children = 1; }; //job is its own child
+        Job(std::function<void(void)>&& f) : m_function(std::move(f)) {}; //job is its own child
 
         void reset() {                  //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
-            m_children = 1;             //job is its own child
             m_parent = nullptr;
             m_thread_index = -1;
             m_continuation = nullptr;
@@ -78,6 +77,7 @@ namespace vgjs {
         }
 
         virtual bool resume() {                 //work is to call the function
+            m_children = 1;
             m_function();
             if (m_children.fetch_sub(1) == 1) { //reduce number of children by one
                 on_finished();                  //if no more children, then finish
