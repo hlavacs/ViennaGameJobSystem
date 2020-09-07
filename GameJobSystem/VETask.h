@@ -64,8 +64,8 @@ namespace vgjs {
         }
 
         void child_finished() noexcept {
-            if (m_children.fetch_sub(1) == 1) {
-                JobSystem::instance()->schedule(this);    //schedule the promise as job
+            if (m_children.fetch_sub(1) == 1) {           //if there are no more children
+                JobSystem::instance()->schedule(this);    //then resume the coroutine by scheduling its promise
             }
         }
 
@@ -340,9 +340,7 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> h) noexcept { //called after suspending
                 if (m_promise->m_parent) {                                      //if there is a parent
-                    if (m_promise->m_parent->m_children.fetch_sub(1) == 1) {    //have all children finished yet?
-                        JobSystem::instance()->schedule(m_promise->m_parent);   //yes -> schedule the parent to resuming
-                    }
+                    m_promise->m_parent->child_finished();
                 }
             }
 
@@ -352,7 +350,6 @@ namespace vgjs {
         final_awaiter final_suspend() noexcept { //create the final awaiter at the final suspension point
             return { this };
         }
-
     };
 
     //---------------------------------------------------------------------------------------------------

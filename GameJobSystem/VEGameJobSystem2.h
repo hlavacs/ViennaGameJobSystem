@@ -45,7 +45,7 @@ namespace vgjs {
     class Job_base {
     public:
         Job_base*           m_next = nullptr;           //next job in the queue
-        std::atomic<int>    m_children = 1;             //includes the job itself
+        std::atomic<int>    m_children = 0;             //number of children this job is waiting for
         Job_base*           m_parent = nullptr;         //parent job that created this job
         int32_t             m_thread_index = -1;        //thread that the job should run on
 
@@ -66,11 +66,11 @@ namespace vgjs {
         Job*                        m_continuation = nullptr;   //continuation follows this job
         std::function<void(void)>   m_function = []() {};       //empty function
 
-        Job(std::function<void(void)> && f) : m_function(std::move(f)) {};
+        Job(std::function<void(void)>&& f) : m_function(std::move(f)) { m_children = 1; }; //job is its own child
 
         void reset() {                  //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
-            m_children = 1;
+            m_children = 1;             //job is its own child
             m_parent = nullptr;
             m_thread_index = -1;
             m_continuation = nullptr;
@@ -78,7 +78,6 @@ namespace vgjs {
         }
 
         virtual bool resume() {                 //work is to call the function
-            m_children = 1;
             m_function();
             if (m_children.fetch_sub(1) == 1) { //reduce number of children by one
                 on_finished();                  //if no more children, then finish

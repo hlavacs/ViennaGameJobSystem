@@ -70,7 +70,7 @@ namespace coro {
 
 		JobSystem::instance();
 
-        auto lf = loop(std::allocator_arg, &g_global_mem4, 3);
+        auto lf = loop(std::allocator_arg, &g_global_mem4, 9);
         schedule(lf);
 
         //auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
