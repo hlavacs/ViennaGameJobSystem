@@ -271,7 +271,7 @@ namespace vgjs {
                 }
                 else if (--noop == 0 && m_thread_index > 0) {               //if none found too longs let thread sleep
                     noop = NOOP;                                            //thread 0 goes on to make the system reactive
-                    std::this_thread::sleep_for(std::chrono::microseconds(5));
+                    //std::this_thread::sleep_for(std::chrono::microseconds(1));
                 }
             };
         };

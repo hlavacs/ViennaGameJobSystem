@@ -20,7 +20,7 @@ namespace func {
 
 int main()
 {
-	func::test();
+	coro::test();
 
 	std::string t;
 	std::cin >> t;

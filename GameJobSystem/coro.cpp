@@ -22,9 +22,20 @@ namespace coro {
 
     auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
+    task<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+
+        //co_await 0;
+        std::cout << "ComputeF " << (float)i << std::endl;
+
+        co_return 10.0f * i;
+    }
+
+
     task<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
-        co_await 1;
+        //co_await 1;
+
+        std::cout << "Compute " << i << std::endl;
 
         co_return 2 * i;
     }
@@ -33,24 +44,18 @@ namespace coro {
         int sum = 0;
         std::cout << "Starting loop\n";
 
-        unique_ptr_vector<task<int>> tv;
-
+        auto tk = std::make_tuple(std::pmr::vector<task<int>>{mr}, std::pmr::vector<task<float>>{mr});
+        
         for (int i = 0; i < count; ++i) {
-
-            auto t = make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i));
-            auto u = make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, 10 * i));
-            co_await std::pmr::vector<task_base*>{ t.get(), u.get() };
-
-            std::cout << "Before loop " << i << " " << t->get() << std::endl;
-
-            tv.emplace_back(make_unique_ptr<task<int>>(mr, compute(std::allocator_arg, &g_global_mem4, i)) );
-
-            std::cout << "After loop " << t->get() << std::endl;
+            get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
+            get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
         }
+        
+        std::cout << "Before loop " << std::endl;
 
-        co_await tv;
+        co_await tk;
 
-        std::cout << "Ending loop " << tv[tv.size() - 1]->get() << std::endl;
+        std::cout << "Ending loop " << std::endl;
         co_return sum;
     }
 
@@ -64,7 +69,7 @@ namespace coro {
 
 		JobSystem::instance();
 
-        auto lf = loop(std::allocator_arg, &g_global_mem4, 100);
+        auto lf = loop(std::allocator_arg, &g_global_mem4, 3000);
         schedule(lf);
 
         //auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
