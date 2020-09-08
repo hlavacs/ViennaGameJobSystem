@@ -51,16 +51,23 @@ namespace coro {
         int sum = 0;
         std::cout << "Starting loop\n";
 
+        auto tv = std::pmr::vector<task<int>>{mr};
+
         auto tk = std::make_tuple(std::pmr::vector<task<int>>{mr}, std::pmr::vector<task<float>>{mr});
         
         for (int i = 0; i < count; ++i) {
+            tv.emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
+
             get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
             //get<0>(tk)[i].thread_index(0);
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
             //get<1>(tk)[i].thread_index(0);
+
         }
         
         std::cout << "Before loop " << std::endl;
+
+        co_await tv;
 
         co_await tk;
 
@@ -77,7 +84,7 @@ namespace coro {
 		JobSystem::instance();
 
         auto lf = loop(std::allocator_arg, &g_global_mem4, 9);
-        schedule(lf);
+        schedule(nullptr, lf);
 
         //auto doco = do_compute(std::allocator_arg, &g_global_mem4 );
         //doco.resume();

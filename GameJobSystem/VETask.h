@@ -24,21 +24,42 @@ namespace vgjs {
 
     class task_base;
     template<typename T> class task;
+    class task_promise_base;
 
     //---------------------------------------------------------------------------------------------------
 
     /**
-    * \brief Schedule a task promise into the job system
+    * \brief Schedule a task into the job system
     *
     * Basic function for scheduling a coroutine task into the job system
     * \param[in] task A coroutine task, whose promise is a job that is scheduled into the job system
-    * \param[in] thread_index Optional thread index to run the task
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule(T& task) noexcept {
+    void schedule(task_promise_base* parent, T& task) noexcept {
+        if (parent != nullptr) {
+            parent->m_children++;                               //await the completion of all children      
+        }
+        task.promise()->m_parent = parent;                      //remember parent
         JobSystem::instance()->schedule(task.promise());
-        return;
+    };
+
+    /**
+    * \brief Schedule a vector of tasks into the job system
+    *
+    * Basic function for scheduling coroutine tasks into the job system
+    * \param[in] tasks A vector of coroutine tasks, whose promise is a job that is scheduled into the job system
+    */
+    template<typename T>
+    requires (std::is_base_of<task_base, T>::value)
+    void schedule(task_promise_base* parent, std::pmr::vector<T>& tasks ) noexcept {
+        if (parent != nullptr) {
+            parent->m_children.fetch_add((uint32_t)tasks.size()); //await the completion of all children               
+        }
+        for (auto& t : tasks) {
+            t.promise()->m_parent = parent;                 //remember parent
+            JobSystem::instance()->schedule(t.promise());
+        }
     };
 
     //---------------------------------------------------------------------------------------------------
@@ -179,17 +200,8 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-
-                auto g = [&, this]<typename T>(std::pmr::vector<T> & children) {
-                    m_promise->m_children.fetch_add((uint32_t)children.size()); //await the completion of all children               
-                    for (auto& t : children) {                                  //loop over all children
-                        t.promise()->m_parent = m_promise;               //remember parent
-                        JobSystem::instance()->schedule(t.promise());    //schedule the promise as job
-                    }
-                };
-
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ ( g( std::get<Idx>(m_children_vector) ) , 0) ...};
+                    std::initializer_list<int>{ ( schedule( m_promise, std::get<Idx>(m_children_vector) ) , 0) ...};
                 };
                 f(std::make_index_sequence<sizeof...(Ts)>{});
             }
@@ -227,11 +239,7 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                m_promise->m_children.fetch_add( (uint32_t)m_children_vector.size() ); //await the completion of all children               
-                for (auto& t : m_children_vector) {                  //loop over all children
-                    t.promise()->m_parent = m_promise;               //remember parent
-                    JobSystem::instance()->schedule(t.promise());    //schedule the promise as job
-                }
+                schedule(m_promise, m_children_vector);
             }
 
             awaiter(task_promise_base* promise, std::pmr::vector<T>& children) noexcept
@@ -262,9 +270,7 @@ namespace vgjs {
             task<T>&            m_child;      //child task
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                m_promise->m_children.fetch_add(1);                    //await the completion the task               
-                m_child.promise()->m_parent = m_promise;               //remember parent
-                JobSystem::instance()->schedule(m_child.promise());    //schedule the promise as job
+                schedule(m_promise, m_child);    //schedule the promise as job
             }
 
             awaiter(task_promise_base* promise, task<T>& child) noexcept

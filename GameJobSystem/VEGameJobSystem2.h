@@ -396,6 +396,22 @@ namespace vgjs {
         JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd );
     };
 
+    inline void schedule( std::pmr::vector<std::function<void(void)>>& functions, int32_t thd = -1) noexcept {
+        for (auto&& f : functions) {
+            JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd);
+        }
+    };
+
+    inline void schedule(Job_base* job) {
+        JobSystem::instance()->schedule(job);
+    }
+
+    inline void schedule(std::pmr::vector<Job_base*>& jobs) {
+        for (auto job : jobs) {
+            JobSystem::instance()->schedule(job);
+        }
+    }
+
 
     /**
     * \brief Terminate the job system
