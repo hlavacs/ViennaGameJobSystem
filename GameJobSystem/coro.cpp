@@ -82,7 +82,7 @@ namespace coro {
 
         co_await tk;
 
-        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 20);
+        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 200);
 
         std::cout << "Ending loop " << std::endl;
         co_return sum;
@@ -94,10 +94,10 @@ namespace coro {
 
 		JobSystem::instance();
 
-        schedule(nullptr, loop(std::allocator_arg, &g_global_mem4, 90));
+        schedule(loop(std::allocator_arg, &g_global_mem4, 90));
 
         auto l2 = loop(std::allocator_arg, &g_global_mem4, 9);
-        schedule(nullptr, l2);
+        schedule(l2);
 
         std::cout << "Ending test()\n";
 

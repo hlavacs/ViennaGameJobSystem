@@ -103,15 +103,19 @@ namespace vgjs {
     class JobQueue {
         friend JobSystem;
         std::pmr::memory_resource* m_mr;        ///<use to allocate/deallocate Jobs
-        std::atomic<JOB*> m_head = nullptr;	    ///< Head of the stack
+        std::atomic<JOB*> m_head;	            ///< Head of the stack
+        bool m_deallocate = true;
 
     public:
 
-        JobQueue(std::pmr::memory_resource* mr) : m_mr(mr) {};	///<JobQueue class constructor
+        JobQueue(std::pmr::memory_resource* mr, bool deallocate = true) : m_mr(mr), m_deallocate(deallocate), m_head(nullptr) {};	///<JobQueue class constructor
+        JobQueue(const JobQueue<JOB, FIFO>& queue) : m_mr(queue.m_mr), m_deallocate(queue.m_deallocate), m_head(nullptr) {};
 
-        ~JobQueue() {                 
-            JOB* job = (JOB*)m_head;                          //deallocate jobs that run a function
-            while (job) {                                     //because they were allocated by the JobSystem
+        ~JobQueue() {    
+            if (!m_deallocate) return;
+
+            JOB* job = (JOB*)m_head.load();                          //deallocate jobs that run a function
+            while (job != nullptr) {                          //because they were allocated by the JobSystem
                 if (job->deallocate()) {
                     JOB* next = (JOB*)job->m_next;
                     std::pmr::polymorphic_allocator<JOB> allocator(m_mr); //construct a polymorphic allocator
@@ -155,6 +159,7 @@ namespace vgjs {
             while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, (JOB*)head->m_next)) {};
             return head;
         };
+
     };
 
 
@@ -169,15 +174,15 @@ namespace vgjs {
     private:
         std::pmr::memory_resource*                  m_mr;                   ///<use to allocate/deallocate Jobs
         static inline std::unique_ptr<JobSystem>    m_instance;	            ///<pointer to singleton
-        std::vector<std::unique_ptr<std::thread>>	m_threads;	            ///< array of thread structures
+        std::vector<std::thread>	                m_threads;	            ///< array of thread structures
         std::atomic<uint32_t>   		            m_thread_count = 0;     ///< number of threads in the pool
         uint32_t									m_start_idx = 0;        ///< idx of first thread that is created
         static inline thread_local uint32_t		    m_thread_index;			///< each thread has its own number
         std::atomic<bool>							m_terminate = false;	///< Flag for terminating the pool
         static inline thread_local Job_base*        m_current_job = nullptr;
-        std::vector<std::unique_ptr<JobQueue<Job_base,true>>>               m_local_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
-        std::unique_ptr<JobQueue<Job_base,false>>                           m_central_queue;    ///<main central job queue is multiple produce multiple consume
-        std::unique_ptr<JobQueue<Job,false>>                                m_recycle;          ///<save old jobs for recycling
+        std::vector<JobQueue<Job_base,true>>        m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
+        JobQueue<Job_base,false>                    m_central_queue;        ///<main central job queue is multiple produce multiple consume
+        JobQueue<Job,false>                         m_recycle;              ///<save old jobs for recycling
 
     public:
 
@@ -187,7 +192,7 @@ namespace vgjs {
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
         */
         JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource *mr = std::pmr::get_default_resource() ) 
-            : m_mr(mr) {
+            : m_mr(mr), m_central_queue(mr, true), m_recycle(mr, false) {
 
             m_start_idx = start_idx;
             m_thread_count = threadCount;
@@ -195,16 +200,14 @@ namespace vgjs {
                 m_thread_count = std::thread::hardware_concurrency();		///< main thread is also running
             }
 
-            m_central_queue = std::make_unique<JobQueue<Job_base,false>>(mr);
-            m_recycle = std::make_unique<JobQueue<Job,false>>(mr);
-
             for (uint32_t i = 0; i < m_thread_count; i++) {
-                m_local_queues.push_back(std::make_unique<JobQueue<Job_base,true>>(mr));	//local job queue
+                m_local_queues.push_back(JobQueue<Job_base, true>(mr, false));     // std::make_unique<JobQueue<Job_base, true>>(mr, false));	//local job queue
             }
 
             for (uint32_t i = start_idx; i < m_thread_count; i++) {
                 std::cout << "Starting thread " << i << std::endl;
-                m_threads.push_back(std::make_unique<std::thread>(&JobSystem::thread_task, this, i));	//spawn the pool threads
+                m_threads.push_back(std::thread(&JobSystem::thread_task, this, i));	//spawn the pool threads
+                m_threads[i].detach();
             }
         };
 
@@ -258,9 +261,9 @@ namespace vgjs {
 
            thread_local uint32_t noop = NOOP;                               //number of empty loops until threads sleeps
            while (!m_terminate) {			                                //Run until the job system is terminated
-                m_current_job = m_local_queues[m_thread_index]->pop();      //try get a job from the local queue
+                m_current_job = m_local_queues[m_thread_index].pop();      //try get a job from the local queue
                 if (!m_current_job) {
-                    m_current_job = m_central_queue->pop();                 //if none found try the central queue
+                    m_current_job = m_central_queue.pop();                 //if none found try the central queue
                 }
                 if (m_current_job) {
                     (*m_current_job)();                                     //if any job found execute it
@@ -274,7 +277,7 @@ namespace vgjs {
         };
 
         void recycle(Job*job) {
-            m_recycle->push(job);               //save it so it can be reused later
+            m_recycle.push(job);               //save it so it can be reused later
         }
 
         /**
@@ -291,11 +294,8 @@ namespace vgjs {
         * Returns as soon as all threads have exited.
         */
         void wait_for_termination() {
-            if (m_thread_count == 0) {
-                return;
-            }
-            for (auto& pThread : m_threads) {
-                pThread->join();
+            while (m_thread_count > 0) {
+                std::this_thread::sleep_for(std::chrono::microseconds(10));
             }
         };
 
@@ -313,10 +313,10 @@ namespace vgjs {
         */
         void schedule(Job_base* job) {
             if (job->m_thread_index >= 0 && job->m_thread_index < (int)m_thread_count) {
-                m_local_queues[job->m_thread_index]->push(job);
+                m_local_queues[job->m_thread_index].push(job);
                 return;
             }
-            m_central_queue->push(job);
+            m_central_queue.push(job);
         };
 
 
@@ -326,7 +326,7 @@ namespace vgjs {
         * \param[in] thread_index The thread to run the function
         */
         void schedule( std::function<void(void)> && f, int32_t thread_index = -1 ) {
-            Job* job = m_recycle->pop();
+            Job* job = m_recycle.pop();
             if (!job) {
                 std::pmr::polymorphic_allocator<Job> allocator(m_mr);
                 job = allocator.allocate(1);                                    //allocate the object

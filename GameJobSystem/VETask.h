@@ -36,7 +36,10 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-        void schedule(task_promise_base* parent, T& task) noexcept {
+        void schedule(T& task, Job_base* parent = nullptr ) noexcept {
+        if (parent == nullptr) {
+            parent = JobSystem::instance()->current_job();
+        }
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
@@ -44,10 +47,16 @@ namespace vgjs {
         JobSystem::instance()->schedule(task.promise());
     };
 
+    /**
+    * \brief Schedule a task into the job system
+    *
+    * Basic function for scheduling a coroutine task into the job system
+    * \param[in] task A coroutine task, whose promise is a job that is scheduled into the job system
+    */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule(task_promise_base* parent, T&& task) noexcept {
-        schedule( parent, task);
+    void schedule( T&& task, Job_base* parent = nullptr) noexcept {
+        schedule( task, parent );
     };
 
     /**
@@ -58,13 +67,9 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule(task_promise_base* parent, std::pmr::vector<T>& tasks ) noexcept {
-        if (parent != nullptr) {
-            parent->m_children.fetch_add((uint32_t)tasks.size());   //await the completion of all children               
-        }
+    void schedule(std::pmr::vector<T>& tasks, Job_base* parent = nullptr) noexcept {
         for (auto& t : tasks) {
-            t.promise()->m_parent = parent;                         //remember parent
-            JobSystem::instance()->schedule(t.promise());
+            schedule(t, parent);
         }
     };
 
@@ -208,7 +213,7 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ ( schedule( m_promise, std::get<Idx>(m_children_vector) ) , 0) ...};
+                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_children_vector), m_promise) , 0) ...};
                 };
                 f(std::make_index_sequence<sizeof...(Ts)>{});
             }
@@ -246,7 +251,7 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule(m_promise, m_children_vector);
+                schedule( m_children_vector, m_promise);
             }
 
             awaiter(task_promise_base* promise, std::pmr::vector<T>& children) noexcept
@@ -277,7 +282,7 @@ namespace vgjs {
             task<T>&            m_child;      //child task
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule(m_promise, std::forward<task<T>>(m_child));    //schedule the promise as job
+                schedule( std::forward<task<T>>(m_child), m_promise);    //schedule the promise as job
             }
 
             awaiter(task_promise_base* promise, task<T>& child) noexcept
