@@ -412,7 +412,6 @@ namespace vgjs {
         }
     }
 
-
     /**
     * \brief Terminate the job system
     */

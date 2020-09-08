@@ -36,7 +36,7 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule(task_promise_base* parent, T& task) noexcept {
+    void schedule(task_promise_base* parent, T&& task) noexcept {
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
@@ -54,10 +54,10 @@ namespace vgjs {
     requires (std::is_base_of<task_base, T>::value)
     void schedule(task_promise_base* parent, std::pmr::vector<T>& tasks ) noexcept {
         if (parent != nullptr) {
-            parent->m_children.fetch_add((uint32_t)tasks.size()); //await the completion of all children               
+            parent->m_children.fetch_add((uint32_t)tasks.size());   //await the completion of all children               
         }
         for (auto& t : tasks) {
-            t.promise()->m_parent = parent;                 //remember parent
+            t.promise()->m_parent = parent;                         //remember parent
             JobSystem::instance()->schedule(t.promise());
         }
     };
@@ -73,6 +73,7 @@ namespace vgjs {
     * for the promise.
     */
     class task_promise_base : public Job_base {
+
     public:
         task_promise_base() noexcept {};        //constructor
 
@@ -189,7 +190,7 @@ namespace vgjs {
             task_promise_base*                      m_promise;            //caller of the co_await (Job and promise at the same time)
             std::tuple<std::pmr::vector<Ts>...>&    m_children_vector;    //vector with all children to start
 
-            bool await_ready() noexcept {                               //suspend only there are no tasks
+            bool await_ready() noexcept {                                 //suspend only there are no tasks
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
                     std::size_t num = 0;
                     std::initializer_list<int>{ (  num += std::get<Idx>(m_children_vector).size(), 0) ...};
@@ -270,7 +271,7 @@ namespace vgjs {
             task<T>&            m_child;      //child task
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule(m_promise, m_child);    //schedule the promise as job
+                schedule(m_promise, std::forward<task<T>>(m_child));    //schedule the promise as job
             }
 
             awaiter(task_promise_base* promise, task<T>& child) noexcept
@@ -418,7 +419,7 @@ namespace vgjs {
         task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
         ~task() noexcept {
-            if (m_coro && !m_coro.done())   //use done() only if coro suspended
+            if (m_coro && !m_coro.done() && m_coro.promise().m_parent != nullptr )   //use done() only if coro suspended
                 m_coro.destroy();           //if you do not want this then move task
         }
 
