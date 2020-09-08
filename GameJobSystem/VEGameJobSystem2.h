@@ -104,27 +104,27 @@ namespace vgjs {
         friend JobSystem;
         std::pmr::memory_resource* m_mr;        ///<use to allocate/deallocate Jobs
         std::atomic<JOB*> m_head;	            ///< Head of the stack
-        bool m_deallocate = true;
 
     public:
 
-        JobQueue(std::pmr::memory_resource* mr, bool deallocate = true) : m_mr(mr), m_deallocate(deallocate), m_head(nullptr) {};	///<JobQueue class constructor
-        JobQueue(const JobQueue<JOB, FIFO>& queue) : m_mr(queue.m_mr), m_deallocate(queue.m_deallocate), m_head(nullptr) {};
+        JobQueue(std::pmr::memory_resource* mr, bool deallocate = true) : m_mr(mr), m_head(nullptr) {};	///<JobQueue class constructor
+        JobQueue(const JobQueue<JOB, FIFO>& queue) : m_mr(queue.m_mr), m_head(nullptr) {};
 
-        ~JobQueue() {    
-            if (!m_deallocate) return;
-
+        void clear() {
             JOB* job = (JOB*)m_head.load();                          //deallocate jobs that run a function
             while (job != nullptr) {                          //because they were allocated by the JobSystem
+                JOB* next = (JOB*)job->m_next;
                 if (job->deallocate()) {
-                    JOB* next = (JOB*)job->m_next;
                     std::pmr::polymorphic_allocator<JOB> allocator(m_mr); //construct a polymorphic allocator
                     job->~JOB();                                          //call destructor
                     allocator.deallocate(job, 1);                         //use pma to deallocate the memory
-                    job = next;
                 }
+                job = next;
             }
+            m_head = nullptr;
         }
+
+        ~JobQueue() {}
 
         /**
         * \brief Pushes a job onto the queue
@@ -273,7 +273,15 @@ namespace vgjs {
                     std::this_thread::sleep_for(std::chrono::microseconds(1));
                 }
             };
-           m_thread_count--;
+
+           uint32_t num = m_thread_count.fetch_sub(1);                      //last thread clears all queues
+           if (num == 1) {
+               m_central_queue.clear();
+               m_recycle.clear();
+               for (auto& q : m_local_queues) {
+                   q.clear();
+               }
+           }
         };
 
         void recycle(Job*job) {
