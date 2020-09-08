@@ -22,6 +22,17 @@ namespace coro {
 
     auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
+
+    task<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
+        //std::cout << "Recursive " << i << " of " << N << std::endl;
+
+        if (i < N) {
+            co_await recursive(std::allocator_arg, mr, i + 1, N);
+            co_await recursive(std::allocator_arg, mr, i + 1, N);
+        }
+        co_return 0;
+    }
+
     task<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
         //co_await 0;
@@ -71,7 +82,7 @@ namespace coro {
 
         co_await tk;
 
-        co_await do_compute(std::allocator_arg, &g_global_mem4);
+        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 20);
 
         std::cout << "Ending loop " << std::endl;
         co_return sum;
@@ -83,7 +94,10 @@ namespace coro {
 
 		JobSystem::instance();
 
-        schedule(nullptr, loop(std::allocator_arg, &g_global_mem4, 900));
+        schedule(nullptr, loop(std::allocator_arg, &g_global_mem4, 90));
+
+        auto l2 = loop(std::allocator_arg, &g_global_mem4, 9);
+        schedule(nullptr, l2);
 
         std::cout << "Ending test()\n";
 

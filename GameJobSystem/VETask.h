@@ -36,12 +36,18 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule(task_promise_base* parent, T&& task) noexcept {
+        void schedule(task_promise_base* parent, T& task) noexcept {
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
         task.promise()->m_parent = parent;                      //remember parent
         JobSystem::instance()->schedule(task.promise());
+    };
+
+    template<typename T>
+    requires (std::is_base_of<task_base, T>::value)
+    void schedule(task_promise_base* parent, T&& task) noexcept {
+        schedule( parent, task);
     };
 
     /**
@@ -419,8 +425,9 @@ namespace vgjs {
         task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
         ~task() noexcept {
-            if (m_coro && !m_coro.done() && m_coro.promise().m_parent != nullptr )   //use done() only if coro suspended
+            if (m_coro && m_coro.promise().m_parent != nullptr) {  //use done() only if coro suspended
                 m_coro.destroy();           //if you do not want this then move task
+            }
         }
 
         T get() noexcept {                  //retrieve the promised value
