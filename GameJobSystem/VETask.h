@@ -36,7 +36,7 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-        void schedule(T& task, Job_base* parent = nullptr ) noexcept {
+        void schedule(T& task, Job_base* parent = nullptr, uint32_t thd = -1 ) noexcept {
         if (parent == nullptr) {
             parent = JobSystem::instance()->current_job();
         }
@@ -44,6 +44,9 @@ namespace vgjs {
             parent->m_children++;                               //await the completion of all children      
         }
         task.promise()->m_parent = parent;                      //remember parent
+        if (thd != -1) {
+            task.promise()->m_thread_index = thd;
+        }
         JobSystem::instance()->schedule(task.promise());
     };
 
@@ -55,8 +58,8 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule( T&& task, Job_base* parent = nullptr) noexcept {
-        schedule( task, parent );
+    void schedule( T&& task, Job_base* parent = nullptr, uint32_t thd = -1) noexcept {
+        schedule( task, parent, thd );
     };
 
     /**
@@ -67,9 +70,9 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule(std::pmr::vector<T>& tasks, Job_base* parent = nullptr) noexcept {
+    void schedule(std::pmr::vector<T>& tasks, Job_base* parent = nullptr, uint32_t thd = -1) noexcept {
         for (auto& t : tasks) {
-            schedule(t, parent);
+            schedule(t, parent, thd);
         }
     };
 
@@ -214,7 +217,7 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_children_vector), m_promise) , 0) ...};
+                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_children_vector), m_promise, -1) , 0) ...};
                 };
                 f(std::make_index_sequence<sizeof...(Ts)>{});
             }
@@ -252,7 +255,7 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule( m_children_vector, m_promise);
+                schedule( m_children_vector, m_promise, -1);
             }
 
             awaiter(task_promise_base* promise, std::pmr::vector<T>& children) noexcept
@@ -270,45 +273,20 @@ namespace vgjs {
 
 
     /**
-    * \brief Awaiter for awaiting a task of type task<T>
+    * \brief Awaiter for awaiting a task of type task<T> or std::function<void(void)>
     *
     * The caller will await the completion of the task. Afterwards,
-    * the return values can be retrieved by calling get().
+    * the return values can be retrieved by calling get() for task<t>
     */
     template<typename T>
     struct awaitable_task {
-
-        struct awaiter : awaiter_base {
-            task_promise_base*  m_promise;    //caller of the co_await (Job and promise at the same time)
-            task<T>&            m_child;      //child task
-
-            void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule( std::forward<task<T>>(m_child), m_promise);    //schedule the promise as job
-            }
-
-            awaiter(task_promise_base* promise, task<T>& child) noexcept
-                : m_promise(promise), m_child(child) {};
-        };
-
-        task_promise_base*  m_promise;            //caller of the co_await
-        task<T>&            m_child;              //child task
-
-        awaitable_task(task_promise_base* promise, task<T>& child) noexcept
-            : m_promise(promise), m_child(child) {};
-
-        awaiter operator co_await() noexcept { return { m_promise, m_child }; };
-    };
-
-
-    template<typename T>
-    struct awaitable_f {
 
         struct awaiter : awaiter_base {
             task_promise_base*          m_promise;    //caller of the co_await (Job and promise at the same time)
             T&  m_child;      //child task
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule(std::forward<T>(m_child));    //schedule the promise as job
+                schedule( m_child, nullptr, -1);    //schedule the promise or function as job
             }
 
             awaiter(task_promise_base* promise, T& child) noexcept
@@ -318,7 +296,7 @@ namespace vgjs {
         task_promise_base*          m_promise;            //caller of the co_await
         T&  m_child;              //child task
 
-        awaitable_f(task_promise_base* promise, T& child) noexcept
+        awaitable_task(task_promise_base* promise, T& child) noexcept
             : m_promise(promise), m_child(child) {};
 
         awaiter operator co_await() noexcept { return { m_promise, m_child }; };
@@ -405,12 +383,7 @@ namespace vgjs {
         }
 
         template<typename T>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
-        awaitable_task<T> await_transform(task<T>& task) noexcept {
-            return { this, task };
-        }
-
-        template<typename T>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
-        awaitable_f<T> await_transform(T& task) noexcept {
+        awaitable_task<T> await_transform(T& task) noexcept {
             return { this, task };
         }
 

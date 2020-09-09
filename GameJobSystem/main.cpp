@@ -27,7 +27,7 @@ int main()
 {
 	using namespace vgjs;
 
-	func::test();
+	coro::test();
 
 	std::string t;
 	std::cin >> t;
