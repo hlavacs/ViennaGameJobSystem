@@ -58,6 +58,12 @@ namespace coro {
         co_return tk1.get();
     }
 
+
+    void FCompute( int i ) {
+        std::cout << "FCompute " << i << std::endl;
+    }
+
+
     task<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
         std::cout << "Starting loop\n";
@@ -83,6 +89,9 @@ namespace coro {
         co_await tk;
 
         co_await recursive(std::allocator_arg, &g_global_mem4, 1, 200);
+
+        co_await [&]() { FCompute(999); };
+
 
         std::cout << "Ending loop " << std::endl;
         co_return sum;

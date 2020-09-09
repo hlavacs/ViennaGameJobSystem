@@ -299,6 +299,31 @@ namespace vgjs {
     };
 
 
+    template<typename T>
+    struct awaitable_f {
+
+        struct awaiter : awaiter_base {
+            task_promise_base*          m_promise;    //caller of the co_await (Job and promise at the same time)
+            T&  m_child;      //child task
+
+            void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+                schedule(std::forward<T>(m_child), m_promise);    //schedule the promise as job
+            }
+
+            awaiter(task_promise_base* promise, T& child) noexcept
+                : m_promise(promise), m_child(child) {};
+        };
+
+        task_promise_base*          m_promise;            //caller of the co_await
+        T&  m_child;              //child task
+
+        awaitable_f(task_promise_base* promise, T& child) noexcept
+            : m_promise(promise), m_child(child) {};
+
+        awaiter operator co_await() noexcept { return { m_promise, m_child }; };
+    };
+
+
     /**
     * \brief Awaiter for changing the thread that the job is run on
     */
@@ -380,6 +405,11 @@ namespace vgjs {
 
         template<typename T>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
         awaitable_task<T> await_transform(task<T>& task) noexcept {
+            return { this, task };
+        }
+
+        template<typename T>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
+        awaitable_f<T> await_transform(T& task) noexcept {
             return { this, task };
         }
 
