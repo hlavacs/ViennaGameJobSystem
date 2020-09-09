@@ -359,6 +359,15 @@ namespace vgjs {
             return m_value;
         }
 
+        bool deallocate() {
+            auto coro = std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this);
+            if (coro) {
+                coro.destroy();
+            }
+
+            return false;
+        };
+
         template<typename... Ts>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
         awaitable_vector_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& tasks) noexcept {
             return { this, tasks };

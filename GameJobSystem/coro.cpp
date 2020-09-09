@@ -94,7 +94,7 @@ namespace coro {
 
 		JobSystem::instance();
 
-        schedule(loop(std::allocator_arg, &g_global_mem4, 90));
+        schedule(loop(std::allocator_arg, &g_global_mem4, 9));
 
         auto l2 = loop(std::allocator_arg, &g_global_mem4, 9);
         schedule(l2);
