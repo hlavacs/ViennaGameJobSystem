@@ -79,7 +79,8 @@ namespace vgjs {
         virtual bool resume() {                 //work is to call the function
             m_children = 1;
             m_function();
-            if (m_children.fetch_sub(1) == 1) { //reduce number of children by one
+            uint32_t num = m_children.fetch_sub(1);
+            if ( num == 1) {                    //reduce number of children by one
                 on_finished();                  //if no more children, then finish
             }
             return true;
@@ -344,6 +345,10 @@ namespace vgjs {
                 job->reset();
                 job->m_function = std::move(f);
             }
+            job->m_parent = current_job();          //set parent
+            if (job->m_parent != nullptr) {         //if there is a parent, increase its number of children by one
+                job->m_parent->m_children++;
+            }
             job->m_thread_index = thread_index;
             schedule(job);
         }
@@ -391,7 +396,8 @@ namespace vgjs {
     * on_finished() is called.
     */
     inline void Job::child_finished() noexcept {
-        if (m_children.fetch_sub(1) == 1) {
+        uint32_t num = m_children.fetch_sub(1);
+        if ( num == 1) {
             on_finished();
         }
     }

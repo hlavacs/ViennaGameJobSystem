@@ -97,7 +97,8 @@ namespace vgjs {
         }
 
         void child_finished() noexcept {
-            if (m_children.fetch_sub(1) == 1) {           //if there are no more children
+            uint32_t num = m_children.fetch_sub(1);
+            if ( num == 1) {           //if there are no more children
                 JobSystem::instance()->schedule(this);    //then resume the coroutine by scheduling its promise
             }
         }
@@ -307,7 +308,7 @@ namespace vgjs {
             T&  m_child;      //child task
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule(std::forward<T>(m_child), m_promise);    //schedule the promise as job
+                schedule(std::forward<T>(m_child));    //schedule the promise as job
             }
 
             awaiter(task_promise_base* promise, T& child) noexcept

@@ -23,7 +23,7 @@ namespace func {
 
     void printData( int i ) {
         std::cout << i << std::endl;
-        if (i < 4) {
+        if (i < 5) {
             schedule( [=]() { printData(i+1); } );
             schedule([=]() { printData(i + 1); });
         }
@@ -33,7 +33,7 @@ namespace func {
     void test() {
         std::cout << "Starting test()\n";
 
-        JobSystem::instance();
+        JobSystem::instance(1);
 
         schedule([=]() { printData(1); });
 
