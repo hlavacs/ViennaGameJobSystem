@@ -77,13 +77,10 @@ namespace vgjs {
             m_function = []() {};
         }
 
-        virtual bool resume() noexcept {        //work is to call the function
-            m_children = 1;
-            m_function();
-            uint32_t num = m_children.fetch_sub(1);
-            if ( num == 1) {                    //reduce number of children by one
-                on_finished();                  //if no more children, then finish
-            }
+        virtual bool resume() noexcept {    //work is to call the function
+            m_children = 1;                 //job is its own child, so set to 1
+            m_function();                   //run the function, can schedule more children here
+            child_finished();               //job is its own child
             return true;
         }
 
