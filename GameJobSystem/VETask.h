@@ -202,14 +202,14 @@ namespace vgjs {
     struct awaitable_vector_tuple {
 
         struct awaiter : awaiter_base {
-            task_promise_base*                      m_promise;            //caller of the co_await (Job and promise at the same time)
-            std::tuple<std::pmr::vector<Ts>...>&    m_children_vector;    //vector with all children to start
+            task_promise_base*                      m_promise;              //caller of the co_await (Job and promise at the same time)
+            std::tuple<std::pmr::vector<Ts>...>&    m_tuple;                //vector with all children to start
             int32_t                                 m_thread_index;
 
-            bool await_ready() noexcept {                                 //suspend only there are no tasks
+            bool await_ready() noexcept {                                 //suspend only if there are no tasks
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
                     std::size_t num = 0;
-                    std::initializer_list<int>{ (  num += std::get<Idx>(m_children_vector).size(), 0) ...};
+                    std::initializer_list<int>{ (  num += std::get<Idx>(m_tuple).size(), 0) ...};
                     return (num == 0);
                 };
                 return f(std::make_index_sequence<sizeof...(Ts)>{});
@@ -217,23 +217,23 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_children_vector), m_thread_index, m_promise) , 0) ...};
+                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), m_thread_index, m_promise) , 0) ...};
                 };
                 f(std::make_index_sequence<sizeof...(Ts)>{});
             }
 
             awaiter(task_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
-                : m_promise(promise), m_children_vector(children), m_thread_index(thread_index)  {};
+                : m_promise(promise), m_tuple(children), m_thread_index(thread_index)  {};
         };
 
         task_promise_base*                      m_promise;            //caller of the co_await
-        std::tuple<std::pmr::vector<Ts>...>&    m_children_vector;    //vector with all children to start
+        std::tuple<std::pmr::vector<Ts>...>&    m_tuple;    //vector with all children to start
         int32_t                                 m_thread_index;
 
         awaitable_vector_tuple(task_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
-            : m_promise(promise), m_children_vector(children), m_thread_index(thread_index) {};
+            : m_promise(promise), m_tuple(children), m_thread_index(thread_index) {};
 
-        awaiter operator co_await() noexcept { return { m_promise, m_children_vector, m_thread_index }; };
+        awaiter operator co_await() noexcept { return { m_promise, m_tuple, m_thread_index }; };
     };
 
 

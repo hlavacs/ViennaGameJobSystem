@@ -78,9 +78,7 @@ namespace coro {
             tv.emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
 
             get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
-            //get<0>(tk)[i].thread_index(0);
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
-            //get<1>(tk)[i].thread_index(0);
 
             fv.emplace_back( VGJS_FUNCTION( FCompute(i) ) );
         }
@@ -89,7 +87,7 @@ namespace coro {
 
         co_await std::make_pair( &tv, 2);
 
-        co_await std::make_pair( &tk, 0 );
+        co_await tk;
 
         co_await std::make_pair( &recursive(std::allocator_arg, &g_global_mem4, 1, 5), 0 );
 
