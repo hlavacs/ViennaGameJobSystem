@@ -92,10 +92,10 @@ namespace vgjs {
             return {};
         }
 
-        void child_finished() noexcept {
+        void child_finished() noexcept {                    //if children are running then the coro must be suspended
             uint32_t num = m_children.fetch_sub(1);
-            if ( num == 1) {           //if there are no more children
-                JobSystem::instance()->schedule(this);    //then resume the coroutine by scheduling its promise
+            if ( num == 1) {                                //if there are no more children
+                JobSystem::instance()->schedule(this);      //then resume the coroutine by scheduling its promise
             }
         }
 
@@ -167,8 +167,8 @@ namespace vgjs {
     class task_base {
     public:
         task_base() noexcept {};                                    //constructor
-        virtual bool resume() { return true; };                     //resume the task
-        virtual task_promise_base* promise() { return nullptr; };   //get the promise to use it as Job 
+        virtual bool resume() noexcept { return true; };                     //resume the task
+        virtual task_promise_base* promise() noexcept { return nullptr; };   //get the promise to use it as Job 
     };
 
     //---------------------------------------------------------------------------------------------------
@@ -330,7 +330,7 @@ namespace vgjs {
             return m_value;
         }
 
-        bool deallocate() {
+        bool deallocate() noexcept {
             auto coro = std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this);
             if (coro) {
                 coro.destroy();
