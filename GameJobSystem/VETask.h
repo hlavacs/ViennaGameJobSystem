@@ -32,13 +32,6 @@ namespace vgjs {
     template<typename T>
     struct is_pmr_vector<std::pmr::vector<T>> : std::true_type {};
 
-    template<typename>
-    struct is_tuple : std::false_type {};
-
-    template<typename... Ts>
-    struct is_tuple<std::tuple<Ts...>> : std::true_type {};
-
-
     //---------------------------------------------------------------------------------------------------
 
     /**
@@ -199,7 +192,7 @@ namespace vgjs {
     * the return values can be retrieved by calling get().
     */
     template<typename... Ts>
-    struct awaitable_vector_tuple {
+    struct awaitable_tuple {
 
         struct awaiter : awaiter_base {
             task_promise_base*                      m_promise;              //caller of the co_await (Job and promise at the same time)
@@ -209,17 +202,17 @@ namespace vgjs {
             bool await_ready() noexcept {                                 //suspend only if there are no tasks
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
                     std::size_t num = 0;
-                    std::initializer_list<int>{ (  num += std::get<Idx>(m_tuple).size(), 0) ...};
+                    std::initializer_list<int>{ (  num += std::get<Idx>(m_tuple).size(), 0) ...}; //called for every tuple element
                     return (num == 0);
                 };
-                return f(std::make_index_sequence<sizeof...(Ts)>{});
+                return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), m_thread_index, m_promise) , 0) ...};
+                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), m_thread_index, m_promise) , 0) ...}; //called for every tuple element
                 };
-                f(std::make_index_sequence<sizeof...(Ts)>{});
+                f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
             }
 
             awaiter(task_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
@@ -227,10 +220,10 @@ namespace vgjs {
         };
 
         task_promise_base*                      m_promise;            //caller of the co_await
-        std::tuple<std::pmr::vector<Ts>...>&    m_tuple;    //vector with all children to start
+        std::tuple<std::pmr::vector<Ts>...>&    m_tuple;              //vector with all children to start
         int32_t                                 m_thread_index;
 
-        awaitable_vector_tuple(task_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
+        awaitable_tuple(task_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
             : m_promise(promise), m_tuple(children), m_thread_index(thread_index) {};
 
         awaiter operator co_await() noexcept { return { m_promise, m_tuple, m_thread_index }; };
@@ -346,27 +339,27 @@ namespace vgjs {
             return false;
         };
 
-        template<typename... Ts>    //called by co_await std::pmr::vector<Ts>& tasks or functions
-        awaitable_vector_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& tasks) noexcept {
+        template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& tasks or functions
+        awaitable_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& tasks) noexcept {
             return { this, tasks, -1 };
         }
 
-        template<typename T>    //called by co_await tasks or functions, 
+        template<typename T>        //called by co_await for tasks or functions, 
         awaitable_task<T> await_transform(T& task) noexcept {
             return { this, task, -1 };
         }
 
-        template<typename... Ts>    //called by co_await std::pmr::vector<Ts>& tasks or functions, 2nd parameters is the thread to use
-        awaitable_vector_tuple<Ts...> await_transform(std::pair< std::tuple<std::pmr::vector<Ts>...>*, int32_t>& tasks) noexcept {
+        template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& tasks or functions, 2nd parameters is the thread to use
+        awaitable_tuple<Ts...> await_transform(std::pair< std::tuple<std::pmr::vector<Ts>...>*, int32_t>& tasks) noexcept {
             return { this, *std::get<0>(tasks), std::get<1>(tasks) };
         }
 
-        template<typename T>    //called by co_await tasks or functions, 2nd parameters is the thread to use
+        template<typename T>        //called by co_await for tasks or functions, 2nd parameters is the thread to use
         awaitable_task<T> await_transform(std::pair<T*, int32_t>& task) noexcept {
             return { this, *std::get<0>(task), std::get<1>(task) };
         }
 
-        awaitable_resume_on await_transform(uint32_t thread_index) noexcept { //called by co_await INT, for changing the thread
+        awaitable_resume_on await_transform(uint32_t thread_index) noexcept { //called by co_await for INT, for changing the thread
             return { this, thread_index };
         }
 
@@ -422,8 +415,14 @@ namespace vgjs {
         task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
         ~task() noexcept {
-            if (m_coro && m_coro.promise().m_parent != nullptr) {  //use done() only if coro suspended
-                m_coro.destroy();           //if you do not want this then move task
+            if (m_coro) {
+                if (m_coro.promise().m_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
+                    if (!m_coro.promise().m_parent->is_job()) {     //because they are in sync
+                        m_coro.destroy();                           //if you do not want this then move task
+                    }
+                    else {  //if the parent is a job+function, then the function often returns before the child finishes
+                    }       //don not do anything but wait for the children to finish
+                }
             }
         }
 

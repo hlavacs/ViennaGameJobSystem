@@ -53,8 +53,9 @@ namespace vgjs {
         virtual void operator() () noexcept {           //wrapper as function operator
             resume();
         }
-        virtual void child_finished() = 0;
-        virtual bool deallocate() { return false; };
+        virtual void child_finished() = 0;              //called by child when it finishes
+        virtual bool deallocate() { return false; };    //called for deallocation
+        virtual bool is_job() { return false; }         //test whether this is a job or e.g. a coro
     };
 
 
@@ -88,7 +89,8 @@ namespace vgjs {
 
         void on_finished() noexcept;            //called when the job finishes, i.e. all children have finished
         void child_finished() noexcept;         //child calls parent to notify that it has finished
-        virtual bool deallocate() { return true; };
+        bool deallocate() { return true; };     //assert this is a job so it has been created by the job system
+        bool is_job() { return true;  };        //assert that this is a job
     };
 
     class JobSystem;
@@ -185,6 +187,20 @@ namespace vgjs {
         JobQueue<Job_base,false>                    m_central_queue;        ///<main central job queue is multiple produce multiple consume
         JobQueue<Job,false>                         m_recycle;              ///<save old jobs for recycling
 
+        Job* allocate_job(std::function<void(void)>&& f) {
+            Job* job = m_recycle.pop();
+            if (!job) {
+                std::pmr::polymorphic_allocator<Job> allocator(m_mr);
+                job = allocator.allocate(1);                                    //allocate the object
+                new (job) Job(std::forward<std::function<void(void)>>(f));      //call constructor
+            }
+            else {
+                job->reset();
+                job->m_function = std::move(f);
+            }
+            return job;
+        }
+
     public:
 
         /**
@@ -275,11 +291,11 @@ namespace vgjs {
                 }
             };
 
-           uint32_t num = m_thread_count.fetch_sub(1);                      //last thread clears all queues
+           uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears all queues
            if (num == 1) {
-               m_central_queue.clear();
-               m_recycle.clear();
-               for (auto& q : m_local_queues) {
+               m_central_queue.clear();             //clear central queue
+               m_recycle.clear();                   //clear recycle queue
+               for (auto& q : m_local_queues) {     //clear local queues
                    q.clear();
                }
            }
@@ -328,23 +344,13 @@ namespace vgjs {
             m_central_queue.push(job);
         };
 
-
         /**
         * \brief Schedule a function into the job system
         * \param[in] f The function to schedule
         * \param[in] thread_index The thread to run the function
         */
         void schedule( std::function<void(void)> && f, int32_t thread_index = -1, Job_base* parent = nullptr ) {
-            Job* job = m_recycle.pop();
-            if (!job) {
-                std::pmr::polymorphic_allocator<Job> allocator(m_mr);
-                job = allocator.allocate(1);                                    //allocate the object
-                new (job) Job(std::forward< std::function<void(void)>>(f));      //call constructor
-            }
-            else {
-                job->reset();
-                job->m_function = std::move(f);
-            }
+            Job* job = allocate_job(std::forward<std::function<void(void)>>(f));
             if (parent == nullptr) {
                 parent = current_job();          //set parent
             }
@@ -356,6 +362,20 @@ namespace vgjs {
             schedule(job);
         }
 
+        /**
+        * \brief Store a continuation for the current Job. Will be scheduled once the current Job finishes
+        * \param[in] f The function to schedule
+        * \param[in] thread_index The thread to run the function
+        */
+        void continuation(std::function<void(void)>&& f, int32_t thread_index = -1) {
+            auto current = current_job();
+            if (!current->is_job()) {
+                return;
+            }
+            Job* job = allocate_job(std::forward<std::function<void(void)>>(f));
+            job->m_thread_index = thread_index;
+            ((Job*)current)->m_continuation = job;
+        }
     };
 
     //----------------------------------------------------------------------------------------------
@@ -406,13 +426,22 @@ namespace vgjs {
     }
 
     /**
-    * \brief Schedule a function into the system
+    * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
-    * \param[in] parent Parent job to use
     * \param[in] thd Thread index to schedule to
+    * \param[in] parent Parent job to use
     */
     inline void schedule(std::function<void(void)>&& f, int32_t thd = -1, Job_base* parent = nullptr) noexcept {
         JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd, parent );
+    };
+
+    /**
+    * \brief Store a continuation for the current Job. The continuation will be scheduled once the job finishes.
+    * \param[in] f A function to schedule
+    * \param[in] thd Thread index to schedule to
+    */
+    inline void continuation(std::function<void(void)>&& f, int32_t thd = -1 ) noexcept {
+        JobSystem::instance()->continuation(std::forward<std::function<void(void)>>(f), thd );
     };
 
     /**
