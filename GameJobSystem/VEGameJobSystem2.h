@@ -320,7 +320,7 @@ namespace vgjs {
         * \brief Schedule a job into the job system
         * \param[in] job A pointer to the job to schedule
         */
-        void schedule(Job_base* job) {
+        void schedule(Job_base* job, uint32_t thd = -1, Job_base* parent = nullptr ) {
             if (job->m_thread_index >= 0 && job->m_thread_index < (int)m_thread_count) {
                 m_local_queues[job->m_thread_index].push(job);
                 return;
@@ -334,7 +334,7 @@ namespace vgjs {
         * \param[in] f The function to schedule
         * \param[in] thread_index The thread to run the function
         */
-        void schedule( std::function<void(void)> && f, Job_base* parent = nullptr, int32_t thread_index = -1 ) {
+        void schedule( std::function<void(void)> && f, int32_t thread_index = -1, Job_base* parent = nullptr ) {
             Job* job = m_recycle.pop();
             if (!job) {
                 std::pmr::polymorphic_allocator<Job> allocator(m_mr);
@@ -408,41 +408,23 @@ namespace vgjs {
     /**
     * \brief Schedule a function into the system
     * \param[in] f A function to schedule
-    * \param[in] thd Optional thread index to schedule to
-    */
-    inline void schedule(std::function<void(void)>&& f, int32_t thd = -1 ) noexcept {
-        JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), nullptr, thd );
-    };
-
-    /**
-    * \brief Schedule a function into the system
-    * \param[in] f A function to schedule
     * \param[in] parent Parent job to use
     * \param[in] thd Thread index to schedule to
     */
-    inline void schedule(std::function<void(void)>&& f, Job_base* parent, int32_t thd) noexcept {
-        JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), parent, thd);
+    inline void schedule(std::function<void(void)>&& f, int32_t thd = -1, Job_base* parent = nullptr) noexcept {
+        JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd, parent );
     };
 
     /**
     * \brief Schedule functions into the system
     * \param[in] functions A vector of functions to schedule
-    * \param[in] parent Parent job to use
     * \param[in] thd Thread index to schedule to
     */
-    inline void schedule(std::pmr::vector<std::function<void(void)>>& functions, Job_base* parent, int32_t thd) noexcept {
+    template<typename T>
+    inline void schedule(std::pmr::vector<T>& functions, int32_t thd = -1, Job_base* parent = nullptr) noexcept {
         for (auto&& f : functions) {
-            JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), parent, thd);
+            schedule(std::forward<T>(f), thd, parent);
         }
-    };
-
-    /**
-    * \brief Schedule functions into the system
-    * \param[in] functions A vector of functions to schedule
-    * \param[in] thd Thread index to schedule to
-    */
-    inline void schedule(std::pmr::vector<std::function<void(void)>>& functions, int32_t thd = -1) noexcept {
-        schedule(functions, nullptr, thd);
     };
 
     /**
