@@ -34,7 +34,7 @@
 
 namespace vgjs {
 
-
+    #define VGJS_FUNCTION(f) [=](){ f; }
 
     //---------------------------------------------------------------------------------------------------
 
@@ -416,7 +416,7 @@ namespace vgjs {
     };
 
     /**
-    * \brief Schedule functions into the system
+    * \brief Schedule functions into the system. T can be a std::function or a task<U>
     * \param[in] functions A vector of functions to schedule
     * \param[in] thd Thread index to schedule to
     */

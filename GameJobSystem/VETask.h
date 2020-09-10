@@ -40,10 +40,10 @@ namespace vgjs {
         if (parent == nullptr) {
             parent = JobSystem::instance()->current_job();
         }
+        task.promise()->m_parent = parent;                      //remember parent
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
-        task.promise()->m_parent = parent;                      //remember parent
         if (thd != -1) {
             task.promise()->m_thread_index = thd;
         }
@@ -179,7 +179,7 @@ namespace vgjs {
     };
 
     /**
-    * \brief Awaiter for awaiting a tuple of vector of tasks of type task<T>
+    * \brief Awaiter for awaiting a tuple of vector of tasks of type task<T> or std::function<void(void)>
     *
     * The tuple can contain vectors with different types.
     * The caller will then await the completion of the tasks. Afterwards,
@@ -224,7 +224,7 @@ namespace vgjs {
 
 
     /**
-    * \brief Awaiter for awaiting a vector of tasks of type task<T>
+    * \brief Awaiter for awaiting a vector of tasks of type task<T> or std::function<void(void)>
     *
     * The vector must contain task<T> structs. All tasks must have the same type.
     * The caller will then await the completion of the tasks. Afterwards,
@@ -270,7 +270,7 @@ namespace vgjs {
 
         struct awaiter : awaiter_base {
             task_promise_base*          m_promise;    //caller of the co_await (Job and promise at the same time)
-            T&  m_child;      //child task
+            T&                          m_child;      //child task
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 schedule( m_child, -1, nullptr);    //schedule the promise or function as job
@@ -280,8 +280,8 @@ namespace vgjs {
                 : m_promise(promise), m_child(child) {};
         };
 
-        task_promise_base*          m_promise;            //caller of the co_await
-        T&  m_child;              //child task
+        task_promise_base*  m_promise;            //caller of the co_await
+        T&                  m_child;              //child task
 
         awaitable_task(task_promise_base* promise, T& child) noexcept
             : m_promise(promise), m_child(child) {};

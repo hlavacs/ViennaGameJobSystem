@@ -72,6 +72,8 @@ namespace coro {
 
         auto tk = std::make_tuple(std::pmr::vector<task<int>>{mr}, std::pmr::vector<task<float>>{mr});
         
+        auto fv = std::pmr::vector<std::function<void(void)>>{ mr };
+
         for (int i = 0; i < count; ++i) {
             tv.emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
 
@@ -79,6 +81,8 @@ namespace coro {
             //get<0>(tk)[i].thread_index(0);
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
             //get<1>(tk)[i].thread_index(0);
+
+            fv.emplace_back( VGJS_FUNCTION( FCompute(i) ) );
 
         }
         
@@ -90,8 +94,9 @@ namespace coro {
 
         co_await recursive(std::allocator_arg, &g_global_mem4, 1, 5);
 
-        co_await [&]() { FCompute(999); };
+        co_await VGJS_FUNCTION( FCompute(999) );
 
+        co_await fv;
 
         std::cout << "Ending loop " << std::endl;
         co_return sum;
@@ -105,8 +110,8 @@ namespace coro {
 
         schedule(loop(std::allocator_arg, &g_global_mem4, 9));
 
-        //auto l2 = loop(std::allocator_arg, &g_global_mem4, 9);
-        //schedule(l2);
+        auto l2 = loop(std::allocator_arg, &g_global_mem4, 9);
+        schedule(l2);
 
         std::cout << "Ending test()\n";
 
