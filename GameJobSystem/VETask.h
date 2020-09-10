@@ -346,22 +346,22 @@ namespace vgjs {
             return false;
         };
 
-        template<typename... Ts>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
+        template<typename... Ts>    //called by co_await std::pmr::vector<Ts>& tasks or functions
         awaitable_vector_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& tasks) noexcept {
             return { this, tasks, -1 };
         }
 
-        template<typename T>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
+        template<typename T>    //called by co_await tasks or functions, 
         awaitable_task<T> await_transform(T& task) noexcept {
             return { this, task, -1 };
         }
 
-        template<typename... Ts>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
+        template<typename... Ts>    //called by co_await std::pmr::vector<Ts>& tasks or functions, 2nd parameters is the thread to use
         awaitable_vector_tuple<Ts...> await_transform(std::pair< std::tuple<std::pmr::vector<Ts>...>*, int32_t>& tasks) noexcept {
             return { this, *std::get<0>(tasks), std::get<1>(tasks) };
         }
 
-        template<typename T>    //called by co_await std::pmr::vector<T>& tasks, creates the correct awaitable
+        template<typename T>    //called by co_await tasks or functions, 2nd parameters is the thread to use
         awaitable_task<T> await_transform(std::pair<T*, int32_t>& task) noexcept {
             return { this, *std::get<0>(task), std::get<1>(task) };
         }
