@@ -83,20 +83,19 @@ namespace coro {
             //get<1>(tk)[i].thread_index(0);
 
             fv.emplace_back( VGJS_FUNCTION( FCompute(i) ) );
-
         }
         
         std::cout << "Before loop " << std::endl;
 
-        co_await tv;
+        co_await std::make_pair( &tv, 2);
 
-        co_await tk;
+        co_await std::make_pair( &tk, 0 );
 
-        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 5);
+        co_await std::make_pair( &recursive(std::allocator_arg, &g_global_mem4, 1, 5), 0 );
 
-        co_await VGJS_FUNCTION( FCompute(999) );
+        co_await std::make_pair( &VGJS_FUNCTION( FCompute(999) ), 1) ;
 
-        co_await fv;
+        co_await std::make_pair( &fv, 0);
 
         std::cout << "Ending loop " << std::endl;
         co_return sum;
@@ -111,7 +110,7 @@ namespace coro {
         schedule(loop(std::allocator_arg, &g_global_mem4, 9));
 
         auto l2 = loop(std::allocator_arg, &g_global_mem4, 9);
-        schedule(l2);
+        //schedule(l2);
 
         std::cout << "Ending test()\n";
 
