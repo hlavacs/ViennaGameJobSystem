@@ -80,9 +80,6 @@ namespace vgjs {
     * for the promise.
     */
     class task_promise_base : public Job_base {
-        template<typename T> friend class task;
-        std::atomic<bool> m_task_destroyed = false; 
-
     public:
         task_promise_base() noexcept {};        //constructor
 
@@ -99,10 +96,6 @@ namespace vgjs {
             if ( num == 1) {                                //if there are no more children
                 JobSystem::instance()->schedule(this);      //then resume the coroutine by scheduling its promise
             }
-        }
-
-        bool is_task_destroyed() {
-            return m_task_destroyed.load();
         }
 
         /**
@@ -312,10 +305,11 @@ namespace vgjs {
     class task_promise : public task_promise_base {
         template<typename U> struct final_awaiter;
         template<typename U> friend struct final_awaiter;
+        template<typename U> friend class task;
 
     private:
-        std::atomic<bool> m_done = false;
-        T m_value{};
+        std::atomic<int> m_count = 2;   //sync with parent if parent is a Job
+        T m_value{};                    //the value that should be returned
 
     public:
 
@@ -340,7 +334,7 @@ namespace vgjs {
             return m_value;
         }
 
-        bool deallocate() noexcept {
+        bool deallocate() noexcept {    //called when the job system is destroyed
             auto coro = std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this);
             if (coro) {
                 coro.destroy();
@@ -379,26 +373,29 @@ namespace vgjs {
         * Suspending as last act prevents the promise to be destroyed. This way the caller
         * can retrieve the stored value by calling get(). Also we want to resume the parent
         * if all children have finished their tasks.
+        * If the parent was a Job, then if the task<T> is still alive, the coro will suspend,
+        * and the task<T> must destroy the promise in its destructor. If the task<T> has destructed,
+        * then the coro must destroy the promise itself by resuming the final awaiter.
         */
         template<typename U>
-        struct final_awaiter {
+        struct final_awaiter : public awaiter_base {
             U* m_promise;
 
             final_awaiter(U* promise) noexcept : m_promise(promise) {}
 
-            bool await_ready() noexcept {   //go on with suspension at final suspension point
-                return false;
-            }
-
             bool await_suspend(std::experimental::coroutine_handle<> h) noexcept { //called after suspending
                 if (m_promise->m_parent) {                      //if there is a parent
                     m_promise->m_parent->child_finished();      //tell parent that this child has finished
+
+                    if (m_promise->m_parent->is_job()) {        //if the parent is a job
+                        int count = m_promise->m_count.fetch_sub(1); 
+                        if (count == 1 ) {      //if the task<T> has been destroyed then no one is waiting
+                            return false;       //so destroy the promise
+                        }
+                    }
                 }
-                m_promise->m_done = true;
                 return true;
             }
-
-            void await_resume() noexcept {}
         };
 
         auto final_suspend() noexcept { //create the final awaiter at the final suspension point
@@ -434,8 +431,11 @@ namespace vgjs {
                         m_coro.destroy();                           //if you do not want this then move task
                     }
                     else {  //if the parent is a job+function, then the function often returns before the child finishes
-                        m_coro.promise().m_task_destroyed = true;
-                    }       //don not do anything but wait for the children to finish
+                        int count = m_coro.promise().m_count.fetch_sub(1);
+                        if (count == 1) {       //if the coro is done, then destroy it
+                            m_coro.destroy();
+                        }
+                    }
                 }
             }
         }
@@ -448,7 +448,7 @@ namespace vgjs {
             return &m_coro.promise();
         }
 
-        void thread_index(uint32_t ti) {
+        void thread_index(uint32_t ti) {        //force the task to rn on thread ti
             m_coro.promise().m_thread_index = ti;
         }
 

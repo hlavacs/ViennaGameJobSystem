@@ -34,7 +34,7 @@
 
 namespace vgjs {
 
-    #define VGJS_FUNCTION(f) [=](){ f; }
+    #define VGJS_FUNCTION(f) [=](){f;}    //wrapper over a lambda function holding function f and parameters
 
     //---------------------------------------------------------------------------------------------------
 
@@ -111,10 +111,10 @@ namespace vgjs {
         JobQueue(const JobQueue<JOB, FIFO>& queue) noexcept : m_mr(queue.m_mr), m_head(nullptr) {};
 
         void clear() {
-            JOB* job = (JOB*)m_head.load();                          //deallocate jobs that run a function
-            while (job != nullptr) {                          //because they were allocated by the JobSystem
+            JOB* job = (JOB*)m_head.load();                         //deallocate jobs that run a function
+            while (job != nullptr) {                                //because they were allocated by the JobSystem
                 JOB* next = (JOB*)job->m_next;
-                if (job->deallocate()) {
+                if (job->deallocate()) {        //if this is a coro it will destroy itself and return false, a Job returns true
                     std::pmr::polymorphic_allocator<JOB> allocator(m_mr); //construct a polymorphic allocator
                     job->~JOB();                                          //call destructor
                     allocator.deallocate(job, 1);                         //use pma to deallocate the memory
