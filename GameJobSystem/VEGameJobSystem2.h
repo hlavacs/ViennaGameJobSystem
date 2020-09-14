@@ -50,6 +50,8 @@ namespace vgjs {
         int32_t             m_thread_index = -1;        //thread that the job should run on
         int32_t             m_type = -1;
         int32_t             m_id = -1;
+        std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
+
 
         virtual bool resume() = 0;                      //this is the actual work to be done
         virtual void operator() () noexcept {           //wrapper as function operator
@@ -291,7 +293,9 @@ namespace vgjs {
                     m_current_job = m_central_queue.pop();                 //if none found try the central queue
                 }
                 if (m_current_job) {
-                    (*m_current_job)();                                     //if any job found execute it
+                    m_current_job->t1 = std::chrono::high_resolution_clock::now();	//time of execution
+                    (*m_current_job)();                                             //if any job found execute it
+                    m_current_job->t2 = std::chrono::high_resolution_clock::now();	//time of finishing
                 }
                 else if (--noop == 0 && m_thread_index > 0) {               //if none found too longs let thread sleep
                     noop = NOOP;                                            //thread 0 goes on to make the system reactive

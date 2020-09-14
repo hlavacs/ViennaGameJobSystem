@@ -7,7 +7,7 @@
 #include <chrono>
 #include <glm.hpp>
 
-
+#define VGJS_TRACE true
 #include "VEGameJobSystem2.h"
 #include "VETask.h"
 
@@ -57,7 +57,7 @@ namespace mixed {
         if (i == 0) {
             return;
         }
-        auto f = printDataCoro(i, -i);
+        auto f = printDataCoro(1, -1);
 
         schedule( f );
 
@@ -69,7 +69,7 @@ namespace mixed {
 
         JobSystem::instance();
 
-        schedule(VGJS_FUNCTION(driver( 2 , "Driver")));
+        schedule(VGJS_FUNCTION(driver( 10 , "Driver")));
 
         std::cout << "Ending test()\n";
     }
