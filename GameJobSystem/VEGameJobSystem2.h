@@ -61,7 +61,10 @@ namespace vgjs {
         Job_base(Job_base& other) = default;
         Job_base(Job_base&& other) = default;
         Job_base& operator= (const Job_base& other) {
-            m_parent = other.m_parent; m_thread_index = other.m_thread_index; m_type = other.m_type; m_id = other.m_id;
+            m_parent = other.m_parent; 
+            m_thread_index = other.m_thread_index; 
+            m_type = other.m_type; 
+            m_id = other.m_id;
             return *this;
         };
 
@@ -88,11 +91,7 @@ namespace vgjs {
             : Job_base( thread_index, type, id ), m_function(std::move(f)) {}
         Job( Job& other ) = default;
         Job( Job&& other) = default;
-        Job& operator= (const Job& other) {
-            m_parent = other.m_parent; m_thread_index = other.m_thread_index; m_type = other.m_type; m_id = other.m_id;
-            m_continuation = other.m_continuation; m_function = other.m_function;
-            return *this;
-        };
+        Job& operator= (const Job& other) = default;
 
         void reset() noexcept {         //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
@@ -529,8 +528,10 @@ namespace vgjs {
     * \param[in] f A function to schedule
     * \param[in] thd Thread index to schedule to
     * \param[in] parent Parent job to use
+    * \param[in] type Type of the job
+    * \param[in] id Unique id of the job
     */
-    inline void schedule(std::function<void(void)>&& f, int32_t thread_index = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
+    inline void schedule(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
         Job job(std::forward<std::function<void(void)>>(f), thread_index, type, id);
         job.m_parent = (parent != nullptr ? parent : JobSystem::instance()->current_job() );
         if (job.m_parent != nullptr) {         //if there is a parent, increase its number of children by one
@@ -543,11 +544,14 @@ namespace vgjs {
     * \brief Schedule functions into the system. T can be a std::function or a task<U>
     * \param[in] functions A vector of functions to schedule
     * \param[in] thd Thread index to schedule to
+    * \param[in] parent Parent job to use
+    * \param[in] type Type of the job
+    * \param[in] id Unique id of the job
     */
     template<typename T>
-    inline void schedule(std::pmr::vector<T>& functions, int32_t thd = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
+    inline void schedule(std::pmr::vector<T>& functions, int32_t thd = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
         for (auto&& f : functions) {
-            schedule(std::forward<T>(f), thd, parent, type, id);
+            schedule(std::forward<T>(f), thd, type, id, parent);
         }
     };
 

@@ -42,7 +42,7 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule(T& task, int32_t thread_index = -1, Job_base* parent = nullptr ) noexcept {
+    void schedule(T& task, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr ) noexcept {
         task.promise()->m_parent = (parent != nullptr ? parent : JobSystem::instance()->current_job());       //remember parent
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
@@ -58,8 +58,8 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule( T&& task, int32_t thread_index = -1, Job_base* parent = nullptr) noexcept {
-        schedule( task, thread_index, parent);
+    void schedule( T&& task, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
+        schedule( task, thread_index, type, id, parent);
     };
 
     /**
@@ -69,9 +69,9 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    inline void schedule(std::pmr::vector<T>& tasks, int32_t thread_index = -1, Job_base* parent = nullptr) noexcept {
+    inline void schedule(std::pmr::vector<T>& tasks, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
         for (auto&& t : tasks) {
-            schedule(std::forward<T>(t), thread_index, parent );
+            schedule(std::forward<T>(t), thread_index, type, id, parent );
         }
     };
 
@@ -215,7 +215,7 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), -1, m_parent) , 0) ...}; //called for every tuple element
+                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), -1, -1, -1, m_parent) , 0) ...}; //called for every tuple element
                 };
                 f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
             }
@@ -255,7 +255,7 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule( m_child, -1, m_parent);  //schedule the promise or function as job by calling the correct version
+                schedule( m_child, -1, -1, -1, m_parent);  //schedule the promise or function as job by calling the correct version
             }
 
             awaiter(task_promise_base* parent, T& child) noexcept : m_parent(parent), m_child(child) {};
