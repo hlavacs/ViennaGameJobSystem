@@ -42,7 +42,7 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule(T& task, uint32_t thd = -1 , Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
+    void schedule(T& task, int32_t thread_index = -1, Job_base* parent = nullptr ) noexcept {
         if (parent == nullptr) {
             parent = JobSystem::instance()->current_job();
         }
@@ -50,10 +50,7 @@ namespace vgjs {
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
-        if (thd != -1) {
-            task.promise()->m_thread_index = thd;
-        }
-        JobSystem::instance()->schedule(task.promise(), thd, parent, type, id);
+        JobSystem::instance()->schedule( task.promise() );      //schedule the promise as job
     };
 
     /**
@@ -64,9 +61,23 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule( T&& task, uint32_t thd = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
-        schedule( task, thd, parent, type, id );
+    void schedule( T&& task, int32_t thread_index = -1, Job_base* parent = nullptr) noexcept {
+        schedule( task, thread_index, parent);
     };
+
+    /**
+    * \brief Schedule functions into the system. T can be a std::function or a task<U>
+    * \param[in] functions A vector of functions to schedule
+    * \param[in] thd Thread index to schedule to
+    */
+    template<typename T>
+    requires (std::is_base_of<task_base, T>::value)
+    inline void schedule(std::pmr::vector<T>& tasks, int32_t thread_index = -1, Job_base* parent = nullptr) noexcept {
+        for (auto&& t : tasks) {
+            schedule(std::forward<T>(t), thread_index, parent );
+        }
+    };
+
 
 
     //---------------------------------------------------------------------------------------------------
@@ -194,9 +205,8 @@ namespace vgjs {
     struct awaitable_tuple {
 
         struct awaiter : awaiter_base {
-            task_promise_base*                      m_promise;              //caller of the co_await (Job and promise at the same time)
+            task_promise_base* m_parent;              //caller of the co_await (Job and promise at the same time)
             std::tuple<std::pmr::vector<Ts>...>&    m_tuple;                //vector with all children to start
-            int32_t                                 m_thread_index;
 
             bool await_ready() noexcept {                                 //suspend only if there are no tasks
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
@@ -209,23 +219,22 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), m_thread_index, m_promise) , 0) ...}; //called for every tuple element
+                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), -1, m_parent) , 0) ...}; //called for every tuple element
                 };
                 f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
             }
 
-            awaiter(task_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
-                : m_promise(promise), m_tuple(children), m_thread_index(thread_index)  {};
+            awaiter(task_promise_base* parent, std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
+                : m_parent(parent), m_tuple(children) {};
         };
 
-        task_promise_base*                      m_promise;            //caller of the co_await
+        task_promise_base*                      m_parent;            //caller of the co_await
         std::tuple<std::pmr::vector<Ts>...>&    m_tuple;              //vector with all children to start
-        int32_t                                 m_thread_index;
 
-        awaitable_tuple(task_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
-            : m_promise(promise), m_tuple(children), m_thread_index(thread_index) {};
+        awaitable_tuple(task_promise_base* parent, std::tuple<std::pmr::vector<Ts>...>& children ) noexcept
+            : m_parent(parent), m_tuple(children) {};
 
-        awaiter operator co_await() noexcept { return { m_promise, m_tuple, m_thread_index }; };
+        awaiter operator co_await() noexcept { return { m_parent, m_tuple }; };
     };
 
 
@@ -239,9 +248,8 @@ namespace vgjs {
     struct awaitable_task {
 
         struct awaiter : awaiter_base {
-            task_promise_base*          m_promise;    //caller of the co_await (Job and promise at the same time)
-            T&                          m_child;      //child task
-            int32_t                     m_thread_index;
+            task_promise_base* m_parent;    //caller of the co_await (Job and promise at the same time)
+            T&                 m_child;      //child task
 
             bool await_ready() noexcept {             //suspend only there are no tasks
                 if constexpr (is_pmr_vector<T>::value) {
@@ -251,21 +259,18 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule( m_child, m_thread_index, m_promise);    //schedule the promise or function as job by calling the correct version
+                schedule( m_child, -1, m_parent);  //schedule the promise or function as job by calling the correct version
             }
 
-            awaiter(task_promise_base* promise, T& child, int32_t thread_index = -1) noexcept
-                : m_promise(promise), m_child(child), m_thread_index(thread_index) {};
+            awaiter(task_promise_base* parent, T& child) noexcept : m_parent(parent), m_child(child) {};
         };
 
-        task_promise_base*  m_promise;            //caller of the co_await
-        T&                  m_child;              //child task
-        int32_t             m_thread_index;
+        task_promise_base* m_parent;            //caller of the co_await
+        T&                 m_child;              //child task
 
-        awaitable_task(task_promise_base* promise, T& child, int32_t thread_index = -1) noexcept
-            : m_promise(promise), m_child(child), m_thread_index(thread_index) {};
+        awaitable_task(task_promise_base* parent, T& child ) noexcept : m_parent(parent), m_child(child) {};
 
-        awaiter operator co_await() noexcept { return { m_promise, m_child, m_thread_index}; };
+        awaiter operator co_await() noexcept { return { m_parent, m_child }; };
     };
 
 
@@ -345,22 +350,12 @@ namespace vgjs {
 
         template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& tasks or functions
         awaitable_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& tasks) noexcept {
-            return { this, tasks, -1 };
+            return { this, tasks };
         }
 
-        template<typename T>        //called by co_await for tasks or functions, 
+        template<typename T>        //called by co_await for tasks or functions, or std::pmr::vector thereof
         awaitable_task<T> await_transform(T& task) noexcept {
-            return { this, task, -1 };
-        }
-
-        template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& tasks or functions, 2nd parameters is the thread to use
-        awaitable_tuple<Ts...> await_transform(std::pair< std::tuple<std::pmr::vector<Ts>...>*, int32_t>& tasks) noexcept {
-            return { this, *std::get<0>(tasks), std::get<1>(tasks) };
-        }
-
-        template<typename T>        //called by co_await for tasks or functions, 2nd parameters is the thread to use
-        awaitable_task<T> await_transform(std::pair<T*, int32_t>& task) noexcept {
-            return { this, *std::get<0>(task), std::get<1>(task) };
+            return { this, task };
         }
 
         awaitable_resume_on await_transform(uint32_t thread_index) noexcept { //called by co_await for INT, for changing the thread
@@ -449,6 +444,14 @@ namespace vgjs {
 
         void thread_index(uint32_t ti) {        //force the task to rn on thread ti
             m_coro.promise().m_thread_index = ti;
+        }
+
+        void type(int32_t type) {        //set type
+            m_coro.promise().m_type = type;
+        }
+
+        void id(int32_t id) {        //set id
+            m_coro.promise().m_id = id;
         }
 
         bool resume() noexcept {    //resume the task by calling resume() on the handle

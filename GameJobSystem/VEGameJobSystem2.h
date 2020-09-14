@@ -56,6 +56,10 @@ namespace vgjs {
         int32_t             m_id = -1;
         std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
 
+        Job_base( int32_t thread_index = -1, int32_t type = -1, int32_t id = -1) : m_thread_index(thread_index), m_type(type), m_id(id) {}
+        Job_base(Job_base& job) = default;
+        Job_base(Job_base&& job) = default;
+        Job_base& operator= (const Job_base& job) = default;
 
         virtual bool resume() = 0;                      //this is the actual work to be done
         virtual void operator() () noexcept {           //wrapper as function operator
@@ -75,12 +79,18 @@ namespace vgjs {
         Job*                        m_continuation = nullptr;   //continuation follows this job
         std::function<void(void)>   m_function = []() {};       //empty function
 
-        Job(std::function<void(void)>&& f) noexcept : m_function(std::move(f)) {}; //job is its own child
+        Job(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1) noexcept 
+            : Job_base( thread_index, type, id ), m_function(std::move(f)) {}
+        Job( Job& job ) = default;
+        Job( Job&& job) = default;
+        Job& operator= ( const Job& job) = default;
 
         void reset() noexcept {         //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
             m_parent = nullptr;
             m_thread_index = -1;
+            m_type = -1;
+            m_id = -1;
             m_continuation = nullptr;
             m_function = []() {};
         }
@@ -385,7 +395,7 @@ namespace vgjs {
         * \brief Schedule a job into the job system
         * \param[in] job A pointer to the job to schedule
         */
-        void schedule(Job_base* job, uint32_t thd = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
+        void schedule(Job_base* job) noexcept {
             if (job->m_thread_index >= 0 && job->m_thread_index < (int)m_thread_count) {
                 m_local_queues[job->m_thread_index].push(job);
                 return;
@@ -509,6 +519,7 @@ namespace vgjs {
         }
     }
 
+
     /**
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
@@ -526,7 +537,6 @@ namespace vgjs {
     */
     template<typename T>
     inline void schedule(std::pmr::vector<T>& functions, int32_t thd = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
-        int32_t cid = id;
         for (auto&& f : functions) {
             schedule(std::forward<T>(f), thd, parent, type, id);
         }

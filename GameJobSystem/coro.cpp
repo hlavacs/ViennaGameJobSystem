@@ -91,11 +91,11 @@ namespace coro {
 
         co_await tk;
 
-        co_await std::make_pair( &recursive(std::allocator_arg, &g_global_mem4, 1, 5), 0 );
+        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 5);
 
-        co_await std::make_pair( &VGJS_FUNCTION( FCompute(999) ), 1) ;
+        co_await VGJS_FUNCTION( FCompute(999) );
 
-        co_await std::make_pair( &fv, 0);
+        co_await fv;
 
         std::cout << "Ending loop " << std::endl;
         co_return sum;
@@ -107,7 +107,7 @@ namespace coro {
 
 		JobSystem::instance();
 
-        schedule(loop(std::allocator_arg, &g_global_mem4, 9));
+        schedule( loop(std::allocator_arg, &g_global_mem4, 9) );
 
         auto l2 = loop(std::allocator_arg, &g_global_mem4, 9);
         //schedule(l2);
