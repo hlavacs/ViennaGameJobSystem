@@ -62,19 +62,6 @@ namespace vgjs {
         schedule( task, thread_index, type, id, parent);
     };
 
-    /**
-    * \brief Schedule functions into the system. T can be a std::function or a task<U>
-    * \param[in] functions A vector of functions to schedule
-    * \param[in] thd Thread index to schedule to
-    */
-    template<typename T>
-    requires (std::is_base_of<task_base, T>::value)
-    inline void schedule(std::pmr::vector<T>& tasks, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
-        for (auto&& t : tasks) {
-            schedule(std::forward<T>(t), thread_index, type, id, parent );
-        }
-    };
-
 
     //---------------------------------------------------------------------------------------------------
 
@@ -277,6 +264,10 @@ namespace vgjs {
         struct awaiter : awaiter_base {
             task_promise_base*  m_promise;
             int32_t             m_thread_index;
+
+            bool await_ready() noexcept {   //default: go on with suspension
+                return m_thread_index == JobSystem::instance()->thread_index();
+            }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 m_promise->m_thread_index = m_thread_index;

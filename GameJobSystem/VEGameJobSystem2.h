@@ -56,10 +56,20 @@ namespace vgjs {
         int32_t             m_id = -1;
         std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
 
-        Job_base() = default;
+        Job_base() {};
         Job_base( int32_t thread_index, int32_t type, int32_t id ) : m_thread_index(thread_index), m_type(type), m_id(id) {}
-        Job_base(Job_base& other) = default;
-        Job_base(Job_base&& other) = default;
+        Job_base(const Job_base& other) {
+            m_parent = other.m_parent;
+            m_thread_index = other.m_thread_index;
+            m_type = other.m_type;
+            m_id = other.m_id;
+        }
+        Job_base(Job_base&& other) {
+            m_parent = other.m_parent;
+            m_thread_index = other.m_thread_index;
+            m_type = other.m_type;
+            m_id = other.m_id;
+        }
         Job_base& operator= (const Job_base& other) {
             m_parent = other.m_parent; 
             m_thread_index = other.m_thread_index; 
@@ -86,11 +96,11 @@ namespace vgjs {
         Job*                        m_continuation = nullptr;   //continuation follows this job
         std::function<void(void)>   m_function = []() {};       //empty function
 
-        Job() = default;
+        Job() : Job_base() {};
         Job(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1) noexcept 
             : Job_base( thread_index, type, id ), m_function(std::move(f)) {}
-        Job( Job& other ) = default;
-        Job( Job&& other) = default;
+        Job(const Job& other) = default;
+        Job(Job&& other) = default;
         Job& operator= (const Job& other) = default;
 
         void reset() noexcept {         //call only if you want to wipe out the Job data
@@ -460,6 +470,10 @@ namespace vgjs {
 
         bool is_logging() {
             return m_logging;
+        }
+
+        uint32_t thread_index() {
+            return m_thread_index;
         }
 
         uint32_t thread_count() {
