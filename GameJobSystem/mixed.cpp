@@ -68,6 +68,7 @@ namespace mixed {
         std::cout << "Starting test()\n";
 
         JobSystem::instance();
+        JobSystem::instance()->set_logging(true);
 
         schedule(VGJS_FUNCTION(driver( 10 , "Driver")));
 

@@ -13,6 +13,7 @@
 */
 
 #include <iostream>
+#include <fstream>
 #include <cstdint>
 #include <atomic>
 #include <mutex>
@@ -29,12 +30,15 @@
 #include <assert.h>
 #include <memory_resource>
 #include <type_traits>
-
-
+#include <chrono>
+#include <string>
+#include <sstream>
 
 namespace vgjs {
 
     #define VGJS_FUNCTION(f) [=](){f;}    //wrapper over a lambda function holding function f and parameters
+
+    void saveLogfile();
 
     //---------------------------------------------------------------------------------------------------
 
@@ -93,6 +97,21 @@ namespace vgjs {
         bool deallocate() noexcept { return true; };  //assert this is a job so it has been created by the job system
         bool is_job() noexcept { return true;  };     //assert that this is a job
     };
+
+
+    struct JobLog {
+        std::chrono::high_resolution_clock::time_point m_t1, m_t2;	///< execution start and end
+        uint32_t        m_exec_thread;
+        bool			m_finished;
+        int32_t	        m_type;
+        int32_t	        m_id;
+
+        JobLog(std::chrono::high_resolution_clock::time_point& t1, std::chrono::high_resolution_clock::time_point& t2,
+            int32_t exec_thread, bool finished, int32_t type, int32_t id)
+                : m_t1(t1), m_t2(t2), m_exec_thread(exec_thread), m_finished(finished), m_type(type), m_id(id) {
+        };
+    };
+
 
     class JobSystem;
 
@@ -187,6 +206,11 @@ namespace vgjs {
         std::vector<JobQueue<Job_base,true>>        m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
         JobQueue<Job_base,false>                    m_central_queue;        ///<main central job queue is multiple produce multiple consume
         JobQueue<Job,false>                         m_recycle;              ///<save old jobs for recycling
+        std::pmr::vector<std::pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
+        bool                                        m_logging = false;      ///< if true then jobs will be logged
+        std::map<int32_t, std::string>              m_types;                ///<map types to a string for logging
+        std::chrono::time_point<std::chrono::high_resolution_clock> m_start_time = std::chrono::high_resolution_clock::now();	//time when program started
+
 
         /**
         * \brief Allocate a job so that it can be scheduled.
@@ -236,6 +260,8 @@ namespace vgjs {
                 m_threads.push_back(std::thread(&JobSystem::thread_task, this, i));	//spawn the pool threads
                 m_threads[i].detach();
             }
+
+            m_logs.resize(m_thread_count, std::pmr::vector<JobLog>{mr});    //make room for the log files
         };
 
         /**
@@ -293,9 +319,17 @@ namespace vgjs {
                     m_current_job = m_central_queue.pop();                 //if none found try the central queue
                 }
                 if (m_current_job) {
-                    m_current_job->t1 = std::chrono::high_resolution_clock::now();	//time of execution
+                    if (m_logging) {
+                        m_current_job->t1 = std::chrono::high_resolution_clock::now();	//time of execution
+                    }
+
                     (*m_current_job)();                                             //if any job found execute it
-                    m_current_job->t2 = std::chrono::high_resolution_clock::now();	//time of finishing
+
+                    if (m_logging) {
+                        m_current_job->t2 = std::chrono::high_resolution_clock::now();	//time of finishing
+                        m_logs[m_thread_index].emplace_back(
+                            m_current_job->t1, m_current_job->t2, m_thread_index, false, m_current_job->m_type, m_current_job->m_id);
+                    }
                 }
                 else if (--noop == 0 && m_thread_index > 0) {               //if none found too longs let thread sleep
                     noop = NOOP;                                            //thread 0 goes on to make the system reactive
@@ -309,6 +343,9 @@ namespace vgjs {
                m_recycle.clear();                   //clear recycle queue
                for (auto& q : m_local_queues) {     //clear local queues
                    q.clear();
+               }
+               if (m_logging) {
+                   saveLogfile();
                }
            }
         };
@@ -392,6 +429,37 @@ namespace vgjs {
             job->m_thread_index = thread_index;
             ((Job*)current)->m_continuation = job;
         }
+
+        auto& get_logs() {
+            return m_logs;
+        }
+
+        void clear_logs() {
+            for (auto& log : m_logs) {
+                log.clear();
+            }
+        }
+
+        void set_logging(bool flag) {
+            m_logging = flag;
+        }
+
+        bool is_logging() {
+            return m_logging;
+        }
+
+        uint32_t thread_count() {
+            return m_thread_count;
+        }
+
+        auto start_time() {
+            return m_start_time;
+        }
+
+        auto& types() {
+            return m_types;
+        }
+
     };
 
     //----------------------------------------------------------------------------------------------
@@ -486,6 +554,69 @@ namespace vgjs {
     inline void wait_for_termination() {
         JobSystem::instance()->wait_for_termination();
     }
+
+    inline void saveJob(   std::ofstream& out, std::string cat, uint64_t pid, uint64_t tid,
+                            uint64_t ts, int64_t dur, std::string ph, std::string name, std::string args) {
+
+        std::stringstream time;
+        time.precision(3);
+        time << ts / 1000.0;
+
+        std::stringstream duration;
+        duration.precision(3);
+        duration << dur / 1000.0;
+
+        out << "{";
+        out << "\"cat\": " << cat << ", ";
+        out << "\"pid\": " << pid << ", ";
+        out << "\"tid\": " << tid << ", ";
+        out << "\"ts\": " << time.str() << ", ";
+        out << "\"dur\": " << duration.str() << ", ";
+        out << "\"ph\": " << ph << ", ";
+        out << "\"name\": " << name << ", ";
+        out << "\"args\": {" << args << "}";
+        out << "}";
+    }
+
+    inline void saveLogfile() {
+        auto& logs = JobSystem::instance()->get_logs();
+        std::ofstream outdata;
+        outdata.open("log.json");
+        if (outdata) {
+            outdata << "{" << std::endl;
+            outdata << "\"traceEvents\": [" << std::endl;
+            bool comma = false;
+            for (uint32_t i = 0; i < JobSystem::instance()->thread_count(); ++i) {
+                if (i > 0 && logs[i - 1].empty()) comma = false;
+                if (comma) outdata << "," << std::endl;
+                comma = true;
+
+                bool comma2 = false;
+                for (auto& ev : logs[i]) {
+                    if (ev.m_t1 >= JobSystem::instance()->start_time() && ev.m_t2 >= ev.m_t1) {
+                        if (comma2) outdata << "," << std::endl;
+                        comma2 = true;
+                        auto it = JobSystem::instance()->types().find(ev.m_type);
+                        std::string name = "-";
+                        if (it != JobSystem::instance()->types().end()) name = it->second;
+
+                        saveJob(outdata, "\"cat\"", 0, (uint32_t)ev.m_exec_thread,
+                            std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t1 - JobSystem::instance()->start_time()).count(),
+                            std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t2 - ev.m_t1).count(),
+                            "\"X\"", "\"" + name + "\"", "\"finished\": " + std::to_string(ev.m_finished));
+                    }
+                    bool comma2 = false;
+                }
+            }
+            outdata << "]," << std::endl;
+            outdata << "\"displayTimeUnit\": \"ns\"" << std::endl;
+            outdata << "}" << std::endl;
+        }
+        outdata.close();
+        JobSystem::instance()->clear_logs();
+    }
+
+
 
 }
 
