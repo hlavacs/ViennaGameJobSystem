@@ -258,9 +258,9 @@ namespace vgjs {
             return job;
         }
 
-        Job* allocate_job( Job& source) noexcept {
+        Job* allocate_job( Job&& source) noexcept {
             Job* job = allocate_job();
-            *job = source;                  //move the function
+            *job = std::move(source);           //move the job
             return job;
         }
 
@@ -426,8 +426,8 @@ namespace vgjs {
         * \brief Schedule a job into the job system
         * \param[in] source An external source that is copied into the scheduled job
         */
-        void schedule(Job& source) noexcept {
-            schedule( allocate_job(source) );
+        void schedule(Job&& source) noexcept {
+            schedule( allocate_job( std::forward<Job>(source) ) );
         };
 
         /**
@@ -441,7 +441,7 @@ namespace vgjs {
                 return;
             }
             Job job(std::forward<std::function<void(void)>>(f), thread_index, type, id );
-            ((Job*)current)->m_continuation = allocate_job( job );
+            ((Job*)current)->m_continuation = allocate_job( std::move(job) );
         }
 
         auto& get_logs() {
@@ -537,8 +537,24 @@ namespace vgjs {
         if (job.m_parent != nullptr) {         //if there is a parent, increase its number of children by one
             job.m_parent->m_children++;
         }
-        JobSystem::instance()->schedule(job);
+        JobSystem::instance()->schedule(std::move(job));
     };
+
+    inline void schedule(Job&& job, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
+        if (job.m_thread_index == -1) {
+            job.m_thread_index = thread_index;
+        }
+        if (job.m_type == -1) {
+            job.m_type = type;
+        }
+        if (job.m_id == -1) {
+            job.m_id = id;
+        }
+        if (job.m_parent == nullptr) {
+            job.m_parent = parent;
+        }
+        JobSystem::instance()->schedule( std::forward<Job>(job) );
+    }
 
     /**
     * \brief Schedule functions into the system. T can be a std::function or a task<U>
