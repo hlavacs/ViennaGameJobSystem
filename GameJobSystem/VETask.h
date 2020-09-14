@@ -43,10 +43,7 @@ namespace vgjs {
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
     void schedule(T& task, int32_t thread_index = -1, Job_base* parent = nullptr ) noexcept {
-        if (parent == nullptr) {
-            parent = JobSystem::instance()->current_job();
-        }
-        task.promise()->m_parent = parent;                      //remember parent
+        task.promise()->m_parent = (parent != nullptr ? parent : JobSystem::instance()->current_job());       //remember parent
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
@@ -77,7 +74,6 @@ namespace vgjs {
             schedule(std::forward<T>(t), thread_index, parent );
         }
     };
-
 
 
     //---------------------------------------------------------------------------------------------------
