@@ -42,7 +42,7 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule(T& task, uint32_t thd = -1 , Job_base* parent = nullptr) noexcept {
+    void schedule(T& task, uint32_t thd = -1 , Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
         if (parent == nullptr) {
             parent = JobSystem::instance()->current_job();
         }
@@ -53,7 +53,7 @@ namespace vgjs {
         if (thd != -1) {
             task.promise()->m_thread_index = thd;
         }
-        JobSystem::instance()->schedule(task.promise(), thd, parent);
+        JobSystem::instance()->schedule(task.promise(), thd, parent, type, id);
     };
 
     /**
@@ -64,8 +64,8 @@ namespace vgjs {
     */
     template<typename T>
     requires (std::is_base_of<task_base, T>::value)
-    void schedule( T&& task, uint32_t thd = -1, Job_base* parent = nullptr) noexcept {
-        schedule( task, thd, parent );
+    void schedule( T&& task, uint32_t thd = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
+        schedule( task, thd, parent, type, id );
     };
 
 
@@ -379,16 +379,15 @@ namespace vgjs {
         */
         template<typename U>
         struct final_awaiter : public awaiter_base {
-            U* m_promise;
+            final_awaiter() noexcept {}
 
-            final_awaiter(U* promise) noexcept : m_promise(promise) {}
+            bool await_suspend(std::experimental::coroutine_handle<task_promise<U>> h) noexcept { //called after suspending
+                auto& promise = h.promise();
+                if (promise.m_parent) {                      //if there is a parent
+                    promise.m_parent->child_finished();      //tell parent that this child has finished
 
-            bool await_suspend(std::experimental::coroutine_handle<> h) noexcept { //called after suspending
-                if (m_promise->m_parent) {                      //if there is a parent
-                    m_promise->m_parent->child_finished();      //tell parent that this child has finished
-
-                    if (m_promise->m_parent->is_job()) {        //if the parent is a job
-                        int count = m_promise->m_count.fetch_sub(1); 
+                    if (promise.m_parent->is_job()) {        //if the parent is a job
+                        int count = promise.m_count.fetch_sub(1);
                         if (count == 1 ) {      //if the task<T> has been destroyed then no one is waiting
                             return false;       //so destroy the promise
                         }
@@ -398,8 +397,8 @@ namespace vgjs {
             }
         };
 
-        auto final_suspend() noexcept { //create the final awaiter at the final suspension point
-            return final_awaiter<task_promise<T>>{ this };
+        final_awaiter<T> final_suspend() noexcept { //create the final awaiter at the final suspension point
+            return {};
         }
     };
 

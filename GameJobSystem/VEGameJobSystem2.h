@@ -48,6 +48,8 @@ namespace vgjs {
         std::atomic<int>    m_children = 0;             //number of children this job is waiting for
         Job_base*           m_parent = nullptr;         //parent job that created this job
         int32_t             m_thread_index = -1;        //thread that the job should run on
+        int32_t             m_type = -1;
+        int32_t             m_id = -1;
 
         virtual bool resume() = 0;                      //this is the actual work to be done
         virtual void operator() () noexcept {           //wrapper as function operator
@@ -297,7 +299,7 @@ namespace vgjs {
                 }
             };
 
-           uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears all queues
+           uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears all queues (or else coros are destructed bevore queues!)
            if (num == 1) {
                m_central_queue.clear();             //clear central queue
                m_recycle.clear();                   //clear recycle queue
@@ -342,7 +344,7 @@ namespace vgjs {
         * \brief Schedule a job into the job system
         * \param[in] job A pointer to the job to schedule
         */
-        void schedule(Job_base* job, uint32_t thd = -1, Job_base* parent = nullptr ) noexcept {
+        void schedule(Job_base* job, uint32_t thd = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
             if (job->m_thread_index >= 0 && job->m_thread_index < (int)m_thread_count) {
                 m_local_queues[job->m_thread_index].push(job);
                 return;
@@ -355,7 +357,7 @@ namespace vgjs {
         * \param[in] f The function to schedule
         * \param[in] thread_index The thread to run the function
         */
-        void schedule( std::function<void(void)> && f, int32_t thread_index = -1, Job_base* parent = nullptr ) noexcept {
+        void schedule( std::function<void(void)> && f, int32_t thread_index = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
             Job* job = allocate_job(std::forward<std::function<void(void)>>(f));
             if (parent == nullptr) {
                 parent = current_job();          //set parent
@@ -364,6 +366,8 @@ namespace vgjs {
             if (job->m_parent != nullptr) {         //if there is a parent, increase its number of children by one
                 job->m_parent->m_children++;
             }
+            job->m_type = type;
+            job->m_id = id;
             job->m_thread_index = thread_index;
             schedule(job);
         }
@@ -373,12 +377,14 @@ namespace vgjs {
         * \param[in] f The function to schedule
         * \param[in] thread_index The thread to run the function
         */
-        void continuation(std::function<void(void)>&& f, int32_t thread_index = -1) noexcept {
+        void continuation(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1) noexcept {
             auto current = current_job();
             if (!current->is_job()) {
                 return;
             }
             Job* job = allocate_job(std::forward<std::function<void(void)>>(f));
+            job->m_type = type;
+            job->m_id = id;
             job->m_thread_index = thread_index;
             ((Job*)current)->m_continuation = job;
         }
@@ -437,8 +443,8 @@ namespace vgjs {
     * \param[in] thd Thread index to schedule to
     * \param[in] parent Parent job to use
     */
-    inline void schedule(std::function<void(void)>&& f, int32_t thd = -1, Job_base* parent = nullptr) noexcept {
-        JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd, parent );
+    inline void schedule(std::function<void(void)>&& f, int32_t thd = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
+        JobSystem::instance()->schedule(std::forward<std::function<void(void)>>(f), thd, parent, type, id );
     };
 
     /**
@@ -447,9 +453,10 @@ namespace vgjs {
     * \param[in] thd Thread index to schedule to
     */
     template<typename T>
-    inline void schedule(std::pmr::vector<T>& functions, int32_t thd = -1, Job_base* parent = nullptr) noexcept {
+    inline void schedule(std::pmr::vector<T>& functions, int32_t thd = -1, Job_base* parent = nullptr, int32_t type = -1, int32_t id = -1) noexcept {
+        int32_t cid = id;
         for (auto&& f : functions) {
-            schedule(std::forward<T>(f), thd, parent);
+            schedule(std::forward<T>(f), thd, parent, type, id);
         }
     };
 
@@ -458,8 +465,8 @@ namespace vgjs {
     * \param[in] f A function to schedule
     * \param[in] thd Thread index to schedule to
     */
-    inline void continuation(std::function<void(void)>&& f, int32_t thd = -1 ) noexcept {
-        JobSystem::instance()->continuation(std::forward<std::function<void(void)>>(f), thd );
+    inline void continuation(std::function<void(void)>&& f, int32_t thd = -1, int32_t type = -1, int32_t id = -1) noexcept {
+        JobSystem::instance()->continuation(std::forward<std::function<void(void)>>(f), thd, type, id );
     };
 
     /**

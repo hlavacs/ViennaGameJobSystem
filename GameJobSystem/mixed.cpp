@@ -31,25 +31,47 @@ namespace mixed {
         co_return 2 * i;
     }
 
-    void printData(int i) {
-        std::cout << i << std::endl;
-        if (i < 4) {
-            schedule([=]() { printData(i + 1); });
-            schedule([=]() { printData(i + 1); });
+    void printData(int i, int id);
+
+    task<int> printDataCoro(int i, int id) {
+        std::cout << "Print Data Coro " << i << std::endl;
+        if (i < 5) {
+            co_await VGJS_FUNCTION( printData( i + 1, i+1 ) );
+        }
+        co_return i;
+    }
+
+    void printData(int i, int id ) {
+        std::cout << "Print Data " << i << std::endl;
+        if (i < 5) {
+            auto f1 = printDataCoro(i+1, -(i+1) );
+            auto f2 = printDataCoro(i+1, -(i + 1));
+
+            schedule( f1 );
+            schedule( f2 );
         }
     }
 
+    void driver(int i, std::string id) {
+        std::cout << "Driver " << i << std::endl;
+        if (i == 0) {
+            return;
+        }
+        auto f = printDataCoro(i, -i);
 
+        schedule( f );
+
+        continuation( VGJS_FUNCTION(driver(i-1, "Driver")) );
+    }
 
     void test() {
         std::cout << "Starting test()\n";
 
         JobSystem::instance();
 
-        schedule([=]() { printData(1); });
+        schedule(VGJS_FUNCTION(driver( 2 , "Driver")));
 
         std::cout << "Ending test()\n";
-        wait_for_termination();
     }
 
 }

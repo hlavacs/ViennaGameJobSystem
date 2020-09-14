@@ -22,11 +22,22 @@ namespace func {
 
 
     void printData( int i ) {
-        std::cout << i << std::endl;
+        std::cout << "Print Data " << i << std::endl;
         if (i < 5) {
             schedule( [=]() { printData(i+1); } );
             schedule([=]() { printData(i + 1); });
         }
+    }
+
+    void driver(int i) {
+        std::cout << "Driver " << i << std::endl;
+
+        if (i == 0) {
+            return;
+        }
+        schedule(VGJS_FUNCTION(printData(i)));
+
+        continuation(VGJS_FUNCTION(driver(i - 1)));
     }
 
 
@@ -35,7 +46,7 @@ namespace func {
 
         JobSystem::instance(1);
 
-        schedule([=]() { printData(1); });
+        schedule(VGJS_FUNCTION(driver(5)));
 
         std::cout << "Ending test()\n";
     }
