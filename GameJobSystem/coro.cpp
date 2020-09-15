@@ -74,7 +74,7 @@ namespace coro {
         
         auto fv = std::pmr::vector<std::function<void(void)>>{ mr };
 
-        std::pmr::vector<Job> jv{ mr };
+        std::pmr::vector<Function> jv{ mr };
 
         for (int i = 0; i < count; ++i) {
             tv.emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
@@ -84,12 +84,12 @@ namespace coro {
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
             //get<1>(tk)[i].thread_index(0);
 
-            fv.emplace_back( VGJS_FUNCTION( FCompute(i) ) );
+            fv.emplace_back( FUNCTION( FCompute(i) ) );
 
-            Job job( VGJS_FUNCTION(FCompute(i)), -1, 0, 0 );
-            jv.push_back( job );
+            Function f( FUNCTION(FCompute(i)), -1, 0, 0 );
+            jv.push_back( f );
 
-            jv.push_back( Job( VGJS_FUNCTION(FCompute(i)), -1, 0, 0) );
+            jv.push_back( Function( FUNCTION(FCompute(i)), -1, 0, 0) );
         }
         
         std::cout << "Before loop " << std::endl;
@@ -100,7 +100,7 @@ namespace coro {
 
         co_await recursive(std::allocator_arg, &g_global_mem4, 1, 5);
 
-        co_await VGJS_FUNCTION( FCompute(999) );
+        co_await FUNCTION( FCompute(999) );
 
         co_await fv;
 

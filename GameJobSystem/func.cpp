@@ -35,9 +35,9 @@ namespace func {
         if (i == 0) {
             return;
         }
-        schedule(VGJS_FUNCTION(printData(i)));
+        schedule(FUNCTION(printData(i)));
 
-        continuation(VGJS_FUNCTION(driver(i - 1)));
+        continuation(FUNCTION(driver(i - 1)));
     }
 
 
@@ -46,7 +46,7 @@ namespace func {
 
         JobSystem::instance(1);
 
-        schedule(VGJS_FUNCTION(driver(5)));
+        schedule(FUNCTION(driver(5)));
 
         std::cout << "Ending test()\n";
     }

@@ -36,16 +36,19 @@
 
 namespace vgjs {
 
-    #define VGJS_FUNCTION(f) [=](){f;}    //wrapper over a lambda function holding function f and parameters
+    #define FUNCTION(f) [=](){f;}    //wrapper over a lambda function holding function f and parameters
+
+    class Job_base;
 
     struct Function {
+        Job_base*                   m_parent = nullptr;
         std::function<void(void)>   m_function = []() {};       //empty function
         int32_t                     m_thread_index = -1;        //thread that the f should run on
         int32_t                     m_type = -1;
         int32_t                     m_id = -1;
 
-        Function(std::function<void(void)>&& f, int32_t thread_index, int32_t type, int32_t id) 
-            : m_function(std::move(f)), m_thread_index(thread_index), m_type(type), m_id(id) {};
+        Function(std::function<void(void)>&& f, int32_t thread_index, int32_t type, int32_t id, Job_base* parent = nullptr) 
+            : m_function(std::move(f)), m_thread_index(thread_index), m_type(type), m_id(id), m_parent(parent) {};
     };
 
     void saveLogfile();
@@ -66,28 +69,6 @@ namespace vgjs {
         int32_t             m_id = -1;
         std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
 
-        Job_base() {};
-        Job_base( int32_t thread_index, int32_t type, int32_t id ) : m_thread_index(thread_index), m_type(type), m_id(id) {}
-        Job_base(const Job_base& other) {
-            m_parent = other.m_parent;
-            m_thread_index = other.m_thread_index;
-            m_type = other.m_type;
-            m_id = other.m_id;
-        }
-        Job_base(Job_base&& other) {
-            m_parent = other.m_parent;
-            m_thread_index = other.m_thread_index;
-            m_type = other.m_type;
-            m_id = other.m_id;
-        }
-        Job_base& operator= (const Job_base& other) {
-            m_parent = other.m_parent; 
-            m_thread_index = other.m_thread_index; 
-            m_type = other.m_type; 
-            m_id = other.m_id;
-            return *this;
-        };
-
         virtual bool resume() = 0;                      //this is the actual work to be done
         virtual void operator() () noexcept {           //wrapper as function operator
             resume();
@@ -105,13 +86,6 @@ namespace vgjs {
     public:
         Job*                        m_continuation = nullptr;   //continuation follows this job
         std::function<void(void)>   m_function = []() {};       //empty function
-
-        Job() : Job_base() {};
-        Job(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1) noexcept 
-            : Job_base( thread_index, type, id ), m_function(std::move(f)) {}
-        Job(const Job& other) = default;
-        Job(Job&& other) = default;
-        Job& operator= (const Job& other) = default;
 
         void reset() noexcept {         //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
@@ -278,9 +252,13 @@ namespace vgjs {
             return job;
         }
 
-        Job* allocate_job( Job&& source) noexcept {
-            Job* job = allocate_job();
-            *job = std::move(source);           //move the job
+        Job* allocate_job( Function&& f) noexcept {
+            Job* job            = allocate_job();
+            job->m_parent       = f.m_parent;
+            job->m_function     = std::move(f.m_function);    //move the job
+            job->m_thread_index = f.m_thread_index;
+            job->m_type         = f.m_type;
+            job->m_id           = f.m_id;
             return job;
         }
 
@@ -446,22 +424,20 @@ namespace vgjs {
         * \brief Schedule a job into the job system
         * \param[in] source An external source that is copied into the scheduled job
         */
-        void schedule(Job&& source) noexcept {
-            schedule( allocate_job( std::forward<Job>(source) ) );
+        void schedule(Function&& source) noexcept {
+            schedule( allocate_job( std::forward<Function>(source) ) );
         };
 
         /**
         * \brief Store a continuation for the current Job. Will be scheduled once the current Job finishes
         * \param[in] f The function to schedule
-        * \param[in] thread_index The thread to run the function
         */
-        void continuation(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1) noexcept {
+        void continuation( Function&& f ) noexcept {
             auto current = current_job();
-            if (!current->is_job()) {
+            if (current == nullptr || !current->is_job()) {
                 return;
             }
-            Job job(std::forward<std::function<void(void)>>(f), thread_index, type, id );
-            ((Job*)current)->m_continuation = allocate_job( std::move(job) );
+            ((Job*)current)->m_continuation = allocate_job(std::forward<Function>(f));
         }
 
         auto& get_logs() {
@@ -555,30 +531,23 @@ namespace vgjs {
     * \param[in] type Type of the job
     * \param[in] id Unique id of the job
     */
-    inline void schedule(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
-        Job job(std::forward<std::function<void(void)>>(f), thread_index, type, id);
-        job.m_parent = (parent != nullptr ? parent : JobSystem::instance()->current_job() );
-        if (job.m_parent != nullptr) {         //if there is a parent, increase its number of children by one
-            job.m_parent->m_children++;
-        }
-        JobSystem::instance()->schedule(std::move(job));
-    };
+    inline void schedule(Function&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
+        f.m_thread_index    = (f.m_thread_index != -1   ? f.m_thread_index  : thread_index);
+        f.m_type            = (f.m_type != -1           ? f.m_type          : type);
+        f.m_id              = (f.m_id != -1             ? f.m_id            : id);
+        f.m_parent          = (f.m_parent != nullptr    ? f.m_parent        : parent);
 
-    inline void schedule(Job&& job, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
-        if (job.m_thread_index == -1) {
-            job.m_thread_index = thread_index;
+        f.m_parent = (f.m_parent != nullptr ? f.m_parent : JobSystem::instance()->current_job());
+        if (f.m_parent != nullptr) {         //if there is a parent, increase its number of children by one
+            f.m_parent->m_children++;
         }
-        if (job.m_type == -1) {
-            job.m_type = type;
-        }
-        if (job.m_id == -1) {
-            job.m_id = id;
-        }
-        if (job.m_parent == nullptr) {
-            job.m_parent = parent;
-        }
-        JobSystem::instance()->schedule( std::forward<Job>(job) );
+        JobSystem::instance()->schedule( std::forward<Function>(f) );
     }
+
+    inline void schedule(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
+        Function func(std::forward<std::function<void(void)>>(f), thread_index, type, id, parent);
+        schedule(std::move(func));
+    };
 
     /**
     * \brief Schedule functions into the system. T can be a std::function or a task<U>
@@ -590,8 +559,9 @@ namespace vgjs {
     */
     template<typename T>
     inline void schedule(std::pmr::vector<T>& functions, int32_t thd = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) noexcept {
+        int32_t cid = id;
         for (auto&& f : functions) {
-            schedule(std::forward<T>(f), thd, type, id, parent);
+            schedule(std::forward<T>(f), thd, type, cid++, parent);
         }
     };
 
@@ -600,9 +570,14 @@ namespace vgjs {
     * \param[in] f A function to schedule
     * \param[in] thd Thread index to schedule to
     */
+    inline void continuation(Function&& f) noexcept {
+        JobSystem::instance()->continuation(std::forward<Function>(f));
+    }
+
     inline void continuation(std::function<void(void)>&& f, int32_t thd = -1, int32_t type = -1, int32_t id = -1) noexcept {
-        JobSystem::instance()->continuation(std::forward<std::function<void(void)>>(f), thd, type, id );
-    };
+        Function func( std::forward<std::function<void(void)>>(f), thd, type, id );
+        continuation( std::move(func) );
+    }
 
     /**
     * \brief Terminate the job system

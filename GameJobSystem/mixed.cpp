@@ -36,7 +36,7 @@ namespace mixed {
     task<int> printDataCoro(int i, int id) {
         std::cout << "Print Data Coro " << i << std::endl;
         if (i < 5) {
-            co_await VGJS_FUNCTION( printData( i + 1, i+1 ) );
+            co_await FUNCTION( printData( i + 1, i+1 ) );
         }
         co_return i;
     }
@@ -61,7 +61,7 @@ namespace mixed {
 
         schedule( f );
 
-        continuation( VGJS_FUNCTION(driver(i-1, "Driver")) );
+        continuation( FUNCTION(driver(i-1, "Driver")) );
     }
 
     void test() {
@@ -70,7 +70,7 @@ namespace mixed {
         JobSystem::instance();
         JobSystem::instance()->set_logging(true);
 
-        schedule(VGJS_FUNCTION(driver( 10 , "Driver")));
+        schedule(FUNCTION(driver( 10 , "Driver")));
 
         std::cout << "Ending test()\n";
     }
