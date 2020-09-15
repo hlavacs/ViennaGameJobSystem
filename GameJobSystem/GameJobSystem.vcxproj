@@ -164,7 +164,6 @@
   <ItemGroup>
     <ClInclude Include="VECoro.h" />
     <ClInclude Include="VEGameJobSystem.h" />
-    <ClInclude Include="VEGameJobSystem2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

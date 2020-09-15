@@ -25,13 +25,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="VEGameJobSystem.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="VEGameJobSystem2.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="VECoro.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="VEGameJobSystem.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

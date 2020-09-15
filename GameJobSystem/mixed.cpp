@@ -8,7 +8,7 @@
 #include <glm.hpp>
 
 #define VGJS_TRACE true
-#include "VEGameJobSystem2.h"
+#include "VEGameJobSystem.h"
 #include "VECoro.h"
 
 
@@ -45,10 +45,10 @@ namespace mixed {
         std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
             auto f1 = printDataCoro(i-1, -(i - 1) );
-            //auto f2 = printDataCoro(i-1, i + 1 );
+            auto f2 = printDataCoro(i-1, i + 1 );
 
             schedule( f1 );
-            //schedule( f2 );
+            schedule( f2 );
         }
     }
 
@@ -70,7 +70,7 @@ namespace mixed {
         JobSystem::instance();
         JobSystem::instance()->set_logging(true);
 
-        schedule(FUNCTION(driver( 20000 , "Driver")));
+        schedule(FUNCTION(driver( 20 , "Driver")));
 
         std::cout << "Ending test()\n";
 
