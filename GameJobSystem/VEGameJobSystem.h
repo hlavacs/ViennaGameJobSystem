@@ -41,6 +41,13 @@ namespace vgjs {
     class Job_base;
     class JobSystem;
 
+    bool is_logging();
+    void log_data(  std::chrono::high_resolution_clock::time_point& t1, std::chrono::high_resolution_clock::time_point& t2,
+                    int32_t exec_thread, bool finished, int32_t type, int32_t id);
+    void save_log_file();
+
+
+
     struct Function {
         std::function<void(void)>   m_function = []() {};       //empty function
         int32_t                     m_thread_index = -1;        //thread that the f should run on
@@ -68,7 +75,6 @@ namespace vgjs {
         };
     };
 
-    void saveLogfile();
 
     //-----------------------------------------------------------------------------------------
 
@@ -84,7 +90,6 @@ namespace vgjs {
         int32_t             m_thread_index = -1;        //thread that the job should run on
         int32_t             m_type = -1;
         int32_t             m_id = -1;
-        std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
 
         virtual bool resume() = 0;                      //this is the actual work to be done
         virtual void operator() () noexcept {           //wrapper as function operator
@@ -94,10 +99,6 @@ namespace vgjs {
         virtual bool deallocate() noexcept { return false; };    //called for deallocation
         virtual bool is_job() noexcept { return false; }         //test whether this is a job or e.g. a coro
     };
-
-    bool is_logging();
-    void log_data(  std::chrono::high_resolution_clock::time_point& t1, std::chrono::high_resolution_clock::time_point& t2,
-                    int32_t exec_thread, bool finished, int32_t type, int32_t id);
 
 
     /**
@@ -119,6 +120,8 @@ namespace vgjs {
         }
 
         virtual bool resume() noexcept {    //work is to call the function
+            std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
+
             if (is_logging()) {
                 t1 = std::chrono::high_resolution_clock::now();	//time of finishing
             }
@@ -220,7 +223,7 @@ namespace vgjs {
             //if LIFO or there is only one Job then deqeue it from the start
             //this might collide with other producers, so use CAS
             //in rare cases FIFO might be violated
-            while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, (JOB*)head->m_next)) {};
+            while (head != nullptr && !std::atomic_compare_exchange_strong(&m_head, &head, (JOB*)head->m_next)) {};
             return head;
         };
 
@@ -373,7 +376,7 @@ namespace vgjs {
                 }
                 else if (--noop == 0 && m_thread_index > 0) {               //if none found too longs let thread sleep
                     noop = NOOP;                                            //thread 0 goes on to make the system reactive
-                    std::this_thread::sleep_for(std::chrono::microseconds(1));
+                    //std::this_thread::sleep_for(std::chrono::microseconds(1));
                 }
             };
 
@@ -385,7 +388,7 @@ namespace vgjs {
                    q.clear();
                }
                if (m_logging) {
-                   saveLogfile();
+                   save_log_file();
                }
                m_terminated = true;
            }
@@ -501,8 +504,15 @@ namespace vgjs {
         * in a memory data structure
         * \param[in] flag True or false
         */
-        void set_logging(bool flag) {
-            m_logging = flag;
+        void enable_logging() {
+            m_logging = true;
+        }
+
+        void disable_logging() {
+            if (m_logging) {
+                save_log_file();
+            }
+            m_logging = false;
         }
 
         /**
@@ -679,16 +689,16 @@ namespace vgjs {
         logs[JobSystem::instance()->thread_index()].emplace_back( t1, t2, JobSystem::instance()->thread_index(), finished, type, id);
     }
 
-    inline void saveJob(   std::ofstream& out, std::string cat, uint64_t pid, uint64_t tid,
-                            uint64_t ts, int64_t dur, std::string ph, std::string name, std::string args) {
+    inline void save_job(  std::ofstream& out, std::string cat, uint64_t pid, uint64_t tid,
+                           uint64_t ts, int64_t dur, std::string ph, std::string name, std::string args) {
 
         std::stringstream time;
-        time.precision(3);
-        time << ts / 1000.0;
+        time.precision(15);
+        time << ts / 1.0e6;
 
         std::stringstream duration;
-        duration.precision(3);
-        duration << dur / 1000.0;
+        duration.precision(15);
+        duration << dur / 1.0e6;
 
         out << "{";
         out << "\"cat\": " << cat << ", ";
@@ -702,38 +712,45 @@ namespace vgjs {
         out << "}";
     }
 
-    inline void saveLogfile() {
+    inline void save_log_file() {
         auto& logs = JobSystem::instance()->get_logs();
         std::ofstream outdata;
         outdata.open("log.json");
+        auto& types = JobSystem::instance()->types();
+
         if (outdata) {
             outdata << "{" << std::endl;
             outdata << "\"traceEvents\": [" << std::endl;
             bool comma = false;
-            for (uint32_t i = 0; i < JobSystem::instance()->thread_count(); ++i) {
-                if (i > 0 && logs[i - 1].empty()) comma = false;
-                if (comma) outdata << "," << std::endl;
-                comma = true;
+            for (uint32_t i = 0; i < logs.size(); ++i) {
+                //if (i > 0 && logs[i - 1].empty()) comma = false;
+                //if (comma) outdata << "," << std::endl;
+                //comma = true;
 
-                bool comma2 = false;
+                //bool comma2 = false;
                 for (auto& ev : logs[i]) {
                     if (ev.m_t1 >= JobSystem::instance()->start_time() && ev.m_t2 >= ev.m_t1) {
-                        if (comma2) outdata << "," << std::endl;
-                        comma2 = true;
-                        auto it = JobSystem::instance()->types().find(ev.m_type);
-                        std::string name = "-";
-                        if (it != JobSystem::instance()->types().end()) name = it->second;
+                        //if (comma2) outdata << "," << std::endl;
+                        //comma2 = true;
 
-                        saveJob(outdata, "\"cat\"", 0, (uint32_t)ev.m_exec_thread,
+                        if (comma) outdata << "," << std::endl;
+
+                        auto it = types.find(ev.m_type);
+                        std::string name = "-";
+                        if (it != types.end()) name = it->second;
+
+                        save_job(outdata, "\"cat\"", 0, (uint32_t)ev.m_exec_thread,
                             std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t1 - JobSystem::instance()->start_time()).count(),
                             std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t2 - ev.m_t1).count(),
                             "\"X\"", "\"" + name + "\"", "\"finished\": " + std::to_string(ev.m_finished));
+
+                        comma = true;
                     }
-                    bool comma2 = false;
+                    //comma2 = false;
                 }
             }
             outdata << "]," << std::endl;
-            outdata << "\"displayTimeUnit\": \"ns\"" << std::endl;
+            outdata << "\"displayTimeUnit\": \"ms\"" << std::endl;
             outdata << "}" << std::endl;
         }
         outdata.close();

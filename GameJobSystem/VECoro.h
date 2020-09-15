@@ -309,7 +309,7 @@ namespace vgjs {
 
         bool resume() noexcept {                //resume the Coro at its suspension point
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
-            if (coro && !coro.done())
+            if (coro)
                 coro.resume();
             return false;
         };
@@ -361,10 +361,10 @@ namespace vgjs {
 
             bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
                 auto& promise = h.promise();
-                if (promise.m_parent) {                      //if there is a parent
-                    promise.m_parent->child_finished();      //tell parent that this child has finished
-
-                    if (promise.m_parent->is_job()) {        //if the parent is a job
+                if (promise.m_parent != nullptr) {           //if there is a parent
+                    bool is_job = promise.m_parent->is_job();
+                    promise.m_parent->child_finished();      //tell parent that this child has finished (parent could kill itself here!!)
+                    if (is_job) {               //if the parent is a job
                         int count = promise.m_count.fetch_sub(1);
                         if (count == 1 ) {      //if the Coro<T> has been destroyed then no one is waiting
                             return false;       //so destroy the promise

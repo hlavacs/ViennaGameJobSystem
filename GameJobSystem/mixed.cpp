@@ -22,11 +22,11 @@ namespace mixed {
     auto g_global_mem5 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
 
-    Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+    Coro<int> compute(int i) {
 
         //co_await 1;
 
-        std::cout << "Compute " << i << std::endl;
+        //std::cout << "Compute " << i << std::endl;
 
         co_return 2 * i;
     }
@@ -34,21 +34,24 @@ namespace mixed {
     void printData(int i, int id);
 
     Coro<int> printDataCoro(int i, int id) {
-        std::cout << "Print Data Coro " << i << std::endl;
+        //std::cout << "Print Data Coro " << i << std::endl;
         if (i >0 ) {
+            //co_await compute(i);
             co_await FUNCTION( printData( i - 1, i+1 ) );
         }
         co_return i;
     }
 
     void printData(int i, int id ) {
-        std::cout << "Print Data " << i << std::endl;
+        //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
-            auto f1 = printDataCoro(i-1, -(i - 1) );
-            auto f2 = printDataCoro(i-1, i + 1 );
+            auto f1 = printDataCoro(i-1, -(i - 1))(-1, 2,1);
+            auto f2 = printDataCoro(i-1, i + 1 )(-1, 2, 1);
 
             schedule( f1 );
             schedule( f2 );
+
+            //schedule(FUNCTION(printData(i-1, 0)));
         }
     }
 
@@ -58,9 +61,12 @@ namespace mixed {
             return;
         }
 
-        schedule( FUNCTION( printData(i, -1) ) );
+        //schedule( Function( FUNCTION( printData(i, -1) ), -1, 1, 0)  );
 
-        continuation( FUNCTION( vgjs::terminate() ) );
+        schedule( FUNCTION(printData(i, -1)));
+
+        //continuation( Function( FUNCTION( vgjs::terminate() ), -1, 3, 0 ) );
+        continuation( FUNCTION(vgjs::terminate()) );
     }
 
 
@@ -68,9 +74,16 @@ namespace mixed {
         std::cout << "Starting test()\n";
 
         JobSystem::instance();
-        JobSystem::instance()->set_logging(true);
+        auto& types = JobSystem::instance()->types();
+        types[0] = "Driver";
+        types[1] = "printData";
+        types[2] = "printDataCoro";
+        types[3] = "terminate";
 
-        schedule(FUNCTION(driver( 20 , "Driver")));
+        JobSystem::instance()->enable_logging();
+
+        //schedule( Function( FUNCTION(driver( 100 , "Driver")), -1, 0, 0 ) );
+        schedule( FUNCTION( driver(30, "Driver") ) );
 
         std::cout << "Ending test()\n";
 
