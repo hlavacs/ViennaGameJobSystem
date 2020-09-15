@@ -20,10 +20,20 @@ namespace func {
 
     auto g_global_mem5 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
+    auto computeF(int i) {
+        return i * 10.0;
+    }
+
+    auto compute( int i ) {
+        volatile auto x = 2 * i;
+        schedule(FUNCTION(computeF(i)));
+        return x;
+    }
 
     void printData( int i ) {
         //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
+            schedule( FUNCTION( compute(i)) );
             schedule( [=]() { printData(i-1); } );
             schedule( [=]() { printData(i-1); });
         }
@@ -43,7 +53,7 @@ namespace func {
 
         JobSystem::instance(1);
 
-        schedule( FUNCTION(driver(20)) );
+        schedule( FUNCTION(driver(18)) );
 
         std::cout << "Ending test()\n";
     }

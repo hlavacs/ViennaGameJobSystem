@@ -27,7 +27,7 @@ int main()
 {
 	using namespace vgjs;
 
-	mixed::test();
+	func::test();
 
 	wait_for_termination();
 	std::cout << "Exit\n";

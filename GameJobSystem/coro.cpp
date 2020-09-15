@@ -23,10 +23,18 @@ namespace coro {
     auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
 
+    Coro<int> recursive2(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
+        if (i < N ) {
+            co_await recursive2(std::allocator_arg, mr, i + 1, N);
+            co_await recursive2(std::allocator_arg, mr, i + 1, N);
+        }
+        co_return 0;
+    }
+
     Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
         std::cout << "Recursive " << i << " of " << N << std::endl;
 
-        if (i < N ) {
+        if (i < N) {
             co_await recursive(std::allocator_arg, mr, i + 1, N);
             co_await recursive(std::allocator_arg, mr, i + 1, N);
         }
@@ -110,8 +118,6 @@ namespace coro {
 
         std::cout << "Ending loop " << std::endl;
 
-        vgjs::terminate();
-
         co_return sum;
     }
 
@@ -119,7 +125,8 @@ namespace coro {
     void driver() {
         schedule( loop(std::allocator_arg, &g_global_mem4, 90) );
 
-        //schedule(recursive(std::allocator_arg, &g_global_mem4, 1, 30));
+        schedule( recursive2(std::allocator_arg, &g_global_mem4, 1, 18) );
+
         continuation(FUNCTION(vgjs::terminate()));
     }
 

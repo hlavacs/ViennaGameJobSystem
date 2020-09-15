@@ -80,7 +80,7 @@ namespace mixed {
         types[2] = "printDataCoro";
         types[3] = "terminate";
 
-        JobSystem::instance()->enable_logging();
+        //JobSystem::instance()->enable_logging();
 
         //schedule( Function( FUNCTION(driver( 100 , "Driver")), -1, 0, 0 ) );
         schedule( FUNCTION( driver(30, "Driver") ) );

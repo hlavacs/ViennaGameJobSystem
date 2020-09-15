@@ -86,13 +86,6 @@ namespace vgjs {
             return {};
         }
 
-        void child_finished() noexcept {                    //if children are running then the coro must be suspended
-            uint32_t num = m_children.fetch_sub(1);
-            if ( num == 1) {                                //if there are no more children
-                JobSystem::instance()->schedule(this);      //then resume the coroutine by scheduling its promise
-            }
-        }
-
         /**
         * \brief Use the given memory resource to create the promise object for a normal function.
         * 
@@ -314,6 +307,20 @@ namespace vgjs {
             return false;
         };
 
+        void child_finished() noexcept {                    //if children are running then the coro must be suspended
+            uint32_t num = m_children.fetch_sub(1);
+            if (num == 1) {                                //if there are no more children
+                auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
+
+                if (!coro.done()) {
+                    JobSystem::instance()->schedule(this);      //then resume the coroutine by scheduling its promise
+                }
+                else {
+                    /// ???
+                }
+            }
+        }
+
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
             m_value = t;
         }
@@ -364,6 +371,7 @@ namespace vgjs {
                 if (promise.m_parent != nullptr) {           //if there is a parent
                     bool is_job = promise.m_parent->is_job();
                     promise.m_parent->child_finished();      //tell parent that this child has finished (parent could kill itself here!!)
+                    
                     if (is_job) {               //if the parent is a job
                         int count = promise.m_count.fetch_sub(1);
                         if (count == 1 ) {      //if the Coro<T> has been destroyed then no one is waiting
