@@ -39,6 +39,7 @@ namespace vgjs {
     #define FUNCTION(f) [=](){f;}    //wrapper over a lambda function holding function f and parameters
 
     class Job_base;
+    class JobSystem;
 
     struct Function {
         std::function<void(void)>   m_function = []() {};       //empty function
@@ -94,6 +95,7 @@ namespace vgjs {
         virtual bool is_job() noexcept { return false; }         //test whether this is a job or e.g. a coro
     };
 
+    bool is_logging();
 
     /**
     * \brief Job class calls normal C++ functions and can have continuations
@@ -114,9 +116,19 @@ namespace vgjs {
         }
 
         virtual bool resume() noexcept {    //work is to call the function
+            if (is_logging()) {
+                t1 = std::chrono::high_resolution_clock::now();	//time of finishing
+            }
+
             m_children = 1;                 //job is its own child, so set to 1
             m_function();                   //run the function, can schedule more children here
             child_finished();               //job is its own child
+
+            if ( is_logging() ) {
+                t2 = std::chrono::high_resolution_clock::now();	//time of finishing
+                //m_logs[m_thread_index].emplace_back( t1, t2, m_thread_index, false, m_type, m_id);
+            }
+
             return true;
         }
 
@@ -140,8 +152,6 @@ namespace vgjs {
         };
     };
 
-
-    class JobSystem;
 
     /**
     * \brief A lockfree queue.
@@ -227,6 +237,7 @@ namespace vgjs {
         static inline std::unique_ptr<JobSystem>    m_instance;	            ///<pointer to singleton
         std::vector<std::thread>	                m_threads;	            ///<array of thread structures
         std::atomic<uint32_t>   		            m_thread_count = 0;     ///<number of threads in the pool
+        std::atomic<bool>                           m_terminated = false;   ///
         uint32_t									m_start_idx = 0;        ///<idx of first thread that is created
         static inline thread_local  int32_t		    m_thread_index = -1;    ///<each thread has its own number
         std::atomic<bool>							m_terminate = false;	///<Flag for terminating the pool
@@ -355,17 +366,7 @@ namespace vgjs {
                     m_current_job = m_central_queue.pop();                 //if none found try the central queue
                 }
                 if (m_current_job) {
-                    if (m_logging) {
-                        m_current_job->t1 = std::chrono::high_resolution_clock::now();	//time of execution
-                    }
-
-                    (*m_current_job)();                                             //if any job found execute it
-
-                    if (m_logging) {
-                        m_current_job->t2 = std::chrono::high_resolution_clock::now();	//time of finishing
-                        m_logs[m_thread_index].emplace_back(
-                            m_current_job->t1, m_current_job->t2, m_thread_index, false, m_current_job->m_type, m_current_job->m_id);
-                    }
+                    (*m_current_job)();                                    //if any job found execute it
                 }
                 else if (--noop == 0 && m_thread_index > 0) {               //if none found too longs let thread sleep
                     noop = NOOP;                                            //thread 0 goes on to make the system reactive
@@ -383,6 +384,7 @@ namespace vgjs {
                if (m_logging) {
                    saveLogfile();
                }
+               m_terminated = true;
            }
         };
 
@@ -404,8 +406,8 @@ namespace vgjs {
         * Returns as soon as all threads have exited.
         */
         void wait_for_termination() noexcept {
-            while (m_thread_count > 0) {
-                std::this_thread::sleep_for(std::chrono::microseconds(10));
+            while (m_terminated.load() == false) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         };
 
@@ -660,6 +662,10 @@ namespace vgjs {
     */
     inline void wait_for_termination() {
         JobSystem::instance()->wait_for_termination();
+    }
+
+    inline bool is_logging() {
+        return JobSystem::instance()->is_logging();
     }
 
     inline void saveJob(   std::ofstream& out, std::string cat, uint64_t pid, uint64_t tid,

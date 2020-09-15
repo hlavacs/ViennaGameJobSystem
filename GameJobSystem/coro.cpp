@@ -11,7 +11,7 @@
 
 
 #include "VEGameJobSystem2.h"
-#include "VETask.h"
+#include "VECoro.h"
 
 using namespace std::chrono;
 
@@ -23,7 +23,7 @@ namespace coro {
     auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
 
-    task<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
+    Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
         std::cout << "Recursive " << i << " of " << N << std::endl;
 
         if (i < N) {
@@ -33,7 +33,7 @@ namespace coro {
         co_return 0;
     }
 
-    task<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+    Coro<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
         //co_await 0;
         float f = i + 0.5f;
@@ -43,7 +43,7 @@ namespace coro {
     }
 
 
-    task<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+    Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
         //co_await 1;
 
@@ -52,7 +52,7 @@ namespace coro {
         co_return 2 * i;
     }
 
-    task<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
+    Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
         auto tk1 = compute(std::allocator_arg, mr, 1);
         //std::cout << "DO Compute " << std::endl;
         co_return tk1.get();
@@ -66,13 +66,13 @@ namespace coro {
         std::cout << "FuncCompute " << i << std::endl;
     }
 
-    task<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
+    Coro<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
         std::cout << "Starting loop\n";
 
-        auto tv = std::pmr::vector<task<int>>{mr};
+        auto tv = std::pmr::vector<Coro<int>>{mr};
 
-        auto tk = std::make_tuple(std::pmr::vector<task<int>>{mr}, std::pmr::vector<task<float>>{mr});
+        auto tk = std::make_tuple(std::pmr::vector<Coro<int>>{mr}, std::pmr::vector<Coro<float>>{mr});
         
         auto fv = std::pmr::vector<std::function<void(void)>>{ mr };
 
@@ -117,7 +117,7 @@ namespace coro {
 
 
     void driver() {
-        schedule( loop(std::allocator_arg, &g_global_mem4, 900) );
+        schedule( loop(std::allocator_arg, &g_global_mem4, 90) );
 
     }
 

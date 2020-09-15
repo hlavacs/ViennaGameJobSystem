@@ -9,7 +9,7 @@
 
 #define VGJS_TRACE true
 #include "VEGameJobSystem2.h"
-#include "VETask.h"
+#include "VECoro.h"
 
 
 using namespace std::chrono;
@@ -22,7 +22,7 @@ namespace mixed {
     auto g_global_mem5 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
 
-    task<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+    Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
         //co_await 1;
 
@@ -33,22 +33,22 @@ namespace mixed {
 
     void printData(int i, int id);
 
-    task<int> printDataCoro(int i, int id) {
+    Coro<int> printDataCoro(int i, int id) {
         std::cout << "Print Data Coro " << i << std::endl;
-        if (i < 5) {
-            co_await FUNCTION( printData( i + 1, i+1 ) );
+        if (i >0 ) {
+            co_await FUNCTION( printData( i - 1, i+1 ) );
         }
         co_return i;
     }
 
     void printData(int i, int id ) {
         std::cout << "Print Data " << i << std::endl;
-        if (i < 5) {
-            auto f1 = printDataCoro(i+1, -(i+1) );
-            auto f2 = printDataCoro(i+1, -(i + 1));
+        if (i > 0) {
+            auto f1 = printDataCoro(i-1, -(i - 1) );
+            //auto f2 = printDataCoro(i-1, i + 1 );
 
             schedule( f1 );
-            schedule( f2 );
+            //schedule( f2 );
         }
     }
 
@@ -57,12 +57,12 @@ namespace mixed {
         if (i == 0) {
             return;
         }
-        auto f = printDataCoro(1, -1);
 
-        schedule( f );
+        schedule( FUNCTION( printData(i, -1) ) );
 
-        continuation( FUNCTION(driver(i-1, "Driver")) );
+        continuation( FUNCTION( vgjs::terminate() ) );
     }
+
 
     void test() {
         std::cout << "Starting test()\n";
@@ -70,9 +70,10 @@ namespace mixed {
         JobSystem::instance();
         JobSystem::instance()->set_logging(true);
 
-        schedule(FUNCTION(driver( 10 , "Driver")));
+        schedule(FUNCTION(driver( 20000 , "Driver")));
 
         std::cout << "Ending test()\n";
+
     }
 
 }

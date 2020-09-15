@@ -22,9 +22,9 @@
 
 namespace vgjs {
 
-    class task_base;
-    template<typename T> class task;
-    class task_promise_base;
+    class Coro_base;
+    template<typename T> class Coro;
+    class Coro_promise_base;
 
     template<typename>
     struct is_pmr_vector : std::false_type {};
@@ -35,54 +35,54 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
 
     /**
-    * \brief Schedule a task into the job system
+    * \brief Schedule a Coro into the job system
     *
-    * Basic function for scheduling a coroutine task into the job system
-    * \param[in] task A coroutine task, whose promise is a job that is scheduled into the job system
+    * Basic function for scheduling a coroutine Coro into the job system
+    * \param[in] coro A coroutine Coro, whose promise is a job that is scheduled into the job system
     */
     template<typename T>
-    requires (std::is_base_of<task_base, T>::value)
-    void schedule( T& task ) noexcept {
-        Job_base * parent = (task.promise()->m_parent != nullptr ? task.promise()->m_parent : JobSystem::instance()->current_job());       //remember parent
+    requires (std::is_base_of<Coro_base, T>::value)
+    void schedule( T& coro ) noexcept {
+        Job_base * parent = (coro.promise()->m_parent != nullptr ? coro.promise()->m_parent : JobSystem::instance()->current_job());       //remember parent
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
-        task.promise()->m_parent = parent;
-        JobSystem::instance()->schedule( task.promise() );      //schedule the promise as job
+        coro.promise()->m_parent = parent;
+        JobSystem::instance()->schedule(coro.promise() );      //schedule the promise as job
     };
 
     /**
-    * \brief Schedule a task into the job system
+    * \brief Schedule a Coro into the job system
     *
-    * Basic function for scheduling a coroutine task into the job system
-    * \param[in] task A coroutine task, whose promise is a job that is scheduled into the job system
+    * Basic function for scheduling a coroutine Coro into the job system
+    * \param[in] coro A coroutine Coro, whose promise is a job that is scheduled into the job system
     */
     template<typename T>
-    requires (std::is_base_of<task_base, T>::value)
-    void schedule( T&& task ) noexcept {
-        schedule( task );
+    requires (std::is_base_of<Coro_base, T>::value)
+    void schedule( T&& coro) noexcept {
+        schedule(coro);
     };
 
 
     //---------------------------------------------------------------------------------------------------
 
     /**
-    * \brief Base class of coroutine task_promise, derived from Job so it can be scheduled.
+    * \brief Base class of coroutine Coro_promise, derived from Job so it can be scheduled.
     * 
     * The base promise class derives from Job so it can be scheduled on the job system!
     * The base does not depend on any type information that is stored with the promise.
     * It defines default behavior and the operators for allocating and deallocating memory
     * for the promise.
     */
-    class task_promise_base : public Job_base {
+    class Coro_promise_base : public Job_base {
     public:
-        task_promise_base() noexcept {};        //constructor
+        Coro_promise_base() noexcept {};        //constructor
 
         void unhandled_exception() noexcept {   //in case of an exception terminate the program
             std::terminate();
         }
 
-        std::experimental::suspend_always initial_suspend() noexcept {  //always suspend at start when creating a coroutine task
+        std::experimental::suspend_always initial_suspend() noexcept {  //always suspend at start when creating a coroutine Coro
             return {};
         }
 
@@ -156,13 +156,13 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
 
     /**
-    * \brief Base class of coroutine task. Independent of promise return type.
+    * \brief Base class of coroutine Coro. Independent of promise return type.
     */
-    class task_base {
+    class Coro_base {
     public:
-        task_base() noexcept {};                                              //constructor
-        virtual bool resume() noexcept { return true; };                     //resume the task
-        virtual task_promise_base* promise() noexcept { return nullptr; };   //get the promise to use it as Job 
+        Coro_base() noexcept {};                                              //constructor
+        virtual bool resume() noexcept { return true; };                     //resume the Coro
+        virtual Coro_promise_base* promise() noexcept { return nullptr; };   //get the promise to use it as Job 
     };
 
     //---------------------------------------------------------------------------------------------------
@@ -179,10 +179,10 @@ namespace vgjs {
     };
 
     /**
-    * \brief Awaiter for awaiting a tuple of vector of tasks of type task<T> or std::function<void(void)>
+    * \brief Awaiter for awaiting a tuple of vector of Coros of type Coro<T> or std::function<void(void)>
     *
     * The tuple can contain vectors with different types.
-    * The caller will then await the completion of the tasks. Afterwards,
+    * The caller will then await the completion of the Coros. Afterwards,
     * the return values can be retrieved by calling get().
     */
     template<typename... Ts>
@@ -191,7 +191,7 @@ namespace vgjs {
         struct awaiter : awaiter_base {
             std::tuple<std::pmr::vector<Ts>...>& m_tuple;                //vector with all children to start
 
-            bool await_ready() noexcept {                                 //suspend only if there are no tasks
+            bool await_ready() noexcept {                                 //suspend only if there are no Coros
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
                     std::size_t num = 0;
                     std::initializer_list<int>{ ( num += std::get<Idx>(m_tuple).size(), 0) ...}; //called for every tuple element
@@ -220,18 +220,18 @@ namespace vgjs {
 
 
     /**
-    * \brief Awaiter for awaiting a task of type task<T> or std::function<void(void)>, or std::pmr::vector thereof
+    * \brief Awaiter for awaiting a Coro of type Coro<T> or std::function<void(void)>, or std::pmr::vector thereof
     *
-    * The caller will await the completion of the task(s). Afterwards,
-    * the return values can be retrieved by calling get() for task<t>
+    * The caller will await the completion of the Coro(s). Afterwards,
+    * the return values can be retrieved by calling get() for Coro<t>
     */
     template<typename T>
-    struct awaitable_task {
+    struct awaitable_coro {
 
         struct awaiter : awaiter_base {
-            T& m_child;      //child task
+            T& m_child;      //child Coro
 
-            bool await_ready() noexcept {             //suspend only there are no tasks
+            bool await_ready() noexcept {             //suspend only there are no Coros
                 if constexpr (is_pmr_vector<T>::value) {
                     return m_child.empty();
                 }
@@ -245,9 +245,9 @@ namespace vgjs {
             awaiter( T& child) noexcept : m_child(child) {};
         };
 
-        T& m_child;              //child task
+        T& m_child;              //child Coro
 
-        awaitable_task( T& child ) noexcept : m_child(child) {};
+        awaitable_coro( T& child ) noexcept : m_child(child) {};
 
         awaiter operator co_await() noexcept { return { m_child }; };
     };
@@ -258,7 +258,7 @@ namespace vgjs {
     */
     struct awaitable_resume_on {
         struct awaiter : awaiter_base {
-            task_promise_base*  m_promise;
+            Coro_promise_base*  m_promise;
             int32_t             m_thread_index;
 
             bool await_ready() noexcept {   //default: go on with suspension
@@ -270,13 +270,13 @@ namespace vgjs {
                 JobSystem::instance()->schedule(m_promise);     //Job* is scheduled directly
             }
 
-            awaiter(task_promise_base* promise, int32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
+            awaiter(Coro_promise_base* promise, int32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
         };
 
-        task_promise_base*  m_promise;
+        Coro_promise_base*  m_promise;
         int32_t             m_thread_index;
 
-        awaitable_resume_on(task_promise_base* promise, int32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
+        awaitable_resume_on(Coro_promise_base* promise, int32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
 
         awaiter operator co_await() noexcept { return { m_promise, m_thread_index }; };
     };
@@ -284,16 +284,16 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
 
     /**
-    * \brief Promise of the task. Depends on the return type.
+    * \brief Promise of the Coro. Depends on the return type.
     * 
-    * The task promise can hold values that are produced by the task. They can be
-    * retrieved later by calling get() on the task (which calls get() on the promise)
+    * The Coro promise can hold values that are produced by the Coro. They can be
+    * retrieved later by calling get() on the Coro (which calls get() on the promise)
     */
     template<typename T>
-    class task_promise : public task_promise_base {
+    class Coro_promise : public Coro_promise_base {
         template<typename U> struct final_awaiter;
         template<typename U> friend struct final_awaiter;
-        template<typename U> friend class task;
+        template<typename U> friend class Coro;
 
     private:
         std::atomic<int> m_count = 2;   //sync with parent if parent is a Job
@@ -301,17 +301,17 @@ namespace vgjs {
 
     public:
 
-        task_promise() noexcept : task_promise_base{}, m_value{} {};
+        Coro_promise() noexcept : Coro_promise_base{}, m_value{} {};
 
-        task<T> get_return_object() noexcept {  //get task coroutine from promise
-            return task<T>{ std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this) };
+        Coro<T> get_return_object() noexcept {  //get Coro coroutine from promise
+            return Coro<T>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) };
         }
 
-        bool resume() noexcept {                //resume the task at its suspension point
-            auto coro = std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this);
+        bool resume() noexcept {                //resume the Coro at its suspension point
+            auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
             if (coro && !coro.done())
                 coro.resume();
-            return !coro.done();
+            return false;
         };
 
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
@@ -323,7 +323,7 @@ namespace vgjs {
         }
 
         bool deallocate() noexcept {    //called when the job system is destroyed
-            auto coro = std::experimental::coroutine_handle<task_promise<T>>::from_promise(*this);
+            auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
             if (coro) {
                 coro.destroy();
             }
@@ -331,14 +331,14 @@ namespace vgjs {
             return false;
         };
 
-        template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& tasks or functions
-        awaitable_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& tasks) noexcept {
-            return { tasks };
+        template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& Coros or functions
+        awaitable_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& coros) noexcept {
+            return { coros };
         }
 
-        template<typename T>        //called by co_await for tasks or functions, or std::pmr::vector thereof
-        awaitable_task<T> await_transform(T& task) noexcept {
-            return { task };
+        template<typename T>        //called by co_await for Coros or functions, or std::pmr::vector thereof
+        awaitable_coro<T> await_transform(T& coro) noexcept {
+            return { coro };
         }
 
         awaitable_resume_on await_transform(uint32_t thread_index) noexcept { //called by co_await for INT, for changing the thread
@@ -350,23 +350,23 @@ namespace vgjs {
         *
         * Suspending as last act prevents the promise to be destroyed. This way the caller
         * can retrieve the stored value by calling get(). Also we want to resume the parent
-        * if all children have finished their tasks.
-        * If the parent was a Job, then if the task<T> is still alive, the coro will suspend,
-        * and the task<T> must destroy the promise in its destructor. If the task<T> has destructed,
+        * if all children have finished their Coros.
+        * If the parent was a Job, then if the Coro<T> is still alive, the coro will suspend,
+        * and the Coro<T> must destroy the promise in its destructor. If the Coro<T> has destructed,
         * then the coro must destroy the promise itself by resuming the final awaiter.
         */
         template<typename U>
         struct final_awaiter : public awaiter_base {
             final_awaiter() noexcept {}
 
-            bool await_suspend(std::experimental::coroutine_handle<task_promise<U>> h) noexcept { //called after suspending
+            bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
                 auto& promise = h.promise();
                 if (promise.m_parent) {                      //if there is a parent
                     promise.m_parent->child_finished();      //tell parent that this child has finished
 
                     if (promise.m_parent->is_job()) {        //if the parent is a job
                         int count = promise.m_count.fetch_sub(1);
-                        if (count == 1 ) {      //if the task<T> has been destroyed then no one is waiting
+                        if (count == 1 ) {      //if the Coro<T> has been destroyed then no one is waiting
                             return false;       //so destroy the promise
                         }
                     }
@@ -383,29 +383,29 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
 
     /**
-    * \brief The main task class. Can be constructed to return any value type
+    * \brief The main Coro class. Can be constructed to return any value type
     *
-    * The task is an accessor class much like a std::future that is used to
+    * The Coro is an accessor class much like a std::future that is used to
     * access the promised value once it is awailable.
-    * It also holds a handle to the task promise.
+    * It also holds a handle to the Coro promise.
     */
     template<typename T>
-    class task : public task_base {
+    class Coro : public Coro_base {
     public:
 
-        using promise_type = task_promise<T>;
+        using promise_type = Coro_promise<T>;
 
     private:
-        std::experimental::coroutine_handle<promise_type> m_coro;   //handle to task promise
+        std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
-        task(task<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
+        Coro(Coro<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
-        ~task() noexcept {
+        ~Coro() noexcept {
             if (m_coro) {
                 if (m_coro.promise().m_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
                     if (!m_coro.promise().m_parent->is_job()) {     //because they are in sync
-                        m_coro.destroy();                           //if you do not want this then move task
+                        m_coro.destroy();                           //if you do not want this then move Coro
                     }
                     else {  //if the parent is a job+function, then the function often returns before the child finishes
                         int count = m_coro.promise().m_count.fetch_sub(1);
@@ -421,18 +421,18 @@ namespace vgjs {
             return m_coro.promise().get();
         }
 
-        task_promise_base* promise() noexcept { //get a pointer to the promise (can be used as Job)
+        Coro_promise_base* promise() noexcept { //get a pointer to the promise (can be used as Job)
             return &m_coro.promise();
         }
 
-        task<T>&& operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1 ) {
+        Coro<T>&& operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1 ) {
             m_coro.promise().m_thread_index = thread_index;
             m_coro.promise().m_type = type;
             m_coro.promise().m_id = id;
             return std::move(*this);
         } 
 
-        void thread_index(uint32_t ti) {        //force the task to rn on thread ti
+        void thread_index(uint32_t ti) {        //force the Coro to rn on thread ti
             m_coro.promise().m_thread_index = ti;
         }
 
@@ -444,13 +444,13 @@ namespace vgjs {
             m_coro.promise().m_id = id;
         }
 
-        bool resume() noexcept {    //resume the task by calling resume() on the handle
+        bool resume() noexcept {    //resume the Coro by calling resume() on the handle
             if (!m_coro.done())
                 m_coro.resume();
             return !m_coro.done();
         };
 
-        explicit task(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
+        explicit Coro(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
     };
 
 }

@@ -162,7 +162,7 @@
     <ClCompile Include="mixed.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="VETask.h" />
+    <ClInclude Include="VECoro.h" />
     <ClInclude Include="VEGameJobSystem.h" />
     <ClInclude Include="VEGameJobSystem2.h" />
   </ItemGroup>
