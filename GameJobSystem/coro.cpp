@@ -58,11 +58,13 @@ namespace coro {
         co_return tk1.get();
     }
 
-
     void FCompute( int i ) {
         std::cout << "FCompute " << i << std::endl;
     }
 
+    void FuncCompute(int i) {
+        std::cout << "FuncCompute " << i << std::endl;
+    }
 
     task<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
@@ -86,10 +88,10 @@ namespace coro {
 
             fv.emplace_back( FUNCTION( FCompute(i) ) );
 
-            Function f( FUNCTION(FCompute(i)), -1, 0, 0 );
+            Function f( FUNCTION(FuncCompute(i)), -1, 0, 0 );
             jv.push_back( f );
 
-            jv.push_back( Function( FUNCTION(FCompute(i)), -1, 0, 0) );
+            jv.push_back( Function( FUNCTION(FuncCompute(i)), -1, 0, 0) );
         }
         
         std::cout << "Before loop " << std::endl;
@@ -104,7 +106,7 @@ namespace coro {
 
         co_await fv;
 
-        //try here with jobs
+        co_await jv;
 
         std::cout << "Ending loop " << std::endl;
         co_return sum;
