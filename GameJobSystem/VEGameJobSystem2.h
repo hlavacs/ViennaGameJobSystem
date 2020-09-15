@@ -41,14 +41,30 @@ namespace vgjs {
     class Job_base;
 
     struct Function {
-        Job_base*                   m_parent = nullptr;         //only used for coros
         std::function<void(void)>   m_function = []() {};       //empty function
         int32_t                     m_thread_index = -1;        //thread that the f should run on
         int32_t                     m_type = -1;
         int32_t                     m_id = -1;
 
-        Function(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1, Job_base* parent = nullptr) 
-            : m_function(std::move(f)), m_thread_index(thread_index), m_type(type), m_id(id), m_parent(parent) {};
+        Function(std::function<void(void)>&& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1 ) 
+            : m_function(std::move(f)), m_thread_index(thread_index), m_type(type), m_id(id) {};
+
+        Function(std::function<void(void)>& f, int32_t thread_index = -1, int32_t type = -1, int32_t id = -1 )
+            : m_function(f), m_thread_index(thread_index), m_type(type), m_id(id) {};
+
+        Function(const Function& f) 
+            : m_function(f.m_function), m_thread_index(f.m_thread_index), m_type(f.m_type), m_id(f.m_id) {};
+
+        Function(Function& f) 
+            : m_function(std::move(f.m_function)), m_thread_index(f.m_thread_index), m_type(f.m_type), m_id(f.m_id) {};
+
+        Function& operator= (const Function& f) {
+            m_function = f.m_function; m_thread_index = f.m_thread_index; m_type = f.m_type;  m_id = f.m_id;
+        };
+
+        Function& operator= (Function&& f) {
+            m_function = std::move(f.m_function); m_thread_index = f.m_thread_index; m_type = f.m_type;  m_id = f.m_id;
+        };
     };
 
     void saveLogfile();
@@ -248,7 +264,6 @@ namespace vgjs {
 
         Job* allocate_job( Function&& f) noexcept {
             Job* job            = allocate_job();
-            job->m_parent       = f.m_parent;
             job->m_function     = std::move(f.m_function);    //move the job
             job->m_thread_index = f.m_thread_index;
             job->m_type         = f.m_type;
@@ -435,7 +450,12 @@ namespace vgjs {
         * \param[in] source An external source that is copied into the scheduled job
         */
         void schedule(Function&& source) noexcept {
-            schedule( allocate_job( std::forward<Function>(source) ) );
+            Job *job = allocate_job( std::forward<Function>(source) );
+            job->m_parent = JobSystem::instance()->current_job();
+            if (job->m_parent != nullptr) {         //if there is a parent, increase its number of children by one
+                job->m_parent->m_children++;
+            }
+            schedule(job);
         };
 
         /**
@@ -559,11 +579,7 @@ namespace vgjs {
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule(Function&& f, Job_base *parent = nullptr) noexcept {
-        f.m_parent = f.m_parent != nullptr ? f.m_parent : JobSystem::instance()->current_job();
-        if (f.m_parent != nullptr) {         //if there is a parent, increase its number of children by one
-            f.m_parent->m_children++;
-        }
+    inline void schedule( Function&& f ) noexcept {
         JobSystem::instance()->schedule( std::forward<Function>(f) );
     }
 
@@ -571,19 +587,38 @@ namespace vgjs {
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule(std::function<void(void)>&& f, Job_base* parent = nullptr) noexcept {
-        Function func(std::forward<std::function<void(void)>>(f));
-        schedule(std::move(func));
+    inline void schedule(Function& f) noexcept {
+        Function func( f );              //make a copy
+        schedule( std::move(func) );     //call schedule() above to make sure that parent is taken care of
+    }
+
+    /**
+    * \brief Schedule a function into the system.
+    * \param[in] f A function to schedule
+    */
+    inline void schedule( std::function<void(void)>&& f ) noexcept {
+        Function func(std::forward<std::function<void(void)>>(f)); //forward function
+        JobSystem::instance()->schedule(std::move(func));
     };
 
     /**
-    * \brief Schedule functions into the system. T can be a std::function or a task<U>
+    * \brief Schedule a function into the system.
+    * \param[in] f A function to schedule
+    */
+    inline void schedule(std::function<void(void)>& f) noexcept {
+        Function func(f);                                   //make a copy
+        JobSystem::instance()->schedule(std::move(func));   //move the copy
+    };
+
+
+    /**
+    * \brief Schedule functions into the system. T can be a Function, std::function or a task<U>
     * \param[in] functions A vector of functions to schedule
     */
     template<typename T>
-    inline void schedule(std::pmr::vector<T>& functions, Job_base* parent = nullptr) noexcept {
-        for (auto&& f : functions) {
-            schedule(std::forward<T>(f), parent);
+    inline void schedule( std::pmr::vector<T>& functions ) noexcept {
+        for (auto& f : functions) {
+            schedule( f );
         }
     };
 
@@ -593,12 +628,22 @@ namespace vgjs {
     * \param[in] thd Thread index to schedule to
     */
     inline void continuation(Function&& f) noexcept {
-        JobSystem::instance()->continuation(std::forward<Function>(f));
+        JobSystem::instance()->continuation(std::forward<Function>(f)); //forward the rvalue
+    }
+
+    inline void continuation(Function& f) noexcept {
+        Function func(f);                            //make a copy
+        continuation(std::forward<Function>(func));  //move the copy
     }
 
     inline void continuation(std::function<void(void)>&& f) noexcept {
         Function func( std::forward<std::function<void(void)>>(f));
         continuation( std::move(func) );
+    }
+
+    inline void continuation(std::function<void(void)>& f) noexcept {
+        Function func(f);
+        continuation(std::move(func));
     }
 
     //----------------------------------------------------------------------------------
