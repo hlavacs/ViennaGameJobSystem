@@ -29,11 +29,8 @@ int main()
 
 	coro::test();
 
-	std::string t;
-	std::cin >> t;
-
-	vgjs::terminate();
 	wait_for_termination();
+	std::cout << "Exit\n";
 }
 
 

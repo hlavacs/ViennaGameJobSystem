@@ -79,12 +79,10 @@ namespace coro {
         std::pmr::vector<Function> jv{ mr };
 
         for (int i = 0; i < count; ++i) {
-            tv.emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
+            tv.emplace_back( compute(std::allocator_arg, &g_global_mem4, i)(1, 0, 0) );
 
             get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
-            //get<0>(tk)[i].thread_index(0);
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
-            //get<1>(tk)[i].thread_index(0);
 
             fv.emplace_back( FUNCTION( FCompute(i) ) );
 
@@ -100,28 +98,35 @@ namespace coro {
 
         co_await tk;
 
-        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 5);
+        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 5)( 1, 0, 0);
 
         co_await FUNCTION( FCompute(999) );
+
+        co_await Function( FUNCTION(FCompute(999)) );
 
         co_await fv;
 
         co_await jv;
 
         std::cout << "Ending loop " << std::endl;
+
+        vgjs::terminate();
+
         co_return sum;
     }
 
+
+    void driver() {
+        schedule( loop(std::allocator_arg, &g_global_mem4, 900) );
+
+    }
 
 	void test() {
         std::cout << "Starting test()\n";
 
 		JobSystem::instance();
 
-        schedule( loop(std::allocator_arg, &g_global_mem4, 9) );
-
-        auto l2 = loop(std::allocator_arg, &g_global_mem4, 9);
-        //schedule(l2);
+        schedule( FUNCTION( driver()) );
 
         std::cout << "Ending test()\n";
 

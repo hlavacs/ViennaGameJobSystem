@@ -425,6 +425,13 @@ namespace vgjs {
             return &m_coro.promise();
         }
 
+        task<T>&& operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1 ) {
+            m_coro.promise().m_thread_index = thread_index;
+            m_coro.promise().m_type = type;
+            m_coro.promise().m_id = id;
+            return std::move(*this);
+        } 
+
         void thread_index(uint32_t ti) {        //force the task to rn on thread ti
             m_coro.promise().m_thread_index = ti;
         }
