@@ -38,6 +38,16 @@ namespace vgjs {
 
     #define VGJS_FUNCTION(f) [=](){f;}    //wrapper over a lambda function holding function f and parameters
 
+    struct Function {
+        std::function<void(void)>   m_function = []() {};       //empty function
+        int32_t                     m_thread_index = -1;        //thread that the f should run on
+        int32_t                     m_type = -1;
+        int32_t                     m_id = -1;
+
+        Function(std::function<void(void)>&& f, int32_t thread_index, int32_t type, int32_t id) 
+            : m_function(std::move(f)), m_thread_index(thread_index), m_type(type), m_id(id) {};
+    };
+
     void saveLogfile();
 
     //---------------------------------------------------------------------------------------------------
