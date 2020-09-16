@@ -50,9 +50,9 @@ namespace func {
     void driver(int i) {
         std::cout << "Driver " << i << std::endl;
 
-        //schedule(FUNCTION(printData(i)));
+        schedule(FUNCTION(printData(i)));
 
-        schedule(FUNCTION(loop(100000)));
+        //schedule(FUNCTION(loop(100000)));
 
         continuation(FUNCTION( vgjs::terminate() ));
     }
@@ -61,9 +61,9 @@ namespace func {
     void test() {
         std::cout << "Starting test()\n";
 
-        JobSystem::instance(1);
+        JobSystem::instance();
 
-        schedule( FUNCTION(driver(18)) );
+        schedule( FUNCTION(driver(19)) );
 
         std::cout << "Ending test()\n";
     }
