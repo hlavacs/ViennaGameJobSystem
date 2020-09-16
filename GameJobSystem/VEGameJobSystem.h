@@ -174,7 +174,7 @@ namespace vgjs {
 
     public:
 
-        JobQueue(std::pmr::memory_resource* mr, bool deallocate = true) noexcept : m_mr(mr), m_head(nullptr) {};	///<JobQueue class constructor
+        JobQueue(std::pmr::memory_resource* mr) noexcept : m_mr(mr), m_head(nullptr) {};	///<JobQueue class constructor
         JobQueue(const JobQueue<JOB, FIFO>& queue) noexcept : m_mr(queue.m_mr), m_head(nullptr) {};
 
         void clear() {
@@ -250,7 +250,7 @@ namespace vgjs {
         static inline thread_local Job_base*        m_current_job = nullptr;///<Pointer to the current job of this thread
         std::vector<JobQueue<Job_base,true>>        m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
         JobQueue<Job_base,false>                    m_central_queue;        ///<main central job queue is multiple produce multiple consume
-        JobQueue<Job,false>                         m_recycle;              ///<save old jobs for recycling
+        std::pmr::vector<JobQueue<Job,false>>       m_recycle;              ///<save old jobs for recycling
         std::pmr::vector<std::pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
         bool                                        m_logging = false;      ///< if true then jobs will be logged
         std::map<int32_t, std::string>              m_types;                ///<map types to a string for logging
@@ -267,7 +267,11 @@ namespace vgjs {
         * \returns a pointer to the job.
         */
         Job* allocate_job() noexcept {
-            Job* job = m_recycle.pop();                                         //try recycle queue
+            Job* job = nullptr;
+            if (m_thread_index > 0) {
+                m_recycle[m_thread_index].pop();                                //try recycle queue
+                m_recycle[m_thread_index].clear();
+            }
             if (!job) {                                                         //none found
                 std::pmr::polymorphic_allocator<Job> allocator(m_mr);           //use this allocator
                 job = allocator.allocate(1);                                    //allocate the object
@@ -296,7 +300,7 @@ namespace vgjs {
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
         */
         JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource *mr = std::pmr::get_default_resource() ) noexcept
-            : m_mr(mr), m_central_queue(mr, true), m_recycle(mr, false) {
+            : m_mr(mr), m_central_queue(mr), m_recycle(mr) {
 
             m_start_idx = start_idx;
             m_thread_count = threadCount;
@@ -305,7 +309,8 @@ namespace vgjs {
             }
 
             for (uint32_t i = 0; i < m_thread_count; i++) {
-                m_local_queues.push_back(JobQueue<Job_base, true>(mr, false));     //local job queue
+                m_local_queues.push_back(JobQueue<Job_base, true>(mr));     //local job queue
+                m_recycle.push_back(JobQueue<Job, false>(mr));
             }
 
             for (uint32_t i = start_idx; i < m_thread_count; i++) {
@@ -383,7 +388,9 @@ namespace vgjs {
            uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears all queues (or else coros are destructed bevore queues!)
            if (num == 1) {
                m_central_queue.clear();             //clear central queue
-               m_recycle.clear();                   //clear recycle queue
+               for (auto& q : m_recycle) {     //clear local queues
+                   q.clear();                   //clear recycle queue
+               }
                for (auto& q : m_local_queues) {     //clear local queues
                    q.clear();
                }
@@ -395,7 +402,8 @@ namespace vgjs {
         };
 
         void recycle(Job*job) noexcept {
-            m_recycle.push(job);               //save it so it can be reused later
+            m_recycle[m_thread_index].clear();
+            m_recycle[m_thread_index].push(job);               //save it so it can be reused later
         }
 
         /**

@@ -28,6 +28,8 @@ namespace mixed {
 
         //std::cout << "Compute " << i << std::endl;
 
+        //std::this_thread::sleep_for(std::chrono::microseconds(1));
+
         co_return 2 * i;
     }
 
@@ -36,8 +38,10 @@ namespace mixed {
     Coro<int> printDataCoro(int i, int id) {
         //std::cout << "Print Data Coro " << i << std::endl;
         if (i >0 ) {
-            //co_await compute(i);
+            co_await compute(i);
             co_await FUNCTION( printData( i - 1, i+1 ) );
+            //co_await printDataCoro(i - 1, i + 1);
+            //co_await printDataCoro(i - 1, i + 1);
         }
         co_return i;
     }
@@ -45,14 +49,27 @@ namespace mixed {
     void printData(int i, int id ) {
         //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
-            auto f1 = printDataCoro(i-1, -(i - 1))(-1, 2,1);
-            auto f2 = printDataCoro(i-1, i + 1 )(-1, 2, 1);
+            auto f1 = printDataCoro(i, -(i - 1))(-1, 2,1);
+            //auto f2 = printDataCoro(i, i + 1 )(-1, 2, 1);
 
             schedule( f1 );
-            schedule( f2 );
+            //schedule( f2 );
 
             //schedule(FUNCTION(printData(i-1, 0)));
         }
+    }
+
+
+    void loop( int N) {
+
+        for (int i = 0; i < N; ++i) {
+            //std::cout << "Loop " << i << std::endl;
+
+            auto f = printDataCoro(i,10);
+            schedule( f );
+            //std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }
+
     }
 
     void driver(int i, std::string id) {
@@ -63,7 +80,10 @@ namespace mixed {
 
         //schedule( Function( FUNCTION( printData(i, -1) ), -1, 1, 0)  );
 
-        schedule( FUNCTION(printData(i, -1)));
+
+        //schedule( FUNCTION(printData(i, -1)));
+
+        schedule(FUNCTION(loop(100000)));
 
         //continuation( Function( FUNCTION( vgjs::terminate() ), -1, 3, 0 ) );
         continuation( FUNCTION(vgjs::terminate()) );
@@ -83,7 +103,7 @@ namespace mixed {
         //JobSystem::instance()->enable_logging();
 
         //schedule( Function( FUNCTION(driver( 100 , "Driver")), -1, 0, 0 ) );
-        schedule( FUNCTION( driver(30, "Driver") ) );
+        schedule( FUNCTION( driver(26, "Driver") ) );
 
         std::cout << "Ending test()\n";
 

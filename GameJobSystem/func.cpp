@@ -21,6 +21,8 @@ namespace func {
     auto g_global_mem5 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
     auto computeF(int i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+
         return i * 10.0;
     }
 
@@ -39,10 +41,18 @@ namespace func {
         }
     }
 
+    void loop(int N) {
+        for (int i = 0; i < N; ++i) {
+            schedule(FUNCTION(compute(i)));
+        }
+    }
+
     void driver(int i) {
         std::cout << "Driver " << i << std::endl;
 
-        schedule(FUNCTION(printData(i)));
+        //schedule(FUNCTION(printData(i)));
+
+        schedule(FUNCTION(loop(100000)));
 
         continuation(FUNCTION( vgjs::terminate() ));
     }

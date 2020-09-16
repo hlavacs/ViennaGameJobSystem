@@ -86,6 +86,13 @@ namespace vgjs {
             return {};
         }
 
+        void child_finished() noexcept {                    //if children are running then the coro must be SUSPENDED!
+            uint32_t num = m_children.fetch_sub(1);
+            if (num == 1) {                                //if there are no more children
+                JobSystem::instance()->schedule(this);      //then resume the coroutine by scheduling its promise
+            }
+        }
+
         /**
         * \brief Use the given memory resource to create the promise object for a normal function.
         * 
@@ -302,24 +309,11 @@ namespace vgjs {
 
         bool resume() noexcept {                //resume the Coro at its suspension point
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
-            if (coro)
+            if (coro && !coro.done()) {
                 coro.resume();
-            return false;
-        };
-
-        void child_finished() noexcept {                    //if children are running then the coro must be suspended
-            uint32_t num = m_children.fetch_sub(1);
-            if (num == 1) {                                //if there are no more children
-                auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
-
-                if (!coro.done()) {
-                    JobSystem::instance()->schedule(this);      //then resume the coroutine by scheduling its promise
-                }
-                else {
-                    /// ???
-                }
             }
-        }
+            return coro.done();
+        };
 
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
             m_value = t;
