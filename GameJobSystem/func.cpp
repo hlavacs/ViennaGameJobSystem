@@ -54,7 +54,7 @@ namespace func {
 
         //schedule(FUNCTION(loop(100000)));
 
-        continuation(FUNCTION( vgjs::terminate() ));
+        continuation( Function( FUNCTION( vgjs::terminate() ), -1, 10, 0) );
     }
 
 

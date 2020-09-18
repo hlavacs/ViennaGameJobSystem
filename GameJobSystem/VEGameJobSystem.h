@@ -87,6 +87,7 @@ namespace vgjs {
         Job_base*           m_next = nullptr;           //next job in the queue
         std::atomic<int>    m_children = 0;             //number of children this job is waiting for
         Job_base*           m_parent = nullptr;         //parent job that created this job
+        Job_base*           m_continuation = nullptr;   //continuation follows this job (a coro is its own continuation)
         int32_t             m_thread_index = -1;        //thread that the job should run on and ran on
         int32_t             m_type = -1;
         int32_t             m_id = -1;
@@ -95,52 +96,36 @@ namespace vgjs {
         virtual void operator() () noexcept {           //wrapper as function operator
             resume();
         }
-        virtual void child_finished() = 0;              //called by child when it finishes
         virtual bool deallocate() noexcept { return false; };    //called for deallocation
         virtual bool is_job() noexcept { return false; }         //test whether this is a job or e.g. a coro
     };
 
 
     /**
-    * \brief Job class calls normal C++ functions and can have continuations
+    * \brief Job class calls normal C++ functions, is allocated and deallocated, and can be reused
     */
     class Job : public Job_base {
     public:
         uint32_t                    m_create_thread = -1;       //thread that created this Job
-        Job*                        m_continuation = nullptr;   //continuation follows this job
         std::function<void(void)>   m_function = []() {};       //empty function
 
         void reset() noexcept {         //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
+            m_children = 0;
             m_parent = nullptr;
+            m_continuation = nullptr;
             m_thread_index = -1;
             m_type = -1;
             m_id = -1;
-            m_continuation = nullptr;
             m_function = []() {};
         }
 
         virtual bool resume() noexcept {    //work is to call the function
-            std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
-
-            if (is_logging()) {
-                t1 = std::chrono::high_resolution_clock::now();	//time of finishing
-            }
-
             m_children = 1;                 //job is its own child, so set to 1
             m_function();                   //run the function, can schedule more children here
-            child_finished();               //job is its own child
-
-            if ( is_logging() ) {
-                t2 = std::chrono::high_resolution_clock::now();	//time of finishing
-                log_data( t1, t2, m_thread_index, false, m_type, m_id);
-            }
-
             return true;
         }
 
-        void on_finished() noexcept;            //called when the job finishes, i.e. all children have finished
-        void child_finished() noexcept;         //child calls parent to notify that it has finished
         bool deallocate() noexcept { return true; };  //assert this is a job so it has been created by the job system
         bool is_job() noexcept { return true;  };     //assert that this is a job
     };
@@ -380,6 +365,26 @@ namespace vgjs {
             wait_for_termination();
         };
 
+        void on_finished(Job_base* job) noexcept;            //called when the job finishes, i.e. all children have finished
+
+        /**
+        * \brief Child tells its parent that it has finished
+        *
+        * A child that finished calls this function of its parent, thus decreasing
+        * the number of left children by one. If the last one finishes (including the
+        * parent itself) then the parent also finishes (and may call its own parent).
+        * Note that a Job is also its own child, so it must have returned from
+        * its function before on_finished() is called.
+        */
+        inline bool child_finished(Job_base* job) noexcept {
+            uint32_t num = job->m_children.fetch_sub(1);
+            if (num == 1) {
+                on_finished(job);
+                return true;
+            }
+            return false;
+        }
+
         /**
         * \brief every thread runs in this function
         * \param[in] threadIndex Number of this thread
@@ -400,14 +405,32 @@ namespace vgjs {
                     m_current_job = m_central_queue.pop();                 //if none found try the central queue
                 }
                 if (m_current_job) {
+                    std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
+
+                    if (is_logging()) {
+                        t1 = std::chrono::high_resolution_clock::now();	//time of finishing
+                    }
+
                     (*m_current_job)();                                    //if any job found execute it
+
+                    if (is_logging()) {
+                        t2 = std::chrono::high_resolution_clock::now();	//time of finishing
+                        log_data(t1, t2, m_thread_index, false, m_current_job->m_type, m_current_job->m_id);
+                    }
+
+                    if (m_current_job->is_job()) {                      //job is its own child
+                        child_finished(m_current_job);                     //a coro might just be suspended by co_await
+                    }
                 }
                 --noop;
                 if (noop == 0) {               //if none found too longs let thread sleep
                     noop = NOOP;                                            //thread 0 goes on to make the system reactive
-                    std::cout << "Before " << m_thread_index << " " << m_delete[m_thread_index].size() << "\n";
+                    //std::cout << "Before " << m_thread_index << " " << m_delete[m_thread_index].size() << "\n";
+
+                    m_delete[m_thread_index].clear();
+
                     //m_deleted_jobs.fetch_add( m_delete[m_thread_index].clear() );
-                    std::cout << "After " << m_thread_index << " " << m_delete[m_thread_index].size() << "\n";
+                    //std::cout << "After " << m_thread_index << " " << m_delete[m_thread_index].size() << "\n";
                     //std::this_thread::sleep_for(std::chrono::microseconds(1));
                 }
             };
@@ -599,38 +622,27 @@ namespace vgjs {
     * gets scheduled. Also the job's parent is notified of this new child.
     * Then, if there is a parent, the parent's child_finished() function is called.
     */
-    inline void Job::on_finished() noexcept {
+    inline void JobSystem::on_finished(Job_base *job) noexcept {
 
-        if (m_continuation != nullptr) {						//is there a successor Job?
-            if (m_parent != nullptr) {                          //is there a parent?
-                m_parent->m_children++;
-                m_continuation->m_parent = m_parent;            //add successor as child to the parent
+        if (job->m_continuation != nullptr) {						 //is there a successor Job?
+            
+            if (job->is_job() && job->m_parent != nullptr) {         //is this a job and there is a parent?
+                job->m_parent->m_children++;
+                job->m_continuation->m_parent = job->m_parent;       //add successor as child to the parent
             }
-            JobSystem::instance()->schedule(m_continuation);    //schedule the successor 
+
+            schedule(job->m_continuation);    //schedule the successor 
         }
 
-        if (m_parent != nullptr) {		//if there is parent then inform it	
-            m_parent->child_finished();	//if this is the last child job then the parent will also finish
+        if (job->m_parent != nullptr) {		//if there is parent then inform it	
+            child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
         }
 
-        JobSystem::instance()->recycle(this);  //last command in function so *this is no longer used (race against recycling)
-    }
-
-    /**
-    * \brief Child tells its parent that it has finished
-    * 
-    * A child that finished calls this function of its parent, thus decreasing
-    * the number of left children by one. If the last one finishes (including the 
-    * parent itself) then the parent also finishes (and may call its own parent).
-    * Note that a Job is also its own child, so it must have returned from 
-    * its function before on_finished() is called.
-    */
-    inline void Job::child_finished() noexcept {
-        uint32_t num = m_children.fetch_sub(1);
-        if ( num == 1) {
-            on_finished();
+        if (job->is_job()) {
+            recycle((Job*)job);  //last command in function
         }
     }
+
 
     //----------------------------------------------------------------------------------
 

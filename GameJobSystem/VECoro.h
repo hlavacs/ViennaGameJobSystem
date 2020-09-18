@@ -76,7 +76,7 @@ namespace vgjs {
     */
     class Coro_promise_base : public Job_base {
     public:
-        Coro_promise_base() noexcept {};        //constructor
+        Coro_promise_base() noexcept { m_continuation = this; };        //constructor
 
         void unhandled_exception() noexcept {   //in case of an exception terminate the program
             std::terminate();
@@ -86,12 +86,12 @@ namespace vgjs {
             return {};
         }
 
-        void child_finished() noexcept {                    //if children are running then the coro must be SUSPENDED!
+        /*void child_finished() noexcept {                    //if children are running then the coro must be SUSPENDED!
             uint32_t num = m_children.fetch_sub(1);
             if (num == 1) {                                //if there are no more children
                 JobSystem::instance()->schedule(this);      //then resume the coroutine by scheduling its promise
             }
-        }
+        }*/
 
         /**
         * \brief Use the given memory resource to create the promise object for a normal function.
@@ -364,7 +364,7 @@ namespace vgjs {
                 auto& promise = h.promise();
                 if (promise.m_parent != nullptr) {           //if there is a parent
                     bool is_job = promise.m_parent->is_job();
-                    promise.m_parent->child_finished();      //tell parent that this child has finished (parent could kill itself here!!)
+                    JobSystem::instance()->child_finished(promise.m_parent);      //tell parent that this child has finished (parent could kill itself here!!)
                     
                     if (is_job) {               //if the parent is a job
                         int count = promise.m_count.fetch_sub(1);
