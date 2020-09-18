@@ -155,8 +155,8 @@ namespace vgjs {
     template<typename JOB = Job_base, bool FIFO = false>
     class JobQueue {
         friend JobSystem;
-        std::pmr::memory_resource*  m_mr;        ///<use to allocate/deallocate Jobs
-        std::atomic<JOB*>           m_head;	     ///< Head of the stack
+        std::pmr::memory_resource*  m_mr;               ///<use to allocate/deallocate Jobs
+        std::atomic<JOB*>           m_head = nullptr;	///< Head of the stack
         std::atomic<uint32_t>       m_size = 0;
 
     public:
@@ -195,8 +195,9 @@ namespace vgjs {
         * \param[in] pJob The job to be pushed into the queue
         */
         void push(JOB* pJob) {
-            pJob->m_next = m_head.load(std::memory_order_relaxed);
-            while (!std::atomic_compare_exchange_weak(&m_head, (JOB**)&pJob->m_next, pJob)) {};
+            pJob->m_next = m_head.load(std::memory_order::relaxed);
+            while (!std::atomic_compare_exchange_weak_explicit(&m_head, (JOB**)&pJob->m_next, pJob, 
+                std::memory_order::release, std::memory_order::relaxed) ) {};
             m_size++;
         };
 
@@ -205,10 +206,10 @@ namespace vgjs {
         * \returns a job or nullptr
         */
         JOB* pop() {
-            JOB* head = m_head.load(std::memory_order_relaxed);
+            JOB* head = m_head.load(std::memory_order::relaxed);
             if (head == nullptr) return nullptr;
 
-            if constexpr (FIFO) {                   //if this is a FIFO queue there can only be one consumer!
+            /*if constexpr (FIFO) {                   //if this is a FIFO queue there can only be one consumer!
                 while (head->m_next) {              //as long as there are more jobs in the list
                     JOB* last = head;               //remember job before that
                     head = head->m_next;            //goto next job
@@ -217,11 +218,15 @@ namespace vgjs {
                         return head;                //return it
                     }
                 }
-            }
+            }*/
+
             //if LIFO or there is only one Job then deqeue it from the start
             //this might collide with other producers, so use CAS
             //in rare cases FIFO might be violated
-            while (head != nullptr && !std::atomic_compare_exchange_weak(&m_head, &head, (JOB*)head->m_next)) {};
+            while (head != nullptr 
+                && !std::atomic_compare_exchange_weak_explicit(&m_head, &head, (JOB*)head->m_next,
+                    std::memory_order::release, std::memory_order::relaxed)) {};
+
             if (head != nullptr) {
                 m_size--;
             }
@@ -238,7 +243,7 @@ namespace vgjs {
     * It can add new jobs, and wait until they are done.
     */
     class JobSystem {
-        const uint32_t                              c_queue_capacity = 10;
+        const uint32_t                              c_queue_capacity = 1000;
 
     private:
         std::pmr::memory_resource*                  m_mr;                   ///<use to allocate/deallocate Jobs
@@ -260,6 +265,9 @@ namespace vgjs {
         std::chrono::time_point<std::chrono::high_resolution_clock> m_start_time = std::chrono::high_resolution_clock::now();	//time when program started
 
         std::atomic<uint32_t> m_created_jobs = 0;
+        std::atomic<uint32_t> m_scheduled_jobs = 0;
+        std::atomic<uint32_t> m_run_jobs = 0;
+        std::atomic<uint32_t> m_finished_jobs = 0;
         std::atomic<uint32_t> m_recycled_jobs = 0;
         std::atomic<uint32_t> m_deleted_jobs = 0;
 
@@ -275,10 +283,10 @@ namespace vgjs {
         Job* allocate_job() noexcept {
             Job* job = nullptr;
             if (m_thread_index >= 0) {
-                job = m_recycle[m_thread_index].pop();                                //try recycle queue
+                //job = m_recycle[m_thread_index].pop();                                //try recycle queue
             }
             if (job == nullptr ) {                                                         //none found
-                //m_created_jobs++;
+                m_created_jobs++;
                 std::pmr::polymorphic_allocator<Job> allocator(m_mr);           //use this allocator
                 job = allocator.allocate(1);                                    //allocate the object
                 new (job) Job();                                                //call constructor
@@ -306,7 +314,7 @@ namespace vgjs {
         * \param[in] threadCount Number of threads in the system
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
         */
-        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource *mr = std::pmr::get_default_resource() ) noexcept
+        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource *mr = std::pmr::new_delete_resource() ) noexcept
             : m_mr(mr), m_central_queue(mr), m_recycle(mr), m_delete(mr) {
 
             m_start_idx = start_idx;
@@ -336,9 +344,9 @@ namespace vgjs {
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
         * \returns a pointer to the JobSystem instance
         */
-        static std::unique_ptr<JobSystem>& instance(uint32_t threadCount = 0, uint32_t start_idx = 0) noexcept {
+        static std::unique_ptr<JobSystem>& instance(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) noexcept {
             static std::once_flag once;
-            std::call_once(once, [&]() { m_instance = std::make_unique<JobSystem>(threadCount, start_idx); });
+            std::call_once(once, [&]() { m_instance = std::make_unique<JobSystem>(threadCount, start_idx, mr); });
             return m_instance;
         };
 
@@ -378,7 +386,7 @@ namespace vgjs {
         */
         inline bool child_finished(Job_base* job) noexcept {
             uint32_t num = job->m_children.fetch_sub(1);
-            if (num == 1) {
+            if (num <= 1) {
                 on_finished(job);
                 return true;
             }
@@ -390,7 +398,7 @@ namespace vgjs {
         * \param[in] threadIndex Number of this thread
         */
         void thread_task(int32_t threadIndex = 0) noexcept {
-            constexpr uint32_t NOOP = 20;                                   //number of empty loops until threads sleeps
+            constexpr uint32_t NOOP = 50000;                                   //number of empty loops until threads sleeps
             m_thread_index = threadIndex;	                                //Remember your own thread index number
             static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
 
@@ -401,16 +409,17 @@ namespace vgjs {
            thread_local uint32_t noop = NOOP;                               //number of empty loops until threads sleeps
            while (!m_terminate) {			                                //Run until the job system is terminated
                 m_current_job = m_local_queues[m_thread_index].pop();      //try get a job from the local queue
-                if (!m_current_job) {
+                if (m_current_job == nullptr) {
                     m_current_job = m_central_queue.pop();                 //if none found try the central queue
                 }
-                if (m_current_job) {
+                if (m_current_job != nullptr) {
                     std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
 
                     if (is_logging()) {
                         t1 = std::chrono::high_resolution_clock::now();	//time of finishing
                     }
 
+                    m_run_jobs++;
                     (*m_current_job)();                                    //if any job found execute it
 
                     if (is_logging()) {
@@ -427,13 +436,30 @@ namespace vgjs {
                     noop = NOOP;                                            //thread 0 goes on to make the system reactive
                     //std::cout << "Before " << m_thread_index << " " << m_delete[m_thread_index].size() << "\n";
 
-                    m_delete[m_thread_index].clear();
+                    uint32_t cnt = 0;
+                    cnt = m_delete[m_thread_index].clear();
+                    m_deleted_jobs.fetch_add( cnt );
 
-                    //m_deleted_jobs.fetch_add( m_delete[m_thread_index].clear() );
+                    uint32_t created = m_created_jobs;
+                    uint32_t scheduled = m_scheduled_jobs;
+                    uint32_t run = m_run_jobs;
+                    uint32_t finished = m_finished_jobs;
+                    uint32_t recycled = m_recycled_jobs;
+                    uint32_t deleted = m_deleted_jobs;
+
+                    std::cout << "Created:   " << created << std::endl;
+                    std::cout << "Scheduled: " << scheduled << std::endl;
+                    std::cout << "Run:       " << run << std::endl;
+                    std::cout << "Finished:  " << finished << std::endl;
+                    std::cout << "Recycled:  " << recycled << std::endl;
+                    std::cout << "Deleted:   " << deleted << "\n\n\n";
+
                     //std::cout << "After " << m_thread_index << " " << m_delete[m_thread_index].size() << "\n";
                     //std::this_thread::sleep_for(std::chrono::microseconds(1));
                 }
             };
+
+           std::cout << "Thread " << m_thread_index << " left " << m_thread_count << "\n";
 
            uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears all queues (or else coros are destructed bevore queues!)
            if (num == 1) {
@@ -445,24 +471,29 @@ namespace vgjs {
                    q.clear();
                }
                for (auto& q : m_delete) {     //clear local queues
+                   std::cout << "Deleting " << q.size() << " \n";
                    q.clear();
                }
 
                if (m_logging) {
                    save_log_file();
                }
+               std::cout << "Thread " << m_thread_index << " terminated\n";
+
                m_terminated = true;
            }
         };
 
         void recycle(Job*job) noexcept {
+            //m_recycled_jobs++;
             if (m_recycle[m_thread_index].size() <= c_queue_capacity) {
-                //m_recycle[m_thread_index].push(job);        //save it so it can be reused later
-                //m_recycled_jobs++;
+                m_recycle[m_thread_index].push(job);        //save it so it can be reused later
+                m_recycled_jobs++;
             }
             else {
-                //m_delete[m_thread_index].push(job);   //push to the current thread (the child calls parent on thread m_thread_index)
+                m_delete[m_thread_index].push(job);   //push to the current thread (the child calls parent on thread m_thread_index)
             }
+            //m_delete[m_thread_index].push(job);   //push to the current thread (the child calls parent on thread m_thread_index)
         }
 
         /**
@@ -513,6 +544,7 @@ namespace vgjs {
         * \param[in] job A pointer to the job to schedule
         */
         void schedule(Job_base* job) noexcept {
+            m_scheduled_jobs++;
             if (job->m_thread_index >= 0 && job->m_thread_index < (int)m_thread_count) {
                 m_local_queues[job->m_thread_index].push(job);
                 return;
@@ -526,9 +558,9 @@ namespace vgjs {
         */
         void schedule(Function&& source) noexcept {
             Job *job = allocate_job( std::forward<Function>(source) );
-            job->m_parent = JobSystem::instance()->current_job();
-            if (job->m_parent != nullptr) {         //if there is a parent, increase its number of children by one
-                job->m_parent->m_children++;
+            job->m_parent = m_current_job;
+            if (m_current_job != nullptr) {         //if there is a parent, increase its number of children by one
+                m_current_job->m_children++;
             }
             schedule(job);
         };
@@ -543,6 +575,7 @@ namespace vgjs {
                 return;
             }
             ((Job*)current)->m_continuation = allocate_job(std::forward<Function>(f));
+            //std::cout << "Set Continuation\n";
         }
 
         //-----------------------------------------------------------------------------------------
@@ -623,6 +656,7 @@ namespace vgjs {
     * Then, if there is a parent, the parent's child_finished() function is called.
     */
     inline void JobSystem::on_finished(Job_base *job) noexcept {
+        m_finished_jobs++;
 
         if (job->m_continuation != nullptr) {						 //is there a successor Job?
             
@@ -630,6 +664,8 @@ namespace vgjs {
                 job->m_parent->m_children++;
                 job->m_continuation->m_parent = job->m_parent;       //add successor as child to the parent
             }
+
+            std::cout << "Run Continuation\n";
 
             schedule(job->m_continuation);    //schedule the successor 
         }

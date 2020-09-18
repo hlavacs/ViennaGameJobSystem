@@ -18,10 +18,10 @@ namespace func {
 
     using namespace vgjs;
 
-    auto g_global_mem5 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
+    auto g_global_mem5 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 100000, .largest_required_pool_block = 1 << 22 }, std::pmr::new_delete_resource());
 
     auto computeF(int i) {
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
+        //std::this_thread::sleep_for(std::chrono::microseconds(1));
 
         return i * 10.0;
     }
@@ -35,7 +35,7 @@ namespace func {
     void printData( int i ) {
         //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
-            schedule( FUNCTION( compute(i)) );
+            //schedule( FUNCTION( compute(i)) );
             schedule( [=]() { printData(i-1); } );
             schedule( [=]() { printData(i-1); });
         }
@@ -47,6 +47,11 @@ namespace func {
         }
     }
 
+    void term() {
+        std::cout << "terminate()\n";
+        vgjs::terminate();
+    }
+
     void driver(int i) {
         std::cout << "Driver " << i << std::endl;
 
@@ -54,16 +59,16 @@ namespace func {
 
         //schedule(FUNCTION(loop(100000)));
 
-        continuation( Function( FUNCTION( vgjs::terminate() ), -1, 10, 0) );
+        continuation( Function( FUNCTION( term() ), -1, 10, 0) );
     }
 
 
     void test() {
         std::cout << "Starting test()\n";
 
-        JobSystem::instance();
+        JobSystem::instance(0, 0); // , & g_global_mem5);
 
-        schedule( FUNCTION(driver(19)) );
+        schedule( FUNCTION(driver(23)) );
 
         std::cout << "Ending test()\n";
     }
