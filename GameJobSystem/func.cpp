@@ -68,7 +68,7 @@ namespace func {
 
         JobSystem::instance(0, 0); // , & g_global_mem5);
 
-        schedule( FUNCTION(driver(23)) );
+        schedule( FUNCTION(driver(20)) );
 
         std::cout << "Ending test()\n";
     }
