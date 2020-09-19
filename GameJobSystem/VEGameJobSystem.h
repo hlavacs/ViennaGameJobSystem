@@ -550,8 +550,6 @@ namespace vgjs {
                 job->m_thread_index = rand() % m_thread_count;
             }
 
-            std::cout << "Schedule job_base to " << job->m_thread_index << "\n";
-
             m_local_queues[job->m_thread_index].push(job);
         };
 
@@ -663,27 +661,18 @@ namespace vgjs {
 
         if (job->m_continuation != nullptr) {						 //is there a successor Job?
             
-            std::cout << "Run Continuation\n";
-
-            if (job->is_job() && job->m_parent != nullptr) {         //is this a job and there is a parent?
-
-                std::cout << "Continue job\n";
-                
+            if (job->is_job() && job->m_parent != nullptr) {         //is this a job and there is a parent?                
                 job->m_parent->m_children++;
                 job->m_continuation->m_parent = job->m_parent;       //add successor as child to the parent
-            }
-            if(!job->is_job()) {
-                std::cout << "Continue coro\n";
             }
 
             schedule(job->m_continuation);    //schedule the successor 
         }
 
-        if (job->m_parent != nullptr) {		//if there is parent then inform it	
-            child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
-        }
-
-        if (job->is_job()) {
+        if (job->is_job() ) {
+            if (job->m_parent != nullptr) {		//if there is parent then inform it	
+                child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
+            }
             recycle((Job*)job);  //last command in function
         }
     }
