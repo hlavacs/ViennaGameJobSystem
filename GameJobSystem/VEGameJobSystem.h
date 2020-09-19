@@ -417,7 +417,7 @@ namespace vgjs {
                 m_current_job = m_local_queues[m_thread_index].pop();      //try get a job from the local queue
                 if (m_current_job == nullptr) {
                     uint32_t next = rand() % m_thread_count;
-                    m_current_job = m_local_queues[next].pop();
+                    //m_current_job = m_local_queues[next].pop();
                 }
 
                 if (m_current_job != nullptr) {
@@ -428,14 +428,18 @@ namespace vgjs {
                     }
 
                     m_run_jobs++;
+                    bool is_job = m_current_job->is_job(); //coro might destroy itself if parent is a function!
+                    int32_t type = m_current_job->m_type;
+                    int32_t id = m_current_job->m_id;
+
                     (*m_current_job)();                                    //if any job found execute it
 
                     if (is_logging()) {
                         t2 = std::chrono::high_resolution_clock::now();	//time of finishing
-                        log_data(t1, t2, m_thread_index, false, m_current_job->m_type, m_current_job->m_id);
+                        log_data(t1, t2, m_thread_index, false, type, id);
                     }
 
-                    if (m_current_job->is_job()) {                      //job is its own child
+                    if (is_job) {                      //job is its own child
                         child_finished(m_current_job);                     //a coro might just be suspended by co_await
                     }
                 }
@@ -470,6 +474,10 @@ namespace vgjs {
 
            uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears all queues (or else coros are destructed bevore queues!)
            if (num == 1) {
+               for (auto& q : m_local_queues) { //coros might be deallocated before destructors - so deallocate them now
+                   q.clear();
+               }
+
                if (m_logging) {
                    save_log_file();
                }
@@ -538,11 +546,13 @@ namespace vgjs {
             assert(job!=nullptr);
             m_scheduled_jobs++;
 
-            job->m_thread_index = rand() % m_thread_count;
-            if (job->m_thread_index >= 0 && job->m_thread_index < (int)m_thread_count) {
-                m_local_queues[job->m_thread_index].push(job);
-                return;
+            if (job->m_thread_index < 0 || job->m_thread_index >= (int)m_thread_count ) {
+                job->m_thread_index = rand() % m_thread_count;
             }
+
+            std::cout << "Schedule job_base to " << job->m_thread_index << "\n";
+
+            m_local_queues[job->m_thread_index].push(job);
         };
 
         /**
@@ -653,12 +663,18 @@ namespace vgjs {
 
         if (job->m_continuation != nullptr) {						 //is there a successor Job?
             
+            std::cout << "Run Continuation\n";
+
             if (job->is_job() && job->m_parent != nullptr) {         //is this a job and there is a parent?
+
+                std::cout << "Continue job\n";
+                
                 job->m_parent->m_children++;
                 job->m_continuation->m_parent = job->m_parent;       //add successor as child to the parent
             }
-
-            std::cout << "Run Continuation\n";
+            if(!job->is_job()) {
+                std::cout << "Continue coro\n";
+            }
 
             schedule(job->m_continuation);    //schedule the successor 
         }

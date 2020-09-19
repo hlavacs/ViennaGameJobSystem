@@ -35,9 +35,9 @@ namespace func {
     void printData( int i ) {
         //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
-            //schedule( FUNCTION( compute(i)) );
-            schedule( [=]() { printData(i-1); } );
-            schedule( [=]() { printData(i-1); });
+            schedule( FUNCTION( compute(i)) );
+            schedule( FUNCTION( printData(i-1); ) );
+            schedule( FUNCTION( printData(i-1); ));
         }
     }
 
@@ -55,7 +55,7 @@ namespace func {
     void driver(int i) {
         std::cout << "Driver " << i << std::endl;
 
-        schedule(FUNCTION(printData(i)));
+        schedule( Function( FUNCTION(printData(i)) ) );
 
         //schedule(FUNCTION(loop(100000)));
 
@@ -68,7 +68,7 @@ namespace func {
 
         JobSystem::instance(0, 0); // , & g_global_mem5);
 
-        schedule( FUNCTION(driver(24)) );
+        schedule( FUNCTION(driver(20)) );
 
         std::cout << "Ending test()\n";
     }

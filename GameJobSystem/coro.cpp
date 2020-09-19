@@ -87,7 +87,7 @@ namespace coro {
         std::pmr::vector<Function> jv{ mr };
 
         for (int i = 0; i < count; ++i) {
-            tv.emplace_back( compute(std::allocator_arg, &g_global_mem4, i)(1, 0, 0) );
+            tv.emplace_back( compute(std::allocator_arg, &g_global_mem4, i) );
 
             get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
@@ -125,7 +125,9 @@ namespace coro {
     void driver() {
         schedule( loop(std::allocator_arg, &g_global_mem4, 90) );
 
-        schedule( recursive2(std::allocator_arg, &g_global_mem4, 1, 18) );
+        //schedule( recursive2(std::allocator_arg, &g_global_mem4, 1, 18) );
+
+        //schedule( compute(std::allocator_arg, &g_global_mem4, 90) );
 
         continuation(FUNCTION(vgjs::terminate()));
     }

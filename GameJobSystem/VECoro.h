@@ -43,7 +43,7 @@ namespace vgjs {
     template<typename T>
     requires (std::is_base_of<Coro_base, T>::value)
     void schedule( T& coro ) noexcept {
-        Job_base * parent = (coro.promise()->m_parent != nullptr ? coro.promise()->m_parent : JobSystem::instance()->current_job());       //remember parent
+        Job_base * parent = JobSystem::instance()->current_job();       //remember parent
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
@@ -364,7 +364,7 @@ namespace vgjs {
                 auto& promise = h.promise();
                 if (promise.m_parent != nullptr) {           //if there is a parent
                     bool is_job = promise.m_parent->is_job();
-                    JobSystem::instance()->child_finished(promise.m_parent);      //tell parent that this child has finished (parent could kill itself here!!)
+                    JobSystem::instance()->child_finished(promise.m_parent);  //tell parent that this child has finished (parent could kill itself here!!)
                     
                     if (is_job) {               //if the parent is a job
                         int count = promise.m_count.fetch_sub(1);
