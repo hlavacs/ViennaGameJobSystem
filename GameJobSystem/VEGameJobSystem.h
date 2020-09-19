@@ -91,10 +91,6 @@ namespace vgjs {
         int32_t             m_thread_index = -1;        //thread that the job should run on and ran on
         int32_t             m_type = -1;
         int32_t             m_id = -1;
-        std::atomic<int> m_recycled = 0;
-        std::atomic<int> m_deallocated = 0;
-
-        virtual ~Job_base() {};
 
         virtual bool resume() = 0;                      //this is the actual work to be done
         virtual void operator() () noexcept {           //wrapper as function operator
@@ -110,21 +106,17 @@ namespace vgjs {
     */
     class Job : public Job_base {
     public:
-        uint32_t                   m_create_thread = -1;       //thread that created this Job
-        std::function<void(void)>  m_function;// = []() {};       //empty function
-
-        ~Job() {};
+        uint32_t                   m_create_thread = -1;        //thread that created this Job
+        std::function<void(void)>  m_function;                  //empty function
 
         void reset() noexcept {         //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
             m_children = 0;
             m_parent = nullptr;
-            m_recycled = 0;
             m_continuation = nullptr;
             m_thread_index = -1;
             m_type = -1;
             m_id = -1;
-            //m_function = []() {};
         }
 
         virtual bool resume() noexcept {    //work is to call the function
@@ -178,8 +170,6 @@ namespace vgjs {
 
         void deallocate(JOB* job) {
             if (job == nullptr) return;
-            assert(job->m_deallocated==0);
-            job->m_deallocated++;
             std::pmr::polymorphic_allocator<JOB> allocator(m_mr); //construct a polymorphic allocator
             job->~JOB();                                          //call destructor
             allocator.deallocate(job, 1);                         //use pma to deallocate the memory
@@ -197,7 +187,9 @@ namespace vgjs {
             return res;
         }
 
-        ~JobQueue() {}
+        ~JobQueue() {
+            clear();
+        }
 
         uint32_t size() {
             return m_size;
@@ -250,33 +242,6 @@ namespace vgjs {
 
     };
 
-    struct JobMemory {
-        const uint32_t jobs_per_page = 1 << 10;
-
-        struct page {
-            std::atomic<uint32_t>   m_next_index = 0;
-            Job*                    m_page = nullptr;
-            page*                   m_next_page = nullptr;
-        };
-
-        page* m_head = nullptr;
-        std::pmr::memory_resource* m_mr;
-
-        JobMemory(std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) 
-            : m_mr(mr) {
-            //m_head = m_mr->allocate();
-        }
-
-        Job* allocate() {
-
-        }
-
-        void reset() {
-
-        }
-
-    };
-
 
     /**
     * \brief The main JobSystem class manages the whole VGJS job system
@@ -298,7 +263,6 @@ namespace vgjs {
         std::atomic<bool>							m_terminate = false;	///<Flag for terminating the pool
         static inline thread_local Job_base*        m_current_job = nullptr;///<Pointer to the current job of this thread
         std::vector<JobQueue<Job_base,true>>        m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
-        //JobQueue<Job_base,false>                    m_central_queue;        ///<main central job queue is multiple produce multiple consume
         std::pmr::vector<JobQueue<Job,false>>       m_recycle;              ///<save old jobs for recycling
         std::pmr::vector<JobQueue<Job,false>>       m_delete;               ///<save old jobs for recycling
         std::pmr::vector<std::pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
@@ -357,7 +321,7 @@ namespace vgjs {
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
         */
         JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource *mr = std::pmr::new_delete_resource() ) noexcept
-            : m_mr(mr), m_recycle(mr), m_delete(mr) { //, m_central_queue(mr)
+            : m_mr(mr), m_recycle(mr), m_delete(mr) { 
 
             m_start_idx = start_idx;
             m_thread_count = threadCount;
@@ -448,14 +412,12 @@ namespace vgjs {
             while (thread_counter.load() > 0)	                            //Continue only if all threads are running
                 std::this_thread::sleep_for(std::chrono::nanoseconds(100));
 
-            thread_local uint32_t next = 0;
             thread_local uint32_t noop = NOOP;                               //number of empty loops until threads sleeps
             while (!m_terminate) {			                                //Run until the job system is terminated
                 m_current_job = m_local_queues[m_thread_index].pop();      //try get a job from the local queue
                 if (m_current_job == nullptr) {
-                    //m_current_job = m_central_queue.pop();                 //if none found try the central queue
-                    //next = rand() % m_thread_count;
-                    //m_current_job = m_local_queues[next].pop();
+                    uint32_t next = rand() % m_thread_count;
+                    m_current_job = m_local_queues[next].pop();
                 }
 
                 if (m_current_job != nullptr) {
@@ -482,9 +444,8 @@ namespace vgjs {
                     noop = NOOP;                                            //thread 0 goes on to make the system reactive
                     //std::cout << "Before " << m_thread_index << " " << m_delete[m_thread_index].size() << "\n";
 
-                    uint32_t cnt = 0;
-                    cnt = m_delete[m_thread_index].clear();
-                    m_deleted_jobs.fetch_add( cnt );
+                    uint32_t cnt = m_delete[m_thread_index].clear();
+                    //m_deleted_jobs.fetch_add( cnt );
 
                     /*uint32_t created = m_created_jobs;
                     uint32_t scheduled = m_scheduled_jobs;
@@ -509,40 +470,21 @@ namespace vgjs {
 
            uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears all queues (or else coros are destructed bevore queues!)
            if (num == 1) {
-               //m_central_queue.clear();             //clear central queue
-               for (auto& q : m_recycle) {     //clear local queues
-                   q.clear();                   //clear recycle queue
-               }
-               for (auto& q : m_local_queues) {     //clear local queues
-                   q.clear();
-               }
-               for (auto& q : m_delete) {     //clear local queues
-                   std::cout << "Deleting " << q.size() << " \n";
-                   q.clear();
-               }
-
                if (m_logging) {
                    save_log_file();
                }
-               std::cout << "Thread " << m_thread_index << " terminated\n";
-
+               std::cout << "Last thread " << m_thread_index << " terminated\n";
                m_terminated = true;
            }
         };
 
         void recycle(Job*job) noexcept {
-            assert(job->m_recycled==0);
-            job->m_recycled++;
-
-            //m_recycled_jobs++;
             if (m_recycle[job->m_create_thread].size() <= c_queue_capacity) {
                 m_recycle[job->m_create_thread].push(job);        //save it so it can be reused later
-                m_recycled_jobs++;
             }
             else {
                 m_delete[job->m_create_thread].push(job);   //push to the current thread (the child calls parent on thread m_thread_index)
             }
-            //m_delete[m_thread_index].push(job);   //push to the current thread (the child calls parent on thread m_thread_index)
         }
 
         /**
@@ -601,7 +543,6 @@ namespace vgjs {
                 m_local_queues[job->m_thread_index].push(job);
                 return;
             }
-            //m_central_queue.push(job);
         };
 
         /**
