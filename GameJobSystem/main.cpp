@@ -31,6 +31,9 @@ int main()
 
 	wait_for_termination();
 	std::cout << "Exit\n";
+
+	std::string str;
+	//std::cin >> str;
 }
 
 
