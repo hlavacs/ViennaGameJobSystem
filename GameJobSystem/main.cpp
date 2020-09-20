@@ -27,7 +27,7 @@ int main()
 {
 	using namespace vgjs;
 
-	coro::test();
+	func::test();
 
 	wait_for_termination();
 	std::cout << "Exit\n";

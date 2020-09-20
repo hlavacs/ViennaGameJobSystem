@@ -151,7 +151,7 @@ namespace vgjs {
     * If there is only ONE consumer, then FIFO can be set true, and the queue is a FIFO queue.
     * If FIFO is false the queue is a LIFO stack and there can be multiple consumers if need be.
     */
-    template<typename JOB = Job_base, bool FIFO = false>
+    template<typename JOB = Job_base>
     class JobQueue {
         friend JobSystem;
         std::pmr::memory_resource*  m_mr;               ///<use to allocate/deallocate Jobs
@@ -165,7 +165,7 @@ namespace vgjs {
         JobQueue(std::pmr::memory_resource* mr) noexcept 
             : m_mr(mr), m_head(nullptr), m_tail(nullptr), m_size(0) {};	///<JobQueue class constructor
 
-        JobQueue(const JobQueue<JOB, FIFO>& queue) noexcept 
+        JobQueue(const JobQueue<JOB>& queue) noexcept 
             : m_mr(queue.m_mr), m_head(nullptr), m_tail(nullptr), m_size(0) {};
 
         void deallocate(JOB* job) {
@@ -262,9 +262,10 @@ namespace vgjs {
         static inline thread_local  int32_t		    m_thread_index = -1;    ///<each thread has its own number
         std::atomic<bool>							m_terminate = false;	///<Flag for terminating the pool
         static inline thread_local Job_base*        m_current_job = nullptr;///<Pointer to the current job of this thread
-        std::vector<JobQueue<Job_base,true>>        m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
-        std::pmr::vector<JobQueue<Job,false>>       m_recycle;              ///<save old jobs for recycling
-        std::pmr::vector<JobQueue<Job,false>>       m_delete;               ///<save old jobs for recycling
+        std::vector<JobQueue<Job_base>>             m_global_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
+        std::vector<JobQueue<Job_base>>             m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
+        std::pmr::vector<JobQueue<Job>>             m_recycle;              ///<save old jobs for recycling
+        std::pmr::vector<JobQueue<Job>>             m_delete;               ///<save old jobs for recycling
         std::pmr::vector<std::pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
         bool                                        m_logging = false;      ///< if true then jobs will be logged
         std::map<int32_t, std::string>              m_types;                ///<map types to a string for logging
@@ -330,9 +331,10 @@ namespace vgjs {
             }
 
             for (uint32_t i = 0; i < m_thread_count; i++) {
-                m_local_queues.push_back(JobQueue<Job_base, true>(mr));     //local job queue
-                m_recycle.push_back(JobQueue<Job, false>(mr));
-                m_delete.push_back( JobQueue<Job, false>(mr));
+                m_global_queues.push_back(JobQueue<Job_base>(mr));     //global job queue
+                m_local_queues.push_back(JobQueue<Job_base>(mr));     //local job queue
+                m_recycle.push_back(JobQueue<Job>(mr));
+                m_delete.push_back( JobQueue<Job>(mr));
             }
 
             for (uint32_t i = start_idx; i < m_thread_count; i++) {
@@ -412,12 +414,16 @@ namespace vgjs {
             while (thread_counter.load() > 0)	                            //Continue only if all threads are running
                 std::this_thread::sleep_for(std::chrono::nanoseconds(100));
 
+            uint32_t next = rand() % m_thread_count;
             thread_local uint32_t noop = NOOP;                               //number of empty loops until threads sleeps
             while (!m_terminate) {			                                //Run until the job system is terminated
                 m_current_job = m_local_queues[m_thread_index].pop();      //try get a job from the local queue
                 if (m_current_job == nullptr) {
-                    uint32_t next = rand() % m_thread_count;
-                    //m_current_job = m_local_queues[next].pop();
+                    m_current_job = m_global_queues[m_thread_index].pop();
+                }
+                if (m_current_job == nullptr) {
+                    next = ++next % m_thread_count;
+                    m_current_job = m_global_queues[next].pop();
                 }
 
                 if (m_current_job != nullptr) {
@@ -472,12 +478,25 @@ namespace vgjs {
 
            std::cout << "Thread " << m_thread_index << " left " << m_thread_count << "\n";
 
-           uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears all queues (or else coros are destructed bevore queues!)
-           if (num == 1) {
-               for (auto& q : m_local_queues) { //coros might be deallocated before destructors - so deallocate them now
-                   q.clear();
-               }
+           Job_base* job;
+           while ((job = m_global_queues[m_thread_index].pop()) != nullptr) {
+               if (job->is_job()) m_delete[((Job*)job)->m_create_thread].push((Job*)job);
+           }
+           while ((job = m_local_queues[m_thread_index].pop()) != nullptr) {
+               if (job->is_job()) m_delete[((Job*)job)->m_create_thread].push((Job*)job);
+           }
+           while ((job = m_recycle[m_thread_index].pop()) != nullptr) {
+               if (job->is_job()) m_delete[((Job*)job)->m_create_thread].push((Job*)job);
+           }
 
+           uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears all queues (or else coros are destructed bevore queues!)
+           while (m_thread_count.load() > 0) {	                            //Continue only if all threads are running
+               std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+           }
+
+           m_delete[m_thread_index].clear();
+
+           if (num == 1) {
                if (m_logging) {
                    save_log_file();
                }
