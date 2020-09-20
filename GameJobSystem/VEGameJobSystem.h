@@ -413,8 +413,7 @@ namespace vgjs {
                     m_current_job = m_global_queues[m_thread_index].pop();
                 }
                 if (m_current_job == nullptr) {
-                    ++next;
-                    if (next >= m_thread_count) next = 0;
+                    if (++next >= m_thread_count) next = 0;
                     m_current_job = m_global_queues[next].pop();
                 }
 
@@ -549,7 +548,8 @@ namespace vgjs {
             m_scheduled_jobs++;
 
             if (job->m_thread_index < 0 || job->m_thread_index >= (int)m_thread_count ) {
-                job->m_thread_index = rand() % m_thread_count;
+                 m_global_queues[rand() % m_thread_count].push(job);
+                 return;
             }
 
             m_local_queues[job->m_thread_index].push(job);
