@@ -22,6 +22,17 @@ namespace coro {
 
     auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
+    class CoroClass {
+        int number = 1;
+    public:
+        CoroClass( int nr ) : number(nr) {};
+
+        Coro<int> Number10() {
+            std::cout << "Number x 10 = " << number * 10 << "\n";
+            co_return number * 10;
+        }
+
+    };
 
     Coro<int> recursive2(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
         if (i < N ) {
@@ -78,6 +89,8 @@ namespace coro {
         int sum = 0;
         std::cout << "Starting loop\n";
 
+        CoroClass cc(99);
+
         auto tv = std::pmr::vector<Coro<int>>{mr};
 
         auto tk = std::make_tuple(std::pmr::vector<Coro<int>>{mr}, std::pmr::vector<Coro<float>>{mr});
@@ -101,6 +114,8 @@ namespace coro {
         }
         
         std::cout << "Before loop " << std::endl;
+
+        co_await cc.Number10();
 
         co_await tv;
 
@@ -133,13 +148,11 @@ namespace coro {
     }
 
 	void test() {
-        std::cout << "Starting test()\n";
-
-		JobSystem::instance();
+        std::cout << "Starting coro test()\n";
 
         schedule( FUNCTION( driver()) );
 
-        std::cout << "Ending test()\n";
+        std::cout << "Ending coro test()\n";
 
 	}
 

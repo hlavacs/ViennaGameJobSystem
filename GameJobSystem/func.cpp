@@ -28,22 +28,23 @@ namespace func {
 
     auto compute( int i ) {
         volatile auto x = 2 * i;
-        schedule(FUNCTION(computeF(i)));
+        schedule(F(computeF(i)));
         return x;
     }
 
     void printData( int i ) {
         //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
-            schedule( FUNCTION( compute(i)) );
-            schedule( FUNCTION( printData(i-1); ) );
-            schedule( FUNCTION( printData(i-1); ));
+            Function r(F( compute(i)));
+            schedule( r );
+            schedule( F( printData(i-1); ) );
+            schedule( F( printData(i-1); ));
         }
     }
 
     void loop(int N) {
         for (int i = 0; i < N; ++i) {
-            schedule(FUNCTION(compute(i)));
+            schedule(F(compute(i)));
         }
     }
 
@@ -55,22 +56,20 @@ namespace func {
     void driver(int i) {
         std::cout << "Driver " << i << std::endl;
 
-        schedule( Function( FUNCTION(printData(i)) ) );
+        schedule( Function( F(printData(i)) ) );
 
         //schedule(FUNCTION(loop(100000)));
 
-        continuation( Function( FUNCTION( term() ), -1, 10, 0) );
+        continuation( Function( F( term() ), -1, 10, 0) );
     }
 
 
     void test() {
-        std::cout << "Starting test()\n";
+        std::cout << "Starting func test()\n";
 
-        JobSystem::instance(0, 0); // , & g_global_mem5);
+        schedule( F(driver(20)) );
 
-        schedule( FUNCTION(driver(20)) );
-
-        std::cout << "Ending test()\n";
+        std::cout << "Ending func test()\n";
     }
 
 }

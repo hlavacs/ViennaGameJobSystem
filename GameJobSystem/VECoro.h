@@ -78,26 +78,31 @@ namespace vgjs {
     public:
         Coro_promise_base() noexcept { m_continuation = this; };        //constructor
 
+        /**
+        * \brief Default behavior if an exception is not caught
+        */
         void unhandled_exception() noexcept {   //in case of an exception terminate the program
             std::terminate();
         }
 
+        /**
+        * \brief When the coro is created it initially suspends
+        */
         std::experimental::suspend_always initial_suspend() noexcept {  //always suspend at start when creating a coroutine Coro
             return {};
         }
-
-        /*void child_finished() noexcept {                    //if children are running then the coro must be SUSPENDED!
-            uint32_t num = m_children.fetch_sub(1);
-            if (num == 1) {                                //if there are no more children
-                JobSystem::instance()->schedule(this);      //then resume the coroutine by scheduling its promise
-            }
-        }*/
 
         /**
         * \brief Use the given memory resource to create the promise object for a normal function.
         * 
         * Store the pointer to the memory resource right after the promise, so it can be used later
         * for deallocating the promise.
+        * 
+        * \param[in] sz Number of bytes to allocate
+        * \param[in] std::allocator_arg_t Dummy parameter to indicate that the next parameter is the memory resource to use
+        * \param[in] mr The memory resource to use when allocating the promise
+        * \param[in] args the rest of the coro args
+        * \returns a pointer to the newly allocated promise
         */
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
@@ -115,6 +120,13 @@ namespace vgjs {
         *
         * Store the pointer to the memory resource right after the promise, so it can be used later
         * for deallocating the promise.
+        *
+        * \param[in] sz Number of bytes to allocate
+        * \param[in] Class The class that defines this member function
+        * \param[in] std::allocator_arg_t Dummy parameter to indicate that the next parameter is the memory resource to use
+        * \param[in] mr The memory resource to use when allocating the promise
+        * \param[in] args the rest of the coro args
+        * \returns a pointer to the newly allocated promise
         */
         template<typename Class, typename... Args>
         void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
@@ -123,28 +135,31 @@ namespace vgjs {
 
         /**
         * \brief Create a promise object for a class member function using the system standard allocator.
-        *
-        * Store the pointer to the memory resource right after the promise, so it can be used later
-        * for deallocating the promise.
+        * \param[in] sz Number of bytes to allocate
+        * \param[in] Class The class that defines this member function
+        * \param[in] args the rest of the coro args
+        * \returns a pointer to the newly allocated promise
         */
         template<typename Class, typename... Args>
         void* operator new(std::size_t sz, Class, Args&&... args) noexcept {
-            return operator new(sz, std::allocator_arg, std::pmr::get_default_resource(), args...);
+            return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
         }
 
         /**
         * \brief Create a promise object using the system standard allocator.
-        *
-        * Store the pointer to the memory resource right after the promise, so it can be used later
-        * for deallocating the promise.
+        * \param[in] sz Number of bytes to allocate
+        * \param[in] args the rest of the coro args
+        * \returns a pointer to the newly allocated promise
         */
         template<typename... Args>
         void* operator new(std::size_t sz, Args&&... args) noexcept {
-            return operator new(sz, std::allocator_arg, std::pmr::get_default_resource(), args...);
+            return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
         }
 
         /**
         * \brief Use the pointer after the promise as deallocator
+        * \param[in] ptr Pointer to the memory to deallocate
+        * \param[in] sz Number of bytes to deallocate
         */
         void operator delete(void* ptr, std::size_t sz) noexcept {
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
@@ -239,7 +254,7 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule( m_child );  //schedule the promise or function as job by calling the correct version
+                schedule( std::forward<T>(m_child) );  //schedule the promise or function as job by calling the correct version
             }
 
             awaiter( T& child) noexcept : m_child(child) {};
@@ -310,9 +325,9 @@ namespace vgjs {
         bool resume() noexcept {                //resume the Coro at its suspension point
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
             if (coro && !coro.done()) {
-                coro.resume();
+                coro.resume();              //coro could destroy itself here!!
             }
-            return coro.done();
+            return true;
         };
 
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value

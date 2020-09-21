@@ -26,7 +26,7 @@ namespace mixed {
 
         //co_await 1;
 
-        std::cout << "Compute " << i << std::endl;
+        //std::cout << "Compute " << i << std::endl;
 
         //std::this_thread::sleep_for(std::chrono::microseconds(1));
 
@@ -36,7 +36,7 @@ namespace mixed {
     void printData(int i, int id);
 
     Coro<int> printDataCoro(int i, int id) {
-        std::cout << "Print Data Coro " << i << std::endl;
+        //std::cout << "Print Data Coro " << i << std::endl;
         if (i >0 ) {
             co_await compute(i);
             co_await FUNCTION( printData( i - 1, i+1 ) );
@@ -47,7 +47,7 @@ namespace mixed {
     }
 
     void printData(int i, int id ) {
-        std::cout << "Print Data " << i << std::endl;
+        //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
             auto f1 = printDataCoro(i, -(i - 1))(-1, 2,1);
             //auto f2 = printDataCoro(i, i + 1 )(-1, 2, 1);
@@ -55,7 +55,7 @@ namespace mixed {
             schedule( f1 );
             //schedule( f2 );
 
-            //schedule(FUNCTION(printData(i-1, 0)));
+            //schedule(F(printData(i-1, 0)));
         }
     }
 
@@ -78,22 +78,21 @@ namespace mixed {
             return;
         }
 
-        //schedule( Function( FUNCTION( printData(i, -1) ), -1, 1, 0)  );
+        //schedule( Function( F( printData(i, -1) ), -1, 1, 0)  );
 
 
-        //schedule( FUNCTION(printData(i, -1)));
+        //schedule( F(printData(i, -1)));
 
         schedule(FUNCTION(loop(100)));
 
-        //continuation( Function( FUNCTION( vgjs::terminate() ), -1, 3, 0 ) );
-        continuation( FUNCTION(vgjs::terminate()) );
+        //continuation( Function( F( vgjs::terminate() ), -1, 3, 0 ) );
+        continuation( F(vgjs::terminate()) );
     }
 
 
     void test() {
-        std::cout << "Starting test()\n";
+        std::cout << "Starting mixed test()\n";
 
-        JobSystem::instance();
         auto& types = JobSystem::instance()->types();
         types[0] = "Driver";
         types[1] = "printData";
@@ -103,9 +102,9 @@ namespace mixed {
         //JobSystem::instance()->enable_logging();
 
         //schedule( Function( FUNCTION(driver( 100 , "Driver")), -1, 0, 0 ) );
-        schedule( FUNCTION( driver(26, "Driver") ) );
+        schedule( F( driver(26, "Driver") ) );
 
-        std::cout << "Ending test()\n";
+        std::cout << "Ending mixed test()\n";
 
     }
 

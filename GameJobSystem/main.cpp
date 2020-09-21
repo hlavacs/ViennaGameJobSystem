@@ -27,7 +27,12 @@ int main()
 {
 	using namespace vgjs;
 
+	JobSystem::instance();
+
+	coro::test();
+	func::test();
 	mixed::test();
+
 
 	wait_for_termination();
 	std::cout << "Exit\n";
