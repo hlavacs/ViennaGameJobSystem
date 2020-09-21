@@ -26,7 +26,7 @@ namespace mixed {
 
         //co_await 1;
 
-        //std::cout << "Compute " << i << std::endl;
+        std::cout << "Compute " << i << std::endl;
 
         //std::this_thread::sleep_for(std::chrono::microseconds(1));
 
@@ -36,7 +36,7 @@ namespace mixed {
     void printData(int i, int id);
 
     Coro<int> printDataCoro(int i, int id) {
-        //std::cout << "Print Data Coro " << i << std::endl;
+        std::cout << "Print Data Coro " << i << std::endl;
         if (i >0 ) {
             co_await compute(i);
             co_await FUNCTION( printData( i - 1, i+1 ) );
@@ -47,7 +47,7 @@ namespace mixed {
     }
 
     void printData(int i, int id ) {
-        //std::cout << "Print Data " << i << std::endl;
+        std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
             auto f1 = printDataCoro(i, -(i - 1))(-1, 2,1);
             //auto f2 = printDataCoro(i, i + 1 )(-1, 2, 1);
@@ -63,7 +63,7 @@ namespace mixed {
     void loop( int N) {
 
         for (int i = 0; i < N; ++i) {
-            //std::cout << "Loop " << i << std::endl;
+            std::cout << "Loop " << i << std::endl;
 
             auto f = printDataCoro(i,10);
             schedule( f );
@@ -83,7 +83,7 @@ namespace mixed {
 
         //schedule( FUNCTION(printData(i, -1)));
 
-        schedule(FUNCTION(loop(100000)));
+        schedule(FUNCTION(loop(100)));
 
         //continuation( Function( FUNCTION( vgjs::terminate() ), -1, 3, 0 ) );
         continuation( FUNCTION(vgjs::terminate()) );

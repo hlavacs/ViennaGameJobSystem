@@ -661,6 +661,8 @@ namespace vgjs {
     inline void JobSystem::on_finished(Job_base *job) noexcept {
         m_finished_jobs++;
 
+        bool is_job = job->is_job();
+
         if (job->m_continuation != nullptr) {						 //is there a successor Job?
             
             if (job->is_job() && job->m_parent != nullptr) {         //is this a job and there is a parent?                
@@ -668,10 +670,11 @@ namespace vgjs {
                 job->m_continuation->m_parent = job->m_parent;       //add successor as child to the parent
             }
 
-            schedule(job->m_continuation);    //schedule the successor 
+            //a coro might destroy itself here!
+            schedule(job->m_continuation);    //schedule the successor, a cor waiting for children is its own successor
         }
 
-        if (job->is_job() ) {
+        if (is_job) {                           //coros do this in their final awaiter!
             if (job->m_parent != nullptr) {		//if there is parent then inform it	
                 child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
             }
