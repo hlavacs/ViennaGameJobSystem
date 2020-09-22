@@ -600,16 +600,19 @@ namespace vgjs {
         }
 
         /**
-        * \brief Enable/Disable logging.
-        * 
+        * \brief Enable logging.
         * If logging is enabled, start/stop times and other data of each thread is saved
-        * in a memory data structure
-        * \param[in] flag True or false
+        * in a memory data structure.
         */
         void enable_logging() {
             m_logging = true;
         }
 
+        /**
+        * \brief Disable logging.
+        * If logging is enabled, start/stop times and other data of each thread is saved
+        * in a memory data structure.
+        */
         void disable_logging() {
             if (m_logging) {
                 save_log_file();
@@ -703,7 +706,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void schedule( std::function<void(void)>&& f ) noexcept {
-        JobSystem::instance()->schedule( Function(std::forward<Function>(f)) ); // std::move(func));
+        JobSystem::instance()->schedule( Function(std::forward<Function>(f)) ); // forward to the job system
     };
 
     /**
@@ -711,7 +714,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void schedule(std::function<void(void)>& f) noexcept {
-        JobSystem::instance()->schedule(Function(std::forward<Function>(f)));   //move the copy
+        JobSystem::instance()->schedule(Function(std::forward<Function>(f)));   // forward to the job system
     };
 
 
@@ -729,25 +732,33 @@ namespace vgjs {
     /**
     * \brief Store a continuation for the current Job. The continuation will be scheduled once the job finishes.
     * \param[in] f A function to schedule
-    * \param[in] thd Thread index to schedule to
     */
     inline void continuation(Function&& f) noexcept {
-        JobSystem::instance()->continuation(std::forward<Function>(f)); //forward the rvalue
+        JobSystem::instance()->continuation(std::forward<Function>(f)); // forward to the job system
     }
 
+    /**
+    * \brief Store a continuation for the current Job. The continuation will be scheduled once the job finishes.
+    * \param[in] f A function to schedule
+    */
     inline void continuation(Function& f) noexcept {
-        Function func(f);                            //make a copy
-        continuation(std::forward<Function>(func));  //move the copy
+        JobSystem::instance()->continuation(Function(std::forward<Function>(f))); // forward to the job system
     }
 
+    /**
+    * \brief Store a continuation for the current Job. The continuation will be scheduled once the job finishes.
+    * \param[in] f A function to schedule
+    */
     inline void continuation(std::function<void(void)>&& f) noexcept {
-        Function func( std::forward<std::function<void(void)>>(f));
-        continuation( std::move(func) );
+        JobSystem::instance()->continuation(Function(f)); // forward to the job system
     }
 
+    /**
+    * \brief Store a continuation for the current Job. The continuation will be scheduled once the job finishes.
+    * \param[in] f A function to schedule
+    */
     inline void continuation(std::function<void(void)>& f) noexcept {
-        Function func(f);
-        continuation(std::move(func));
+        JobSystem::instance()->continuation(Function(f)); // forward to the job system
     }
 
     //----------------------------------------------------------------------------------
@@ -766,10 +777,57 @@ namespace vgjs {
         JobSystem::instance()->wait_for_termination();
     }
 
+    /**
+    * \brief Enable logging.
+    * If logging is enabled, start/stop times and other data of each thread is saved
+    * in a memory data structure.
+    */
+    inline void enable_logging() {
+        JobSystem::instance()->enable_logging();
+    }
+
+    /**
+    * \brief Enable logging.
+    * If logging is enabled, start/stop times and other data of each thread is saved
+    * in a memory data structure.
+    */
+    inline void disable_logging() {
+        JobSystem::instance()->disable_logging();
+    }
+
+    /**
+    * \returns whether logging is turned on
+    */
     inline bool is_logging() {
         return JobSystem::instance()->is_logging();
     }
 
+    /**
+    * \brief Get the logging data so it can be saved to file.
+    * \returns a reference to the logging data.
+    */
+    inline auto& get_logs() {
+        return JobSystem::instance()->get_logs();
+    }
+
+    /**
+    * \brief Clear all logs.
+    */
+    inline void clear_logs() {
+        JobSystem::instance()->clear_logs();
+    }
+
+
+    /**
+    * \brief Store a job run in the log data
+    * 
+    * \param[in] t1 Start time of the job.
+    * \param[in] t2 End time of the job.
+    * \param[in] exec_thread Index of the thread that ran the job.
+    * \param[in] finished If true, then the job finished. 
+    * \param[in] type The job type.
+    * \param[in] id A unique ID.
+    */
     inline void log_data(
         std::chrono::high_resolution_clock::time_point& t1, std::chrono::high_resolution_clock::time_point& t2,
         int32_t exec_thread, bool finished, int32_t type, int32_t id) {
@@ -778,6 +836,19 @@ namespace vgjs {
         logs[JobSystem::instance()->thread_index()].emplace_back( t1, t2, JobSystem::instance()->thread_index(), finished, type, id);
     }
 
+    /**
+    * \brief Store a job run in the log data
+    *
+    * \param[in] out The output stream for the log file.
+    * \param[in] cat Undefined.
+    * \param[in] pid Always 0.
+    * \param[in] tid The thread index that ran the job.
+    * \param[in] ts Start time.
+    * \param[in] dur Duration of the job.
+    * \param[in] ph Always X
+    * \param[in] name Type name of the job.
+    * \param[in] args Indicates wehther the job has finshed.
+    */
     inline void save_job(  std::ofstream& out, std::string cat, uint64_t pid, uint64_t tid,
                            uint64_t ts, int64_t dur, std::string ph, std::string name, std::string args) {
 
@@ -801,6 +872,9 @@ namespace vgjs {
         out << "}";
     }
 
+    /**
+    * \brief Dump all job data into a json log file.
+    */
     inline void save_log_file() {
         auto& logs = JobSystem::instance()->get_logs();
         std::ofstream outdata;

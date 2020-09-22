@@ -105,12 +105,12 @@ namespace coro {
             get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
 
-            fv.emplace_back( FUNCTION( FCompute(i) ) );
+            fv.emplace_back( F( FCompute(i) ) );
 
-            Function f( FUNCTION(FuncCompute(i)), -1, 0, 0 );
+            Function f( F(FuncCompute(i)), -1, 0, 0 );
             jv.push_back( f );
 
-            jv.push_back( Function( FUNCTION(FuncCompute(i)), -1, 0, 0) );
+            jv.push_back( Function( F(FuncCompute(i)), -1, 0, 0) );
         }
         
         std::cout << "Before loop " << std::endl;
@@ -123,9 +123,9 @@ namespace coro {
 
         co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10)( 1, 0, 0);
 
-        co_await FUNCTION( FCompute(999) );
+        co_await F( FCompute(999) );
 
-        co_await Function( FUNCTION(FCompute(999)) );
+        co_await Function( F(FCompute(999)) );
 
         co_await fv;
 

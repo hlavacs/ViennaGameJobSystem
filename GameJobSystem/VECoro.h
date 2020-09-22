@@ -35,9 +35,8 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
 
     /**
-    * \brief Schedule a Coro into the job system
-    *
-    * Basic function for scheduling a coroutine Coro into the job system
+    * \brief Schedule a Coro into the job system.
+    * Basic function for scheduling a coroutine Coro into the job system.
     * \param[in] coro A coroutine Coro, whose promise is a job that is scheduled into the job system
     */
     template<typename T>
@@ -52,9 +51,8 @@ namespace vgjs {
     };
 
     /**
-    * \brief Schedule a Coro into the job system
-    *
-    * Basic function for scheduling a coroutine Coro into the job system
+    * \brief Schedule a Coro into the job system.
+    * Basic function for scheduling a coroutine Coro into the job system.
     * \param[in] coro A coroutine Coro, whose promise is a job that is scheduled into the job system
     */
     template<typename T>
@@ -318,11 +316,18 @@ namespace vgjs {
 
         Coro_promise() noexcept : Coro_promise_base{}, m_value{} {};
 
-        Coro<T> get_return_object() noexcept {  //get Coro coroutine from promise
+        /**
+        * \brief Get Coro coroutine future from promise.
+        * \returns the Coro future from the promise.
+        */
+        Coro<T> get_return_object() noexcept {
             return Coro<T>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) };
         }
 
-        bool resume() noexcept {                //resume the Coro at its suspension point
+        /**
+        * \brief Resume the Coro at its suspension point.
+        */
+        bool resume() noexcept {
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
             if (coro && !coro.done()) {
                 coro.resume();              //coro could destroy itself here!!
@@ -330,14 +335,25 @@ namespace vgjs {
             return true;
         };
 
+        /**
+        * \brief Store the value returned by co_return.
+        * \param[in] t The value that was returned.
+        */
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
             m_value = t;
         }
 
+        /**
+        * \brief Return the store value.
+        * \returns the stored value.
+        */
         T get() noexcept {      //return the stored m_value to the caller
             return m_value;
         }
 
+        /**
+        * \brief Deallocate the promise because the queue is shutting down
+        */
         bool deallocate() noexcept {    //called when the job system is destroyed
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
             if (coro) {
@@ -347,16 +363,29 @@ namespace vgjs {
             return false;
         };
 
+        /**
+        * \brief Return an awaitable from a tuple of vectors.
+        * \returns the correct awaitable.
+        */
         template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& Coros or functions
         awaitable_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& coros) noexcept {
             return { coros };
         }
 
+        /**
+        * \brief Return an awaitable from basic types like functions, Coros, or vectors thereof
+        * \returns the correct awaitable.
+        */
         template<typename T>        //called by co_await for Coros or functions, or std::pmr::vector thereof
         awaitable_coro<T> await_transform(T& coro) noexcept {
             return { coro };
         }
 
+        /**
+        * \brief Return an awaitable for an integer number.
+        * This is used when the coro should change the current thread.
+        * \returns the correct awaitable.
+        */
         awaitable_resume_on await_transform(uint32_t thread_index) noexcept { //called by co_await for INT, for changing the thread
             return { this, thread_index };
         }
@@ -418,6 +447,11 @@ namespace vgjs {
     public:
         Coro(Coro<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
 
+        /**
+        * \brief Destructor of the Coro promise. Might deallocate the promise,
+        * if the promise has finished. This is done only if the parent is a normal function,
+        * i.e. a Job.
+        */
         ~Coro() noexcept {
             if (m_coro) {
                 if (m_coro.promise().m_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
@@ -434,14 +468,30 @@ namespace vgjs {
             }
         }
 
-        T get() noexcept {                  //retrieve the promised value
+        /**
+        * \brief Retrieve the promised value
+        * \returns the value that is stored by this Coro future.
+        */
+        T get() noexcept {                  //
             return m_coro.promise().get();
         }
 
+        /**
+        * \brief Retrieve a pointer to the promise.
+        * \returns a pointer to the promise.
+        */
         Coro_promise_base* promise() noexcept { //get a pointer to the promise (can be used as Job)
             return &m_coro.promise();
         }
 
+        /**
+        * \brief Function operator so you can pass on parameters to the Coro.
+        * 
+        * \param[in] thread_index The thread that should execute this coro
+        * \param[in] type The type of the coro.
+        * \param[in] id A unique ID of the call.
+        * \returns a reference to this Coro so that it can be used with co_await.
+        */
         Coro<T>&& operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1 ) {
             m_coro.promise().m_thread_index = thread_index;
             m_coro.promise().m_type = type;
@@ -449,22 +499,13 @@ namespace vgjs {
             return std::move(*this);
         } 
 
-        void thread_index(uint32_t ti) {        //force the Coro to rn on thread ti
-            m_coro.promise().m_thread_index = ti;
-        }
-
-        void type(int32_t type) {        //set type
-            m_coro.promise().m_type = type;
-        }
-
-        void id(int32_t id) {        //set id
-            m_coro.promise().m_id = id;
-        }
-
+        /**
+        * \brief Resume the coro at its suspension point
+        */
         bool resume() noexcept {    //resume the Coro by calling resume() on the handle
-            if (!m_coro.done())
+            if (m_coro && !m_coro.done())
                 m_coro.resume();
-            return !m_coro.done();
+            return true;
         };
 
         explicit Coro(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
