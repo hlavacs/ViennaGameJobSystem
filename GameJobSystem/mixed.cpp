@@ -5,9 +5,7 @@
 #include <string>
 #include <algorithm>
 #include <chrono>
-#include <glm.hpp>
 
-#define VGJS_TRACE true
 #include "VEGameJobSystem.h"
 #include "VECoro.h"
 

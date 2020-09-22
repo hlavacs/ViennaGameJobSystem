@@ -5,7 +5,6 @@
 #include <string>
 #include <algorithm>
 #include <chrono>
-#include <glm.hpp>
 
 
 #include "VEGameJobSystem.h"
