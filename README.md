@@ -124,14 +124,14 @@ An instance of Coro<T> acts like a future, in that it allows to create the coro,
 	//the coro compute() uses normal new and delete to allocate its promise
     Coro<int> compute(int i) {
         CoroClass cc(99);			//class instance stores number 99
-		auto mf = cc.Number(10);	//get an instance of the class coro
-		co_await mf;				//run it
+        auto mf = cc.Number(10);	//get an instance of the class coro
+        co_await mf;				//run it
         co_return 2 * mf.get();		//get result and return it
     }
 
 	//the coro do_compute() uses g_global_mem to allocate its promise!
     Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
-		co_await 0;				//move this job to the thread with number 0
+        co_await 0;				//move this job to the thread with number 0
         auto tk1 = compute(1); 	//create the coro compute() with parameter 1- it initially suspends
         co_await tk1;			//run it and wait for it to finish
         co_return tk1.get();	//get the promised value and return it
@@ -140,7 +140,7 @@ An instance of Coro<T> acts like a future, in that it allows to create the coro,
 	//the coro loop() uses g_global_mem to allocate its promise! 
     Coro<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int N) {
 		for( int i=0; i<N; ++i) {
-			co_await do_compute(std::allocator_arg, mr );//call do_compute() N times, no need for its return value
+            co_await do_compute(std::allocator_arg, mr );//call do_compute() N times, no need for its return value
 		}
 		co_return 0; //have to return a value
 	}
