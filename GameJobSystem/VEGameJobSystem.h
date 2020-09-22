@@ -512,7 +512,7 @@ namespace vgjs {
         */
         void wait_for_termination() noexcept {
             while (m_terminated.load() == false) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
         };
 
@@ -706,7 +706,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void schedule( std::function<void(void)>&& f ) noexcept {
-        JobSystem::instance()->schedule( Function(std::forward<Function>(f)) ); // forward to the job system
+        JobSystem::instance()->schedule(Function{ std::forward<Function>(f) }); // forward to the job system
     };
 
     /**
@@ -714,7 +714,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void schedule(std::function<void(void)>& f) noexcept {
-        JobSystem::instance()->schedule(Function(std::forward<Function>(f)));   // forward to the job system
+        JobSystem::instance()->schedule(Function{ std::forward<Function>(f) });   // forward to the job system
     };
 
 
@@ -742,7 +742,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void continuation(Function& f) noexcept {
-        JobSystem::instance()->continuation(Function(std::forward<Function>(f))); // forward to the job system
+        JobSystem::instance()->continuation(Function{ std::forward<Function>(f) }); // forward to the job system
     }
 
     /**
@@ -750,7 +750,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void continuation(std::function<void(void)>&& f) noexcept {
-        JobSystem::instance()->continuation(Function(f)); // forward to the job system
+        JobSystem::instance()->continuation(Function{ f }); // forward to the job system
     }
 
     /**
@@ -758,7 +758,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void continuation(std::function<void(void)>& f) noexcept {
-        JobSystem::instance()->continuation(Function(f)); // forward to the job system
+        JobSystem::instance()->continuation(Function{ f }); // forward to the job system
     }
 
     //----------------------------------------------------------------------------------

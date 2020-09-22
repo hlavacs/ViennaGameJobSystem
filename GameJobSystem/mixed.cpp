@@ -86,7 +86,6 @@ namespace mixed {
         schedule(FUNCTION(loop(100)));
 
         //continuation( Function( F( vgjs::terminate() ), -1, 3, 0 ) );
-        continuation( F(vgjs::terminate()) );
     }
 
 

@@ -35,7 +35,7 @@ namespace func {
     void printData( int i ) {
         //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
-            Function r(F( compute(i)));
+            Function r{ F(compute(i)) };
             schedule( r );
             schedule( F( printData(i-1); ) );
             schedule( F( printData(i-1); ));
@@ -48,19 +48,12 @@ namespace func {
         }
     }
 
-    void term() {
-        std::cout << "terminate()\n";
-        vgjs::terminate();
-    }
-
     void driver(int i) {
         std::cout << "Driver " << i << std::endl;
 
-        schedule( Function( F(printData(i)) ) );
+        schedule(Function{ F(printData(i)) });
 
         //schedule(FUNCTION(loop(100000)));
-
-        continuation( Function( F( term() ), -1, 10, 0) );
     }
 
 

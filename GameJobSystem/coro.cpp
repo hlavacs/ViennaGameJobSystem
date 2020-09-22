@@ -64,7 +64,7 @@ namespace coro {
 
     Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
-        //co_await 1;
+        co_await 1;
 
         std::cout << "Compute " << i << std::endl;
 
@@ -72,8 +72,12 @@ namespace coro {
     }
 
     Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
+        std::cout << "DO Compute " << std::endl;
+
         auto tk1 = compute(std::allocator_arg, mr, 1);
-        //std::cout << "DO Compute " << std::endl;
+
+        co_await tk1;
+
         co_return tk1.get();
     }
 
@@ -100,7 +104,7 @@ namespace coro {
         std::pmr::vector<Function> jv{ mr };
 
         for (int i = 0; i < count; ++i) {
-            tv.emplace_back( compute(std::allocator_arg, &g_global_mem4, i) );
+            tv.emplace_back( do_compute(std::allocator_arg, &g_global_mem4 ) );
 
             get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
@@ -115,7 +119,10 @@ namespace coro {
         
         std::cout << "Before loop " << std::endl;
 
-        co_await cc.Number10();
+        auto mf = cc.Number10();
+        co_await mf;
+        std::cout << "Class member function " << mf.get() << std::endl;
+
 
         co_await tv;
 
@@ -144,7 +151,6 @@ namespace coro {
 
         //schedule( compute(std::allocator_arg, &g_global_mem4, 90) );
 
-        continuation(FUNCTION(vgjs::terminate()));
     }
 
 	void test() {

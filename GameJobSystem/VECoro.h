@@ -386,8 +386,8 @@ namespace vgjs {
         * This is used when the coro should change the current thread.
         * \returns the correct awaitable.
         */
-        awaitable_resume_on await_transform(uint32_t thread_index) noexcept { //called by co_await for INT, for changing the thread
-            return { this, thread_index };
+        awaitable_resume_on await_transform(int thread_index) noexcept { //called by co_await for INT, for changing the thread
+            return { this, (int32_t)thread_index };
         }
 
         /**

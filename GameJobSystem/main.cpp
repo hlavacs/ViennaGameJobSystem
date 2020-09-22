@@ -23,22 +23,28 @@ namespace mixed {
 }
 
 
-int main()
-{
-	using namespace vgjs;
-
-	JobSystem::instance();
+void driver() {
 
 	coro::test();
 	func::test();
 	mixed::test();
 
+	vgjs::continuation(F( std::cout << "terminate()\n";  vgjs::terminate(); ));
+
+}
+
+int main()
+{
+	using namespace vgjs;
+
+	JobSystem::instance();
+	schedule( F(driver()) );
 
 	wait_for_termination();
 	std::cout << "Exit\n";
 
 	std::string str;
-	//std::cin >> str;
+	std::cin >> str;
 }
 
 
