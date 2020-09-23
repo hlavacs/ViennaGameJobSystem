@@ -81,7 +81,7 @@ namespace mixed {
 
         //schedule( F(printData(i, -1)));
 
-        schedule(FUNCTION(loop(100)));
+        schedule(FUNCTION(loop(i)));
 
         //continuation( Function( F( vgjs::terminate() ), -1, 3, 0 ) );
     }
@@ -99,7 +99,7 @@ namespace mixed {
         //JobSystem::instance()->enable_logging();
 
         //schedule( Function( FUNCTION(driver( 100 , "Driver")), -1, 0, 0 ) );
-        schedule( F( driver(26, "Driver") ) );
+        schedule( F( driver(50, "Driver") ) );
 
         std::cout << "Ending mixed test()\n";
 

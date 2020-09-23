@@ -59,7 +59,7 @@ namespace func {
     void test() {
         std::cout << "Starting func test()\n";
 
-        schedule( F(driver(20)) );
+        schedule( F(driver(15)) );
 
         std::cout << "Ending func test()\n";
     }

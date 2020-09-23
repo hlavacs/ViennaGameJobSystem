@@ -151,7 +151,24 @@ namespace coro {
     }
 
 
+
+    Coro<int> coroTest1() {
+        std::cout << "coroTest1() " << std::endl;
+        co_return 0;
+    }
+
+    Coro<int> coroTest() {
+        std::cout << "Begin coroTest() " << std::endl;
+        co_await coroTest1();
+        std::cout << "End coroTest() " << std::endl;
+
+        co_return 0;
+    }
+
+
     void driver() {
+        //schedule(coroTest());
+
         schedule( loop(std::allocator_arg, &g_global_mem4, 90) );
 
         //schedule( recursive2(std::allocator_arg, &g_global_mem4, 1, 18) );

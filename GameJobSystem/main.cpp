@@ -23,17 +23,20 @@ namespace mixed {
 }
 
 
+
+
+
 void driver( int i ) {
 
-	//coro::test();
+	coro::test();
 	func::test();
-	//mixed::test();
+	mixed::test();
 
 	if (i <= 1) {
 		vgjs::continuation(F(std::cout << "terminate()\n";  vgjs::terminate(); ));
 	}
 	else {
-		vgjs::continuation(F(std::cout << "driver(" << i << "\n";  driver( i-1 ); ));
+		vgjs::continuation(F(std::cout << "driver(" << i << ")\n";  driver( i-1 ); ));
 	}
 }
 

@@ -420,7 +420,7 @@ namespace vgjs {
                         }
                     }
                 }
-                return true;
+                return true;    //if false then the coro frame is destroyed, but we might want to get the result first
             }
         };
 
