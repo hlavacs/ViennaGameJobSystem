@@ -46,7 +46,7 @@ namespace vgjs {
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
-        coro.promise()->m_parent = parent;
+        coro.promise()->m_coro_parent = parent;
         JobSystem::instance()->schedule(coro.promise() );      //schedule the promise as job
     };
 
@@ -74,6 +74,9 @@ namespace vgjs {
     */
     class Coro_promise_base : public Job_base {
     public:
+        std::atomic<int> m_count = 2;           //sync with parent if parent is a Job
+        Job_base* m_coro_parent = nullptr;      //parent job that created this job
+
         Coro_promise_base() noexcept { m_continuation = this; };        //constructor
 
         /**
@@ -169,6 +172,9 @@ namespace vgjs {
         }
     };
 
+    template<typename T>
+    class Coro_promise;
+
     //---------------------------------------------------------------------------------------------------
 
     /**
@@ -205,6 +211,7 @@ namespace vgjs {
     struct awaitable_tuple {
 
         struct awaiter : awaiter_base {
+            Coro_promise_base* m_promise;
             std::tuple<std::pmr::vector<Ts>...>& m_tuple;                //vector with all children to start
 
             bool await_ready() noexcept {                                 //suspend only if there are no Coros
@@ -217,21 +224,24 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+                //m_promise->m_children++;
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
                     std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple) ) , 0) ...}; //called for every tuple element
                 };
                 f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
             }
 
-            awaiter( std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
-                : m_tuple(children) {};
+            awaiter(Coro_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children, int32_t thread_index = -1) noexcept
+                : m_promise(promise), m_tuple(children) {};
         };
 
+        Coro_promise_base* m_promise;
         std::tuple<std::pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
 
-        awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children ) noexcept : m_tuple(children) {};
+        awaitable_tuple(Coro_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children ) noexcept 
+            : m_promise(promise), m_tuple(children) {};
 
-        awaiter operator co_await() noexcept { return { m_tuple }; };
+        awaiter operator co_await() noexcept { return { m_promise, m_tuple }; };
     };
 
 
@@ -245,6 +255,7 @@ namespace vgjs {
     struct awaitable_coro {
 
         struct awaiter : awaiter_base {
+            Coro_promise_base* m_promise;
             T& m_child;      //child Coro
 
             bool await_ready() noexcept {             //suspend only there are no Coros
@@ -255,17 +266,19 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+                //m_promise->m_children++;
                 schedule( std::forward<T>(m_child) );  //schedule the promise or function as job by calling the correct version
             }
 
-            awaiter( T& child) noexcept : m_child(child) {};
+            awaiter(Coro_promise_base* promise, T& child) noexcept : m_promise(promise), m_child(child) {};
         };
 
+        Coro_promise_base* m_promise;
         T& m_child;              //child Coro
 
-        awaitable_coro( T& child ) noexcept : m_child(child) {};
+        awaitable_coro(Coro_promise_base* promise, T& child ) noexcept : m_promise(promise), m_child(child) {};
 
-        awaiter operator co_await() noexcept { return { m_child }; };
+        awaiter operator co_await() noexcept { return { m_promise, m_child }; };
     };
 
 
@@ -283,7 +296,8 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 m_promise->m_thread_index = m_thread_index;
-                JobSystem::instance()->schedule(m_promise);     //Job* is scheduled directly
+                //m_promise->m_children++;
+                //JobSystem::instance()->schedule(m_promise);     //Job* is scheduled directly
             }
 
             awaiter(Coro_promise_base* promise, int32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
@@ -312,7 +326,6 @@ namespace vgjs {
         template<typename U> friend class Coro;
 
     private:
-        std::atomic<int> m_count = 2;   //sync with parent if parent is a Job
         T m_value{};                    //the value that should be returned
 
     public:
@@ -332,8 +345,11 @@ namespace vgjs {
         */
         bool resume() noexcept {
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
-            if (coro && !coro.done()) {
-                coro.resume();              //coro could destroy itself here!!
+            if (coro) {
+                if (!coro.done()) {
+                    m_children = 1;
+                    coro.resume();              //coro could destroy itself here!!
+                }
             }
             return true;
         };
@@ -359,8 +375,14 @@ namespace vgjs {
         */
         bool deallocate() noexcept {    //called when the job system is destroyed
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
+
             if (coro) {
-                coro.destroy();
+                if (m_parent != nullptr && m_parent->is_job()) {               //if the parent is a job
+                    int count = m_count.fetch_sub(1);
+                    if (count == 1) {      //if the Coro<T> has been destroyed then no one is waiting
+                        coro.destroy();
+                    }
+                }
             }
 
             return false;
@@ -372,7 +394,7 @@ namespace vgjs {
         */
         template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& Coros or functions
         awaitable_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& coros) noexcept {
-            return { coros };
+            return { this, coros };
         }
 
         /**
@@ -381,7 +403,7 @@ namespace vgjs {
         */
         template<typename T>        //called by co_await for Coros or functions, or std::pmr::vector thereof
         awaitable_coro<T> await_transform(T& coro) noexcept {
-            return { coro };
+            return { this, coro };
         }
 
         /**
@@ -409,18 +431,9 @@ namespace vgjs {
 
             bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
                 auto& promise = h.promise();
-                if (promise.m_parent != nullptr) {           //if there is a parent
-                    bool is_job = promise.m_parent->is_job();
-                    JobSystem::instance()->child_finished(promise.m_parent);  //tell parent that this child has finished (parent could kill itself here!!)
-                    
-                    if (is_job) {               //if the parent is a job
-                        int count = promise.m_count.fetch_sub(1);
-                        if (count == 1 ) {      //if the Coro<T> has been destroyed then no one is waiting
-                            return false;       //so destroy the promise
-                        }
-                    }
-                }
-                return true;    //if false then the coro frame is destroyed, but we might want to get the result first
+                promise.m_parent = promise.m_coro_parent;   //enable parent notification
+                promise.m_continuation = nullptr;           //disable the coro to continue
+                return true;  //if false then the coro frame is destroyed, but we might want to get the result first
             }
         };
 
@@ -458,8 +471,9 @@ namespace vgjs {
         */
         ~Coro() noexcept {
             if (m_coro ) { //do not ask for done()!
-                if ( m_coro.promise().m_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
-                    if ( !m_coro.promise().m_parent->is_job()) {     //because they are in sync - TODO POSSIBLE RACE CONDITION HERE
+
+                if ( m_coro.promise().m_coro_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
+                    if ( !m_coro.promise().m_coro_parent->is_job()) {     //because they are in sync 
                         m_coro.destroy();                           //if you do not want this then move Coro
                     }
                     else {  //if the parent is a job+function, then the function often returns before the child finishes
@@ -469,6 +483,7 @@ namespace vgjs {
                         }
                     }
                 }
+
             }
         }
 
@@ -507,8 +522,11 @@ namespace vgjs {
         * \brief Resume the coro at its suspension point
         */
         bool resume() noexcept {    //resume the Coro by calling resume() on the handle
-            if (m_coro && !m_coro.done())
-                m_coro.resume();
+            if (m_coro) {
+                if (!m_coro.done()) {
+                    m_coro.promise().resume();
+                }
+            }
             return true;
         };
 

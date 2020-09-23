@@ -153,13 +153,16 @@ namespace coro {
 
 
     Coro<int> coroTest1() {
-        std::cout << "coroTest1() " << std::endl;
+        std::cout << "Before coroTest1() " << std::endl;
+        co_await 1;
+        std::cout << "After coroTest1() " << std::endl;
+
         co_return 0;
     }
 
     Coro<int> coroTest() {
         std::cout << "Begin coroTest() " << std::endl;
-        co_await coroTest1();
+        co_await coroTest1()(-1,0,2);
         std::cout << "End coroTest() " << std::endl;
 
         co_return 0;
@@ -167,9 +170,9 @@ namespace coro {
 
 
     void driver() {
-        //schedule(coroTest());
+        //schedule(coroTest()(-1,0,1));
 
-        schedule( loop(std::allocator_arg, &g_global_mem4, 90) );
+        schedule( loop(std::allocator_arg, &g_global_mem4, 1000) );
 
         //schedule( recursive2(std::allocator_arg, &g_global_mem4, 1, 18) );
 
@@ -180,7 +183,7 @@ namespace coro {
 	void test() {
         std::cout << "Starting coro test()\n";
 
-        schedule( FUNCTION( driver()) );
+        schedule( Function( F( driver()), -1, 0, 0 ));
 
         std::cout << "Ending coro test()\n";
 

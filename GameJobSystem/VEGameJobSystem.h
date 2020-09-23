@@ -441,20 +441,14 @@ namespace vgjs {
                         t1 = std::chrono::high_resolution_clock::now();	//time of finishing
                     }
 
-                    bool is_job = m_current_job->is_job(); //coro might destroy itself if parent is a function!
-                    int32_t type = m_current_job->m_type;   //so save these parameters here
-                    int32_t id = m_current_job->m_id;
-
                     (*m_current_job)();                                    //if any job found execute it
 
                     if (is_logging()) {
                         t2 = std::chrono::high_resolution_clock::now();	//time of finishing
-                        log_data(t1, t2, m_thread_index, false, type, id);
+                        log_data(t1, t2, m_thread_index, false, m_current_job->m_type, m_current_job->m_id);
                     }
 
-                    if (is_job) {                      //job is its own child
-                        child_finished(m_current_job);                     //a coro might just be suspended by co_await
-                    }
+                    child_finished(m_current_job);                     //a coro might just be suspended by co_await
                 }
                 --noop;
                 if (noop == 0) {                //if none found too longs let thread sleep
@@ -467,12 +461,16 @@ namespace vgjs {
 
            std::cout << "Thread " << m_thread_index << " left " << m_thread_count << "\n";
 
+           std::cout << "Clear global\n";
            m_global_queues[m_thread_index].clear(); //clear your global queue
+           std::cout << "Clear local\n";
            m_local_queues[m_thread_index].clear();  //clear your local queue
 
            uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears recycle and garbage queues
            if (num == 1) {
+               std::cout << "Clear recycle\n";
                m_recycle.clear();
+               std::cout << "Clear delete\n";
                m_delete.clear();
 
                if (m_logging) {         //dump trace file
@@ -491,7 +489,7 @@ namespace vgjs {
         * 
         * \param[in] job Pointer to the finished Job.
         */
-        void recycle(Job*job) noexcept {
+        void recycle(Job* job) noexcept {
             if (m_recycle.size() <= c_queue_capacity) {
                 m_recycle.push(job);        //save it so it can be reused later
             }
@@ -665,6 +663,9 @@ namespace vgjs {
     */
     inline void JobSystem::on_finished(Job_base *job) noexcept {
         bool is_job = job->is_job();
+        bool coro_finished = !job->is_job() && job->m_continuation == nullptr;
+
+        //std::cout << "Finishing job " << job->m_id << "\n";
 
         if (job->m_continuation != nullptr) {						 //is there a successor Job?
             
@@ -677,11 +678,17 @@ namespace vgjs {
             schedule(job->m_continuation);    //schedule the successor, a cor waiting for children is its own successor
         }
 
-        if (is_job) {                           //coros do this in their final awaiter!
-            if (job->m_parent != nullptr) {		//if there is parent then inform it	
-                child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
+        if (job->m_parent != nullptr) {		//if there is parent then inform it	
+           child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
+        }
+
+        if (is_job) {
+            recycle((Job*)job);       //recycle the Job
+        }
+        else {
+            if (coro_finished) {
+                job->deallocate();  //deallocate the coro
             }
-            recycle((Job*)job);  //last command in function
         }
     }
 
