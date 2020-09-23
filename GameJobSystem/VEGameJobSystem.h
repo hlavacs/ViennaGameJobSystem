@@ -291,11 +291,14 @@ namespace vgjs {
         * 
         * \returns a pointer to the job.
         */
-        Job* allocate_job() noexcept {
+        Job* allocate_job() {
             Job* job = m_recycle.pop();                                //try recycle queue
             if (job == nullptr ) {                                              //none found
                 std::pmr::polymorphic_allocator<Job> allocator(m_mr);           //use this allocator
                 job = allocator.allocate(1);                                    //allocate the object
+                if (job < (Job*)100) {
+                    std::cout << "No job available\n";
+                }
                 new (job) Job();                                                //call constructor
                 job->m_mr = m_mr;                                       //save memory resource for deallocation
             }
@@ -684,6 +687,10 @@ namespace vgjs {
 
 
     //----------------------------------------------------------------------------------
+
+    inline Job_base* current_job() {
+        return (Job_base*)JobSystem::instance()->current_job();
+    }
 
     /**
     * \brief Schedule a function into the system.

@@ -104,6 +104,7 @@ namespace vgjs {
         */
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
+            //std::cout << "Coro new1 " << sz << "\n";
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
             char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
             if (ptr == nullptr) {
@@ -151,6 +152,7 @@ namespace vgjs {
         */
         template<typename... Args>
         void* operator new(std::size_t sz, Args&&... args) noexcept {
+            //std::cout << "Coro new2 " << sz << "\n";
             return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
         }
 
@@ -160,6 +162,7 @@ namespace vgjs {
         * \param[in] sz Number of bytes to deallocate
         */
         void operator delete(void* ptr, std::size_t sz) noexcept {
+            //std::cout << "Coro delete " << sz << "\n";
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
             auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
             (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
@@ -446,6 +449,7 @@ namespace vgjs {
 
     public:
         Coro(Coro<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
+        void operator= (Coro<T>&& t) { std::swap( m_coro, t.m_coro); }
 
         /**
         * \brief Destructor of the Coro promise. Might deallocate the promise,
@@ -453,9 +457,9 @@ namespace vgjs {
         * i.e. a Job.
         */
         ~Coro() noexcept {
-            if (m_coro) {
-                if (m_coro.promise().m_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
-                    if (!m_coro.promise().m_parent->is_job()) {     //because they are in sync
+            if (m_coro ) { //do not ask for done()!
+                if ( m_coro.promise().m_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
+                    if ( !m_coro.promise().m_parent->is_job()) {     //because they are in sync - TODO POSSIBLE RACE CONDITION HERE
                         m_coro.destroy();                           //if you do not want this then move Coro
                     }
                     else {  //if the parent is a job+function, then the function often returns before the child finishes

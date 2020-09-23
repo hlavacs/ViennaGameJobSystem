@@ -35,8 +35,11 @@ namespace coro {
 
     Coro<int> recursive2(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
         if (i < N ) {
-            co_await recursive2(std::allocator_arg, mr, i + 1, N);
-            co_await recursive2(std::allocator_arg, mr, i + 1, N);
+            std::pmr::vector<Coro<int>> vec{ mr };
+            vec.emplace_back( recursive2(std::allocator_arg, mr, i + 1, N));
+            vec.emplace_back(recursive2(std::allocator_arg, mr, i + 1, N));
+
+            co_await vec;
         }
         co_return 0;
     }
@@ -122,16 +125,21 @@ namespace coro {
         co_await mf;
         std::cout << "Class member function " << mf.get() << std::endl;
 
-
         co_await tv;
 
         co_await tk;
 
-        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10)( 1, 0, 0);
+        co_await recursive2(std::allocator_arg, &g_global_mem4, 1, 10);
+
+        std::cout << "Before First FCompute 999\n";
 
         co_await F( FCompute(999) );
 
+        std::cout << "After First FCompute 999\n";
+
         co_await Function( F(FCompute(999)) );
+
+        std::cout << "After Second FCompute 999\n";
 
         co_await fv;
 

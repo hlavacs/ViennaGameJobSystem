@@ -105,7 +105,8 @@ Functions can be wrapped into macros F() or FUNCTION(), into a lambda of type [=
 		schedule( Function{ F(loop(10)), 2 } );		//schedule to run on thread 2, use rvalue, so move semantics apply
 	}
 
-Functions scheduling other functions create a parent-child relationship. Function parameters should always be copied (see below)! Functions can also me member-functions, since they are wrapped into lambdas anyway. Just make sure that the calss instance does not go out of scope!
+Functions scheduling other functions create a parent-child relationship. Functions are immediately scheduled to be run, schedule() can be called any number of times to start an arbitrary number of children to run in parallel.
+Function parameters should always be copied (see below)! Functions can also me member-functions, since they are wrapped into lambdas anyway. Just make sure that the class instance does not go out of scope!
 
 ## Coroutines
 The second type of task to be scheduled are coroutines. 
@@ -159,12 +160,104 @@ An instance of Coro<T> acts like a future, in that it allows to create the coro,
 Since any program starts with the main() function, from a C++ function, a coro can be scheduled by calling schedule(). 
 Coros should NOT call schedule() themselves! Instead they MUST use co_await and co_return for starting their own children and returning values.
 
-## Vectors and Tuples
+Coros can co_await a number of different types. Single types include
+* C++ function packed into lambdas [=](){} or F() / FUNCTION() 
+* Function{} class
+* Coro<T> for any type T
+
+Since the coro suspends and awaits the finishing of its children, this would allow only 1 child to await. Thus, coros can additionally await std::pmr::vectors, or even std::tuples containing K std::pmr::vectors of the above types. This allows to start and await any number of children of arbitrary type.
+
+    Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
+        if (i < N) {
+            std::pmr::vector<Coro<int>> vec{ mr };
+            vec.emplace_back( recursive(std::allocator_arg, mr, i + 1, N));
+            vec.emplace_back( recursive(std::allocator_arg, mr, i + 1, N));
+			co_await vec;
+        }
+        co_return 0;
+    }
+
+    Coro<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+        float f = i + 0.5f;
+        co_return 10.0f * i;
+    }
+
+    Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+        co_return 2 * i;
+    }
+
+    Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
+        auto tk1 = compute(std::allocator_arg, mr, 1);
+        co_await tk1;
+        co_return tk1.get();
+    }
+
+    void FCompute( int i ) {
+        std::cout << "FCompute " << i << std::endl;
+    }
+
+    void FuncCompute(int i) {
+        std::cout << "FuncCompute " << i << std::endl;
+    }
+
+    Coro<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
+
+        auto tv = std::pmr::vector<Coro<int>>{mr};	//vector of Coro<int>
+        auto tk = std::make_tuple(					//tuple holding two vectors - Coro<int> and Coro<float>
+			std::pmr::vector<Coro<int>>{mr}, 
+			std::pmr::vector<Coro<float>>{mr});
+        auto fv = std::pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
+        std::pmr::vector<Function> jv{ mr };		//vector of Function{} instances
+
+		//loop adds elements to these vectors
+        for (int i = 0; i < count; ++i) {
+            tv.emplace_back( do_compute(std::allocator_arg, &g_global_mem4 ) );
+
+            get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
+            get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
+
+            fv.emplace_back( F( FCompute(i) ) );
+
+            Function f( F(FuncCompute(i)), -1, 0, 0 );
+            jv.push_back( f );
+
+            jv.push_back( Function( F(FuncCompute(i)), -1, 0, 0) );
+        }
+        
+        co_await tv; //await all elements of the vector
+        co_await tk; //await all elements of the vectors in the tuples
+        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10); //await the recursive calls
+        co_await F( FCompute(999) );			//await the function
+        co_await Function( F(FCompute(999)) );	//await the function
+        co_await fv; //await all elements of the vector
+        co_await jv; //await all elements of the vector
+
+        co_return 0;
+    }
+
+    void driver() {
+        schedule( loop(std::allocator_arg, &g_global_mem4, 90) );
+    }
+
+Coroutines are also "callable", and you can pass in parameters similar to the Function{} class, setting thread index, type and id:
+
+	//schedule to thread 0, set type to 11 and id to 99
+    co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10)(0,11,99) ; 
+
+Coroutines can also change their thread by awaiting a thread index number:
+
+    Coro<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+
+		//do something until here ...
+
+		co_await 0;				//move this job to thread 0
+
+        float f = i + 0.5f;		//continue on thread 0
+        co_return 10.0f * i;
+    }
 
 
 ## Finishing and Continuing Jobs
-
-## Enforcing Specific Threads
 
 ## Never use Pointers and References to Local Variables in Functions - only in Coroutines!
 It is important to notice that running Functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parent Functions should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in the dependency tree, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures or heaps.
