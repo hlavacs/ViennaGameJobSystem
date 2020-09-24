@@ -64,9 +64,6 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
-    class Coro_promise_base;
-    void deallocator(Coro_promise_base* job);
-
     /**
     * \brief Base class of coroutine Coro_promise, derived from Job so it can be scheduled.
     * 
@@ -299,6 +296,9 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
+    template<typename T>
+    void coro_deallocator( Job_base *job) noexcept;
+
     /**
     * \brief Promise of the Coro. Depends on the return type.
     * 
@@ -317,6 +317,8 @@ namespace vgjs {
     public:
 
         Coro_promise() noexcept : Coro_promise_base{}, m_value{} {};
+
+        fptr get_deallocator() noexcept { return coro_deallocator<T>; };    //called for deallocation
 
         /**
         * \brief Get Coro coroutine future from promise.
@@ -355,19 +357,6 @@ namespace vgjs {
         T get() noexcept {      //return the stored m_value to the caller
             return m_value;
         }
-
-        /**
-        * \brief Deallocate the promise because the queue is shutting down
-        */
-        bool deallocate() noexcept {    //called when the job system is destroyed
-            auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
-
-            if (coro) {
-                coro.destroy();
-            }
-
-            return false;
-        };
 
         /**
         * \brief Return an awaitable from a tuple of vectors.
@@ -422,6 +411,15 @@ namespace vgjs {
             return {};
         }
     };
+
+    template<typename T>
+    inline void coro_deallocator( Job_base *job ) noexcept {    //called when the job system is destroyed
+        auto coro_promise = (Coro_promise<T>*)job;
+        auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+        if (coro) {
+            coro.destroy();
+        }
+    }
 
     //---------------------------------------------------------------------------------------------------
 

@@ -43,7 +43,7 @@ int main()
 
 	JobSystem::instance();
 
-	schedule( F(driver(50)) );
+	schedule( F(driver(100)) );
 
 	wait_for_termination();
 	std::cout << "Exit\n";

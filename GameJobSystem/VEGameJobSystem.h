@@ -39,6 +39,7 @@ namespace vgjs {
     #define FUNCTION(f) [=](){f;}    //wrapper over a lambda function holding function f and parameters
     #define F(f) [=](){f;}          //wrapper over a lambda function holding function f and parameters
 
+    class Job;
     class Job_base;
     class JobSystem;
 
@@ -86,6 +87,9 @@ namespace vgjs {
 
     //-----------------------------------------------------------------------------------------
 
+    typedef void (*fptr)(Job_base* job);
+    void job_deallocator(Job_base* job);
+
 
     /**
     * \brief Base class of coro task promises and jobs
@@ -105,7 +109,7 @@ namespace vgjs {
         virtual void operator() () noexcept {           //wrapper as function operator
             resume();
         }
-        virtual bool deallocate() noexcept { return false; };    //called for deallocation
+        virtual fptr get_deallocator() noexcept { return job_deallocator; };    //called for deallocation
         virtual bool is_job() noexcept { return false; }         //test whether this is a job or e.g. a coro
     };
 
@@ -137,6 +141,17 @@ namespace vgjs {
         bool deallocate() noexcept { return true; };  //assert this is a job so it has been created by the job system
         bool is_job() noexcept { return true;  };     //assert that this is a job
     };
+
+
+    /**
+    * \brief Deallocate a Job instance
+    * \param[in] job Pointer to the job
+    */
+    inline void job_deallocator(Job_base* job) {
+        std::pmr::polymorphic_allocator<Job> allocator(((Job*)job)->m_mr); //construct a polymorphic allocator
+        ((Job*)job)->~Job();                                          //call destructor
+        allocator.deallocate(((Job*)job), 1);                         //use pma to deallocate the memory
+    }
 
 
     struct JobLog {
@@ -174,25 +189,14 @@ namespace vgjs {
         JobQueue(const JobQueue<JOB>& queue) noexcept : m_head(nullptr), m_tail(nullptr), m_size(0) {};
 
         /**
-        * \brief Deallocate a Job instance
-        * \param[in] job Pointer to the job
-        */
-        inline void deallocate(Job* job) {
-            std::pmr::polymorphic_allocator<Job> allocator(job->m_mr); //construct a polymorphic allocator
-            job->~Job();                                          //call destructor
-            allocator.deallocate(job, 1);                         //use pma to deallocate the memory
-        }
-
-        /**
         * \brief Deallocate all Jobs in the queue
         */
         uint32_t clear() {
             uint32_t res = m_size;
             JOB* job = pop();                   //deallocate jobs that run a function
             while (job != nullptr) {            //because they were allocated by the JobSystem
-                if (job->deallocate()) {        //if this is a coro it will destroy itself and return false, a Job returns true
-                    deallocate((Job*)job);
-                }
+                auto deallocate = job->get_deallocator();
+                deallocate(job);
                 job = pop();
             }
             return res;
@@ -687,7 +691,8 @@ namespace vgjs {
         if (coro_finished) {
             int count = job->m_count.fetch_sub(1);
             if (count == 1) {      //if the Coro<T> has been destroyed then no one is waiting
-                job->deallocate();
+                fptr dealloc = job->get_deallocator();
+                dealloc(job);
             }
         }
     }
