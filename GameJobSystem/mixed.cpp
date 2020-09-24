@@ -36,8 +36,8 @@ namespace mixed {
     Coro<int> printDataCoro(int i, int id) {
         //std::cout << "Print Data Coro " << i << std::endl;
         if (i >0 ) {
-            co_await compute(i);
-            co_await FUNCTION( printData( i - 1, i+1 ) );
+            co_await compute(i)(-1, 5, 0);
+            co_await Function( F( printData( i - 1, i+1 ) ), -1, 1, 0);
             //co_await printDataCoro(i - 1, i + 1);
             //co_await printDataCoro(i - 1, i + 1);
         }
@@ -58,15 +58,19 @@ namespace mixed {
     }
 
 
-    void loop( int N) {
+    void loop( int i) {
 
-        for (int i = 0; i < N; ++i) {
-            //std::cout << "Loop " << i << std::endl;
+        if (i == 0) return;
 
-            auto f = printDataCoro(i,10);
-            schedule( f );
-            //std::this_thread::sleep_for(std::chrono::microseconds(1));
-        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(i));
+
+        std::cout << "Loop " << i << std::endl;
+
+        auto f = printDataCoro(i,10)(-1,2,0);
+        schedule( f );
+        //std::this_thread::sleep_for(std::chrono::microseconds(1));
+
+        continuation(Function(F(loop(i-1)), i-1, 4, 0));
 
     }
 
@@ -81,7 +85,7 @@ namespace mixed {
 
         //schedule( F(printData(i, -1)));
 
-        schedule(FUNCTION(loop(i)));
+        schedule( Function( F(loop(i)), i, 4, 0 ));
 
         //continuation( Function( F( vgjs::terminate() ), -1, 3, 0 ) );
     }
@@ -95,11 +99,13 @@ namespace mixed {
         types[1] = "printData";
         types[2] = "printDataCoro";
         types[3] = "terminate";
+        types[4] = "loop";
+        types[5] = "compute";
 
-        //JobSystem::instance()->enable_logging();
+        JobSystem::instance()->enable_logging();
 
-        //schedule( Function( FUNCTION(driver( 100 , "Driver")), -1, 0, 0 ) );
-        schedule( F( driver(50, "Driver") ) );
+        schedule( Function( F(driver( 8 , "Driver")), -1, 0, 0 ) );
+        //schedule( F( driver(4, "Driver") ) );
 
         std::cout << "Ending mixed test()\n";
 

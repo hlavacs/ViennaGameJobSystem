@@ -165,8 +165,9 @@ Coros can co_await a number of different types. Single types include
 * Function{} class
 * Coro<T> for any type T
 
-Since the coro suspends and awaits the finishing of its children, this would allow only 1 child to await. Thus, coros can additionally await std::pmr::vectors, or even std::tuples containing K std::pmr::vectors of the above types. This allows to start and await any number of children of arbitrary type.
+Since the coro suspends and awaits the finishing of its children, this would allow only 1 child to await. Thus, coros can additionally await std::pmr::vectors, or even std::tuples containing K std::pmr::vectors of the above types. This allows to start and await any number of children of arbitrary types. The following code shows how to start multiple children from a coro.
 
+    //A recursive coro
     Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
         if (i < N) {
             std::pmr::vector<Coro<int>> vec{ mr };
@@ -177,15 +178,18 @@ Since the coro suspends and awaits the finishing of its children, this would all
         co_return 0;
     }
 
+    //A coro returning a float
     Coro<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
         float f = i + 0.5f;
         co_return 10.0f * i;
     }
 
+    //A coro returning an int
     Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
         co_return 2 * i;
     }
 
+    //A coro awaiting an lvalue and using the return value
     Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
         auto tk1 = compute(std::allocator_arg, mr, 1);
         co_await tk1;
@@ -224,13 +228,13 @@ Since the coro suspends and awaits the finishing of its children, this would all
             jv.push_back( Function( F(FuncCompute(i)), -1, 0, 0) );
         }
         
-        co_await tv; //await all elements of the vector
+        co_await tv; //await all elements of the Coro<int> vector
         co_await tk; //await all elements of the vectors in the tuples
         co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10); //await the recursive calls
-        co_await F( FCompute(999) );			//await the function
-        co_await Function( F(FCompute(999)) );	//await the function
-        co_await fv; //await all elements of the vector
-        co_await jv; //await all elements of the vector
+        co_await F( FCompute(999) );			//await the function using std::function<void(void)>
+        co_await Function( F(FCompute(999)) );	//await the function using Function{}
+        co_await fv; //await all elements of the std::function<void(void)> vector
+        co_await jv; //await all elements of the Function{} vector
 
         co_return 0;
     }
@@ -258,6 +262,15 @@ Coroutines can also change their thread by awaiting a thread index number:
 
 
 ## Finishing and Continuing Jobs
+A job starting children defines a parent-child relationship with them. Since children can start children themselves, the result is a call tree of jobs running possibly in parallel on the CPU cores. In order to enable synchronization without blocking threads, the concept of "finishing" is introduced. 
+
+A parent synchronizes with its children through this non-blocking finishing process. If all children of a parent have finished and the parent additionally ends and returns, then it finishes itself. A job that finishes notifies it own parent of its finishing, thus enabling its parent to finish itself, and so on. This way, the event of finishing finally reaches the root of the job tree. 
+
+In C++ functions, children are started with the schedule() command, which is non-blocking. The waiting occurs after the parent function returns and ends itself. The job related to the parent remains in the system, and waits for its children to finish (if there are any). After finishing, the job notifies its own parent, and may start a continuation, which is another job that was previously defined by calling continuation(). 
+
+If the parent is a coro, then children are spawned by calling the co_await operator. Here the coro waits until all children have finished and resumes right after the co_await. Since the coro continues, it does not finish yet. Only after calling co_return, the coro finishes, and notifies its own parent. A coro should NOT call continuation()!
+
+
 
 ## Never use Pointers and References to Local Variables in Functions - only in Coroutines!
 It is important to notice that running Functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parent Functions should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in the dependency tree, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures or heaps.
@@ -266,14 +279,15 @@ When sharing global variables in Functions that might be changed by several jobs
 
 This does NOT apply to coroutines, since coroutines do not go out of context when running children. So coroutines CAN pass references or pointers to local varaiables!
 
-## Data Parallelism instead of Task Parallelism
+## Data Parallelism and Performance
 VGJS enables data parallel thinking since it enables focusing on data structures rather than tasks. The system assumes the use of many data structures that might or might not need computation. Data structures can be either global, or are organized as data streams that flow from one system to another system and get transformed in the process.
 
-## Performance and Granularity
-Since the VGJS incurs some overhead, jobs should not bee too small in order to enable some speedup. Depending on the CPU, job sizes in te order
-of 1-2 us seem to be enough to result in noticable speedups on a 4 core Intel i7 with 8 hardware threads. Smaller job sizes are course
-possible but should not occur too often.
+Since the VGJS incurs some overhead, jobs should not bee too small in order to enable some speedup. Depending on the CPU, job sizes in te order of 1-2 us seem to be enough to result in noticable speedups on a 4 core Intel i7 with 8 hardware threads. Smaller job sizes are course possible but should not occur too often.
 
 ## Logging Jobs
+Execution of jobs can be recorded in trace files compatible with the Google Chrome chrome://tracing/ viewer. Recoring can be switched on by calling enable_logging(). By calling disable_logging(), recording is stopped and the recorded data is saved to a file with name log.json. The available dump is also saved to file if the job system ends.
+
+The dump file can then be loaded in the Google Chrome chrome://tracing/ viewer. Just start Coogle Chrome and type in chrome://tracing/ in the search field. Click on the Load button and select the trace file.
+
 
 

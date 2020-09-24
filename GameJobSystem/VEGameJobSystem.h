@@ -424,8 +424,9 @@ namespace vgjs {
             static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
 
             thread_counter--;			                                    //count down
-            while (thread_counter.load() > 0)	                            //Continue only if all threads are running
-                std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+            while (thread_counter.load() > 0) {	                            //Continue only if all threads are running
+                //std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+            }
 
             uint32_t next = rand() % m_thread_count;
             thread_local uint32_t noop = NOOP;                               //number of empty loops until threads sleeps
@@ -873,11 +874,11 @@ namespace vgjs {
 
         std::stringstream time;
         time.precision(15);
-        time << ts / 1.0e6;
+        time << ts / 1.0e3;
 
         std::stringstream duration;
         duration.precision(15);
-        duration << dur / 1.0e6;
+        duration << dur / 1.0e3;
 
         out << "{";
         out << "\"cat\": " << cat << ", ";
@@ -905,15 +906,8 @@ namespace vgjs {
             outdata << "\"traceEvents\": [" << std::endl;
             bool comma = false;
             for (uint32_t i = 0; i < logs.size(); ++i) {
-                //if (i > 0 && logs[i - 1].empty()) comma = false;
-                //if (comma) outdata << "," << std::endl;
-                //comma = true;
-
-                //bool comma2 = false;
                 for (auto& ev : logs[i]) {
                     if (ev.m_t1 >= JobSystem::instance()->start_time() && ev.m_t2 >= ev.m_t1) {
-                        //if (comma2) outdata << "," << std::endl;
-                        //comma2 = true;
 
                         if (comma) outdata << "," << std::endl;
 
@@ -924,11 +918,10 @@ namespace vgjs {
                         save_job(outdata, "\"cat\"", 0, (uint32_t)ev.m_exec_thread,
                             std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t1 - JobSystem::instance()->start_time()).count(),
                             std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t2 - ev.m_t1).count(),
-                            "\"X\"", "\"" + name + "\"", "\"finished\": " + std::to_string(ev.m_finished));
+                            "\"X\"", "\"" + name + "\"", "\"id\": " + std::to_string(ev.m_id));
 
                         comma = true;
                     }
-                    //comma2 = false;
                 }
             }
             outdata << "]," << std::endl;
