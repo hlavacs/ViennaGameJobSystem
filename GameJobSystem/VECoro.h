@@ -106,7 +106,6 @@ namespace vgjs {
         */
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-            //std::cout << "Coro new1 " << sz << "\n";
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
             char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
             if (ptr == nullptr) {
