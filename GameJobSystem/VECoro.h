@@ -174,8 +174,6 @@ namespace vgjs {
         }
     };
 
-    template<typename T>
-    class Coro_promise;
 
     //---------------------------------------------------------------------------------------------------
 
@@ -191,16 +189,6 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
-    /**
-    * \brief Base class of awaiter, contains default behavior.
-    */
-    struct awaiter_base {
-        bool await_ready() noexcept {   //default: go on with suspension
-            return false;
-        }
-
-        void await_resume() noexcept {} //default: no return value
-    };
 
     /**
     * \brief Awaiter for awaiting a tuple of vector of Coros of type Coro<T> or std::function<void(void)>
@@ -212,7 +200,7 @@ namespace vgjs {
     template<typename... Ts>
     struct awaitable_tuple {
 
-        struct awaiter : awaiter_base {
+        struct awaiter : std::experimental::suspend_always {
             Coro_promise_base* m_promise;
             std::tuple<std::pmr::vector<Ts>...>& m_tuple;                //vector with all children to start
 
@@ -255,7 +243,7 @@ namespace vgjs {
     template<typename T>
     struct awaitable_coro {
 
-        struct awaiter : awaiter_base {
+        struct awaiter : std::experimental::suspend_always {
             Coro_promise_base* m_promise;
             T& m_child;      //child Coro
 
@@ -286,7 +274,7 @@ namespace vgjs {
     * \brief Awaiter for changing the thread that the job is run on
     */
     struct awaitable_resume_on {
-        struct awaiter : awaiter_base {
+        struct awaiter : std::experimental::suspend_always {
             Coro_promise_base*  m_promise;
             int32_t             m_thread_index;
 
@@ -419,7 +407,7 @@ namespace vgjs {
         * then the coro must destroy the promise itself by resuming the final awaiter.
         */
         template<typename U>
-        struct final_awaiter : public awaiter_base {
+        struct final_awaiter : public std::experimental::suspend_always {
             final_awaiter() noexcept {}
 
             void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
