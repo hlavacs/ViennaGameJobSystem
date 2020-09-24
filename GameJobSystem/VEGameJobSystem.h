@@ -301,8 +301,9 @@ namespace vgjs {
             if (job == nullptr ) {                                              //none found
                 std::pmr::polymorphic_allocator<Job> allocator(m_mr);           //use this allocator
                 job = allocator.allocate(1);                                    //allocate the object
-                if (job < (Job*)100) {
+                if (job == nullptr) {
                     std::cout << "No job available\n";
+                    std::terminate();
                 }
                 new (job) Job();                                                //call constructor
                 job->m_mr = m_mr;                                       //save memory resource for deallocation
@@ -321,6 +322,10 @@ namespace vgjs {
         Job* allocate_job( Function&& f) noexcept {
             Job* job            = allocate_job();
             job->m_function     = std::move(f.m_function);    //move the job
+            if (!job->m_function) {
+                std::cout << "Empty function\n";
+                std::terminate();
+            }
             job->m_thread_index = f.m_thread_index;
             job->m_type         = f.m_type;
             job->m_id           = f.m_id;

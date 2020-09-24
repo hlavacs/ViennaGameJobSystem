@@ -152,28 +152,38 @@ namespace coro {
     }
 
 
+    Coro<int> coroTest(int i);
 
-    Coro<int> coroTest1() {
-        std::cout << "Before coroTest1() " << std::endl;
-        co_await 1;
-        std::cout << "After coroTest1() " << std::endl;
+    Coro<int> coroTest1(int i) {
+        //std::cout << "Before coroTest1() " << std::endl;
+        //co_await 1;
+        //std::cout << "After coroTest1() " << std::endl;
+
+
+        if (i > 0) {
+            std::pmr::vector<Coro<int>> ch;
+
+            ch.push_back(coroTest(i));
+            ch.push_back(coroTest(i));
+            co_await ch;
+        }
 
         co_return 0;
     }
 
-    Coro<int> coroTest() {
-        std::cout << "Begin coroTest() " << std::endl;
-        co_await coroTest1()(-1,0,2);
-        std::cout << "End coroTest() " << std::endl;
+    Coro<int> coroTest(int i) {
+        //std::cout << "Begin coroTest() " << std::endl;
+        co_await 1; // coroTest1(i - 1)(-1, 0, 2);
+        //std::cout << "End coroTest() " << std::endl;
 
         co_return 0;
     }
 
 
     void driver() {
-        //schedule(coroTest()(-1,0,1));
+        schedule(coroTest(5)(-1,0,1));
 
-        schedule( loop(std::allocator_arg, &g_global_mem4, 1000) );
+        //schedule( loop(std::allocator_arg, &g_global_mem4, 1000) );
 
         //schedule( recursive2(std::allocator_arg, &g_global_mem4, 1, 18) );
 

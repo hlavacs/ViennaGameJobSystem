@@ -450,9 +450,9 @@ namespace vgjs {
         ~Coro() noexcept {
             if (m_coro ) { //do not ask for done()!
 
-                if ( current_job() != nullptr) { //m_coro.promise().m_coro_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
-                    if (!current_job()->is_job() ) { //!m_coro.promise().m_coro_parent->is_job()) {     //because they are in sync 
-                        m_coro.destroy();                           //if you do not want this then move Coro
+                if ( m_coro.promise().m_coro_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
+                    if ( !m_coro.promise().m_coro_parent->is_job()) {     //because they are in sync 
+                        //m_coro.destroy();                           //if you do not want this then move Coro
                     }
                     else {  //if the parent is a job+function, then the function often returns before the child finishes
                         int count = m_coro.promise().m_count.fetch_sub(1);
