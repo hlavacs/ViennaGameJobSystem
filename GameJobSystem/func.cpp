@@ -48,7 +48,7 @@ namespace func {
     }
 
     void driver(int i) {
-        std::cout << "Driver " << i << std::endl;
+        //std::cout << "Driver " << i << std::endl;
 
         schedule(Function{ F(printData(i)) });
 
@@ -59,7 +59,7 @@ namespace func {
     void test() {
         std::cout << "Starting func test()\n";
 
-        schedule( F(driver(15)) );
+        schedule( F(driver(20)) );
 
         std::cout << "Ending func test()\n";
     }

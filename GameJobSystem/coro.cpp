@@ -27,7 +27,7 @@ namespace coro {
         CoroClass( int nr ) : number(nr) {};
 
         Coro<int> Number10() {
-            std::cout << "Number x 10 = " << number * 10 << "\n";
+            //std::cout << "Number x 10 = " << number * 10 << "\n";
             co_return number * 10;
         }
 
@@ -45,7 +45,7 @@ namespace coro {
     }
 
     Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
-        std::cout << "Recursive " << i << " of " << N << std::endl;
+        //std::cout << "Recursive " << i << " of " << N << std::endl;
 
         if (i < N) {
             co_await recursive(std::allocator_arg, mr, i + 1, N);
@@ -57,8 +57,9 @@ namespace coro {
     Coro<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
         //co_await 0;
+
         float f = i + 0.5f;
-        std::cout << "ComputeF " << f << std::endl;
+        //std::cout << "ComputeF " << f << std::endl;
 
         co_return 10.0f * i;
     }
@@ -66,15 +67,15 @@ namespace coro {
 
     Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
-        co_await 1;
+        //co_await 1;
 
-        std::cout << "Compute " << i << std::endl;
+        //std::cout << "Compute " << i << std::endl;
 
         co_return 2 * i;
     }
 
     Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
-        std::cout << "DO Compute " << std::endl;
+        //std::cout << "DO Compute " << std::endl;
 
         auto tk1 = compute(std::allocator_arg, mr, 1);
 
@@ -84,16 +85,16 @@ namespace coro {
     }
 
     void FCompute( int i ) {
-        std::cout << "FCompute " << i << std::endl;
+        //std::cout << "FCompute " << i << std::endl;
     }
 
     void FuncCompute(int i) {
-        std::cout << "FuncCompute " << i << std::endl;
+        //std::cout << "FuncCompute " << i << std::endl;
     }
 
     Coro<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
-        std::cout << "Starting loop\n";
+        //std::cout << "Starting loop\n";
 
         CoroClass cc(99);
 
@@ -119,11 +120,11 @@ namespace coro {
             jv.push_back( Function( F(FuncCompute(i)), -1, 0, 0) );
         }
         
-        std::cout << "Before loop " << std::endl;
+        //std::cout << "Before loop " << std::endl;
 
         auto mf = cc.Number10();
         co_await mf;
-        std::cout << "Class member function " << mf.get() << std::endl;
+        //std::cout << "Class member function " << mf.get() << std::endl;
 
         co_await tv;
 
@@ -131,21 +132,21 @@ namespace coro {
 
         co_await recursive2(std::allocator_arg, &g_global_mem4, 1, 10);
 
-        std::cout << "Before First FCompute 999\n";
+        //std::cout << "Before First FCompute 999\n";
 
         co_await F( FCompute(999) );
 
-        std::cout << "After First FCompute 999\n";
+        //std::cout << "After First FCompute 999\n";
 
         co_await Function( F(FCompute(999)) );
 
-        std::cout << "After Second FCompute 999\n";
+        //std::cout << "After Second FCompute 999\n";
 
         co_await fv;
 
         co_await jv;
 
-        std::cout << "Ending loop " << std::endl;
+        //std::cout << "Ending loop " << std::endl;
 
         co_return sum;
     }

@@ -64,6 +64,9 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
+    class Coro_promise_base;
+    void deallocator(Coro_promise_base* job);
+
     /**
     * \brief Base class of coroutine Coro_promise, derived from Job so it can be scheduled.
     * 
@@ -74,7 +77,6 @@ namespace vgjs {
     */
     class Coro_promise_base : public Job_base {
     public:
-        std::atomic<int> m_count = 2;           //sync with parent if parent is a Job
         Job_base* m_coro_parent = nullptr;      //parent job that created this job
 
         Coro_promise_base() noexcept { m_continuation = this; };        //constructor
@@ -224,7 +226,6 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                //m_promise->m_children++;
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
                     std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple) ) , 0) ...}; //called for every tuple element
                 };
@@ -266,7 +267,6 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                //m_promise->m_children++;
                 schedule( std::forward<T>(m_child) );  //schedule the promise or function as job by calling the correct version
             }
 
@@ -296,8 +296,6 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 m_promise->m_thread_index = m_thread_index;
-                //m_promise->m_children++;
-                //JobSystem::instance()->schedule(m_promise);     //Job* is scheduled directly
             }
 
             awaiter(Coro_promise_base* promise, int32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
@@ -377,12 +375,7 @@ namespace vgjs {
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
 
             if (coro) {
-                if (m_parent != nullptr && m_parent->is_job()) {               //if the parent is a job
-                    int count = m_count.fetch_sub(1);
-                    if (count == 1) {      //if the Coro<T> has been destroyed then no one is waiting
-                        coro.destroy();
-                    }
-                }
+                coro.destroy();
             }
 
             return false;
@@ -429,11 +422,11 @@ namespace vgjs {
         struct final_awaiter : public awaiter_base {
             final_awaiter() noexcept {}
 
-            bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+            void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
                 auto& promise = h.promise();
                 promise.m_parent = promise.m_coro_parent;   //enable parent notification
                 promise.m_continuation = nullptr;           //disable the coro to continue
-                return true;  //if false then the coro frame is destroyed, but we might want to get the result first
+                return;  //if false then the coro frame is destroyed, but we might want to get the result first
             }
         };
 
@@ -472,8 +465,8 @@ namespace vgjs {
         ~Coro() noexcept {
             if (m_coro ) { //do not ask for done()!
 
-                if ( m_coro.promise().m_coro_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
-                    if ( !m_coro.promise().m_coro_parent->is_job()) {     //because they are in sync 
+                if ( current_job() != nullptr) { //m_coro.promise().m_coro_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
+                    if (!current_job()->is_job() ) { //!m_coro.promise().m_coro_parent->is_job()) {     //because they are in sync 
                         m_coro.destroy();                           //if you do not want this then move Coro
                     }
                     else {  //if the parent is a job+function, then the function often returns before the child finishes

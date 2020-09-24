@@ -61,7 +61,7 @@ namespace mixed {
     void loop( int N) {
 
         for (int i = 0; i < N; ++i) {
-            std::cout << "Loop " << i << std::endl;
+            //std::cout << "Loop " << i << std::endl;
 
             auto f = printDataCoro(i,10);
             schedule( f );
@@ -71,7 +71,7 @@ namespace mixed {
     }
 
     void driver(int i, std::string id) {
-        std::cout << "Driver " << i << std::endl;
+        //std::cout << "Driver " << i << std::endl;
         if (i == 0) {
             return;
         }

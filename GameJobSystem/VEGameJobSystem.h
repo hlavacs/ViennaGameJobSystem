@@ -96,6 +96,7 @@ namespace vgjs {
         std::atomic<int>    m_children = 0;             //number of children this job is waiting for
         Job_base*           m_parent = nullptr;         //parent job that created this job
         Job_base*           m_continuation = nullptr;   //continuation follows this job (a coro is its own continuation)
+        std::atomic<int>    m_count = 2;                //sync with parent if parent is a Job
         int32_t             m_thread_index = -1;        //thread that the job should run on and ran on
         int32_t             m_type = -1;
         int32_t             m_id = -1;
@@ -414,7 +415,7 @@ namespace vgjs {
         * \param[in] threadIndex Number of this thread
         */
         void thread_task(int32_t threadIndex = 0) noexcept {
-            constexpr uint32_t NOOP = 1000;                                   //number of empty loops until threads sleeps
+            constexpr uint32_t NOOP = 10;                                   //number of empty loops until threads sleeps
             m_thread_index = threadIndex;	                                //Remember your own thread index number
             static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
 
@@ -665,8 +666,6 @@ namespace vgjs {
         bool is_job = job->is_job();
         bool coro_finished = !job->is_job() && job->m_continuation == nullptr;
 
-        //std::cout << "Finishing job " << job->m_id << "\n";
-
         if (job->m_continuation != nullptr) {						 //is there a successor Job?
             
             if (job->is_job() && job->m_parent != nullptr) {         //is this a job and there is a parent?                
@@ -679,15 +678,16 @@ namespace vgjs {
         }
 
         if (job->m_parent != nullptr) {		//if there is parent then inform it	
-           child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
+            child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
         }
 
         if (is_job) {
             recycle((Job*)job);       //recycle the Job
         }
-        else {
-            if (coro_finished) {
-                job->deallocate();  //deallocate the coro
+        if (coro_finished) {
+            int count = job->m_count.fetch_sub(1);
+            if (count == 1) {      //if the Coro<T> has been destroyed then no one is waiting
+                job->deallocate();
             }
         }
     }
