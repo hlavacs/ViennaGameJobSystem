@@ -154,8 +154,10 @@ namespace coro {
 
     Coro<int> coroTest(int i);
 
+    std::atomic<uint32_t> cnt = 0;
+
     Coro<int> coroTest1(int i) {
-        std::cout << "Before coroTest1() " << std::endl;
+        //std::cout << "Before coroTest1() " << std::endl;
         //co_await 1;
 
         if (i > 0) {
@@ -166,15 +168,17 @@ namespace coro {
             co_await ch;
         }
 
-        std::cout << "After coroTest1() " << std::endl;
+        //std::cout << "After coroTest1() " << std::endl;
 
         co_return 0;
     }
 
     Coro<int> coroTest(int i) {
-        std::cout << "Begin coroTest() " << std::endl;
+        cnt++;
+
+        //std::cout << "Begin coroTest() " << std::endl;
         co_await coroTest1(i - 1)(-1, 0, 2);
-        std::cout << "End coroTest() " << std::endl;
+        //std::cout << "End coroTest() " << std::endl;
 
         co_return 0;
     }
@@ -184,13 +188,16 @@ namespace coro {
 
         co_await coroTest(i);
 
+        std::cout << "End coroTest() " << cnt << std::endl;
+
         co_return 0;
     }
 
 	void test() {
+        cnt = 0;
         std::cout << "Starting coro test()\n";
 
-        schedule( driver( 1) );
+        schedule( driver( 2 ) );
 
         std::cout << "Ending coro test()\n";
 

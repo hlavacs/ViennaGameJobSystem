@@ -19,6 +19,8 @@ namespace func {
 
     auto g_global_mem5 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 100000, .largest_required_pool_block = 1 << 22 }, std::pmr::new_delete_resource());
 
+    std::atomic<uint32_t> cnt = 0;
+
     void printData(int i);
 
     auto computeF(int i) {
@@ -41,6 +43,7 @@ namespace func {
     }
 
     void printData( int i ) {
+        cnt++;
         //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
             Function r{ F(compute(i)) };
@@ -66,12 +69,16 @@ namespace func {
 
 
     void test() {
+        cnt = 0;
         std::cout << "Starting func test()\n";
 
-        schedule( F(driver(20)) );
+        schedule( F(driver(11)) );
 
-        std::cout << "Ending func test()\n";
+        continuation( F( std::cout << "Ending func test() " << cnt << "\n" ) );
     }
+
+
+
 
 }
 

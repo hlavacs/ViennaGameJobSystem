@@ -411,10 +411,16 @@ namespace vgjs {
         * Note that a Job is also its own child, so it must have returned from
         * its function before on_finished() is called.
         */
-        inline bool child_finished(Job* job) noexcept {
+        inline bool child_finished(Job_base* job) noexcept {
             uint32_t num = job->m_children.fetch_sub(1);        //one less child
             if (num == 1) {                                     //was it the last child?
-                on_finished(job);                               //if yes then finish this job
+
+                if (job->is_job()) {
+                    on_finished((Job*)job);                           //if yes then finish this job
+                }
+                else {
+                    schedule(job);
+                }
                 return true;
             }
             return false;
@@ -479,16 +485,16 @@ namespace vgjs {
 
            std::cout << "Thread " << m_thread_index << " left " << m_thread_count << "\n";
 
-           std::cout << "Clear global\n";
+           //std::cout << "Clear global\n";
            m_global_queues[m_thread_index].clear(); //clear your global queue
-           std::cout << "Clear local\n";
+           //std::cout << "Clear local\n";
            m_local_queues[m_thread_index].clear();  //clear your local queue
 
            uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears recycle and garbage queues
            if (num == 1) {
-               std::cout << "Clear recycle\n";
+               //std::cout << "Clear recycle\n";
                m_recycle.clear();
-               std::cout << "Clear delete\n";
+               //std::cout << "Clear delete\n";
                m_delete.clear();
 
                if (m_logging) {         //dump trace file

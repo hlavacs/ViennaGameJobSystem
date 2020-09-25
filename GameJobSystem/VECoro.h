@@ -104,7 +104,7 @@ namespace vgjs {
         */
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-            std::cout << "Coro new " << sz << "\n";
+            //std::cout << "Coro new " << sz << "\n";
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
             char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
             if (ptr == nullptr) {
@@ -161,7 +161,7 @@ namespace vgjs {
         * \param[in] sz Number of bytes to deallocate
         */
         void operator delete(void* ptr, std::size_t sz) noexcept {
-            std::cout << "Coro delete " << sz << "\n";
+            //std::cout << "Coro delete " << sz << "\n";
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
             auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
             (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
@@ -442,12 +442,15 @@ namespace vgjs {
     public:
 
         using promise_type = Coro_promise<T>;
+        bool  m_parent_is_job = current_job() == nullptr || (current_job() != nullptr && current_job()->is_job());
 
     private:
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
-        Coro(Coro<T>&& t) noexcept : m_coro(std::exchange(t.m_coro, {})) {}
+        Coro(Coro<T>&& t)  noexcept : Coro_base(), m_coro(std::exchange(t.m_coro, {}))  {
+            m_parent_is_job = current_job() == nullptr || ( current_job() != nullptr && current_job()->is_job() );
+        }
         void operator= (Coro<T>&& t) { std::swap( m_coro, t.m_coro); }
 
         /**
@@ -456,8 +459,8 @@ namespace vgjs {
         * i.e. a Job.
         */
         ~Coro() noexcept {
-            if (m_coro && !(m_coro.promise().m_parent != nullptr && m_coro.promise().m_parent->is_job() ) ) {
-                m_coro.destroy();       //if you do not want this then move Coro
+            if (m_coro && !m_parent_is_job) {
+                m_coro.destroy();       //TODO CRASHES HERE
             }
         }
 
