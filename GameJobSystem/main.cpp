@@ -25,8 +25,8 @@ namespace mixed {
 
 void driver( int i ) {
 
-	coro::test();
-	//func::test();
+	//coro::test();
+	func::test();
 	//mixed::test();
 
 	if (i <= 1) {
@@ -43,7 +43,7 @@ int main()
 
 	JobSystem::instance();
 
-	//schedule( F(driver(100000)) );
+	schedule( F(driver(1)) );
 
 	wait_for_termination();
 	std::cout << "Exit\n";

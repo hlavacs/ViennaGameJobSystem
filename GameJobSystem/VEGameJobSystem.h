@@ -99,8 +99,6 @@ namespace vgjs {
         Job_base*           m_next = nullptr;           //next job in the queue
         std::atomic<int>    m_children = 0;             //number of children this job is waiting for
         Job_base*           m_parent = nullptr;         //parent job that created this job
-        Job_base*           m_continuation = nullptr;   //continuation follows this job (a coro is its own continuation)
-        std::atomic<int>    m_count = 2;                //sync with parent if parent is a Job
         int32_t             m_thread_index = -1;        //thread that the job should run on and ran on
         int32_t             m_type = -1;
         int32_t             m_id = -1;
@@ -119,8 +117,9 @@ namespace vgjs {
     */
     class Job : public Job_base {
     public:
-        std::pmr::memory_resource* m_mr = nullptr;  //memory resource that was used to allocate this Job
-        std::function<void(void)>  m_function;      //function to compute
+        std::pmr::memory_resource*  m_mr = nullptr;  //memory resource that was used to allocate this Job
+        Job_base*                   m_continuation = nullptr;   //continuation follows this job (a coro is its own continuation)
+        std::function<void(void)>   m_function;      //function to compute
 
         void reset() noexcept {         //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
@@ -399,7 +398,7 @@ namespace vgjs {
             wait_for_termination();
         };
 
-        void on_finished(Job_base* job) noexcept;            //called when the job finishes, i.e. all children have finished
+        void on_finished(Job* job) noexcept;            //called when the job finishes, i.e. all children have finished
 
         /**
         * \brief Child tells its parent that it has finished
@@ -410,7 +409,7 @@ namespace vgjs {
         * Note that a Job is also its own child, so it must have returned from
         * its function before on_finished() is called.
         */
-        inline bool child_finished(Job_base* job) noexcept {
+        inline bool child_finished(Job* job) noexcept {
             uint32_t num = job->m_children.fetch_sub(1);        //one less child
             if (num <= 1) {                                     //was it the last child?
                 on_finished(job);                               //if yes then finish this job
@@ -459,7 +458,9 @@ namespace vgjs {
                         log_data(t1, t2, m_thread_index, false, m_current_job->m_type, m_current_job->m_id);
                     }
 
-                    child_finished(m_current_job);                     //a coro might just be suspended by co_await
+                    if (m_current_job->is_job()) {
+                        child_finished((Job*)m_current_job);                     //a coro might just be suspended by co_await
+                    }
                 }
                 --noop;
                 if (noop == 0) {                //if none found too longs let thread sleep
@@ -672,9 +673,7 @@ namespace vgjs {
     * gets scheduled. Also the job's parent is notified of this new child.
     * Then, if there is a parent, the parent's child_finished() function is called.
     */
-    inline void JobSystem::on_finished(Job_base *job) noexcept {
-        bool is_job = job->is_job();
-        bool coro_finished = !job->is_job() && job->m_continuation == nullptr;
+    inline void JobSystem::on_finished(Job *job) noexcept {
 
         if (job->m_continuation != nullptr) {						 //is there a successor Job?
             
@@ -688,19 +687,10 @@ namespace vgjs {
         }
 
         if (job->m_parent != nullptr) {		//if there is parent then inform it	
-            child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
+            child_finished((Job*)job->m_parent);	//if this is the last child job then the parent will also finish
         }
 
-        if (is_job) {
-            recycle((Job*)job);       //recycle the Job
-        }
-        if (coro_finished) {
-            int count = job->m_count.fetch_sub(1);
-            if (count == 1) {      //if the Coro<T> has been destroyed then no one is waiting
-                fptr dealloc = job->get_deallocator();
-                dealloc(job);
-            }
-        }
+        recycle(job);       //recycle the Job
     }
 
 

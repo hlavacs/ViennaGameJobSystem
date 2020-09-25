@@ -46,7 +46,7 @@ namespace vgjs {
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
         }
-        coro.promise()->m_coro_parent = parent;
+        coro.promise()->m_parent = parent;
         JobSystem::instance()->schedule(coro.promise() );      //schedule the promise as job
     };
 
@@ -74,9 +74,7 @@ namespace vgjs {
     */
     class Coro_promise_base : public Job_base {
     public:
-        Job_base* m_coro_parent = nullptr;      //parent job that created this job
-
-        Coro_promise_base() noexcept { m_continuation = this; };        //constructor
+        Coro_promise_base() noexcept {};        //constructor
 
         /**
         * \brief Default behavior if an exception is not caught
@@ -334,7 +332,6 @@ namespace vgjs {
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
             if (coro) {
                 if (!coro.done()) {
-                    m_children = 1;
                     coro.resume();              //coro could destroy itself here!!
                 }
             }
@@ -400,8 +397,13 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
                 auto& promise = h.promise();
-                promise.m_parent = promise.m_coro_parent;   //enable parent notification
-                promise.m_continuation = nullptr;           //disable the coro to continue
+
+                if (promise.m_parent != nullptr) {
+                    uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
+                    if (num <= 1) {                                             //was it the last child?
+                        JobSystem::instance()->schedule(promise.m_parent);
+                    }
+                }
                 return;  //if false then the coro frame is destroyed, but we might want to get the result first
             }
         };
@@ -449,19 +451,7 @@ namespace vgjs {
         */
         ~Coro() noexcept {
             if (m_coro ) { //do not ask for done()!
-
-                if ( m_coro.promise().m_coro_parent != nullptr) {         //if the parent is a coro then destroy the coro, 
-                    if ( !m_coro.promise().m_coro_parent->is_job()) {     //because they are in sync 
-                        //m_coro.destroy();                           //if you do not want this then move Coro
-                    }
-                    else {  //if the parent is a job+function, then the function often returns before the child finishes
-                        int count = m_coro.promise().m_count.fetch_sub(1);
-                        if (count == 1) {       //if the coro is done, then destroy it
-                            m_coro.destroy();
-                        }
-                    }
-                }
-
+                m_coro.destroy();                           //if you do not want this then move Coro
             }
         }
 

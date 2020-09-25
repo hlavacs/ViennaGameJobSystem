@@ -19,15 +19,24 @@ namespace func {
 
     auto g_global_mem5 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 100000, .largest_required_pool_block = 1 << 22 }, std::pmr::new_delete_resource());
 
+    void printData(int i);
+
     auto computeF(int i) {
         //std::this_thread::sleep_for(std::chrono::microseconds(1));
+
+        //std::cout << "ComputeF " << i << "\n";
 
         return i * 10.0;
     }
 
     auto compute( int i ) {
         volatile auto x = 2 * i;
-        schedule(F(computeF(i)));
+        
+        schedule(F(printData(i - 1); ));
+        schedule(F(printData(i - 1); ));
+
+        continuation(F(computeF(i)));
+
         return x;
     }
 
@@ -36,8 +45,8 @@ namespace func {
         if (i > 0) {
             Function r{ F(compute(i)) };
             schedule( r );
-            schedule( F( printData(i-1); ) );
-            schedule( F( printData(i-1); ));
+            //schedule( F( printData(i-1); ) );
+            //schedule( F( printData(i-1); ));
         }
     }
 
