@@ -569,7 +569,7 @@ namespace vgjs {
         * \brief Schedule a job into the job system
         * \param[in] job A pointer to the job to schedule
         */
-        void schedule(Job_base* job) noexcept {
+        void schedule(Job_base* job ) noexcept {
             assert(job!=nullptr);
 
             if (job->m_thread_index < 0 || job->m_thread_index >= (int)m_thread_count ) {
@@ -584,11 +584,11 @@ namespace vgjs {
         * \brief Schedule a job into the job system.
         * \param[in] source An external source that is copied into the scheduled job.
         */
-        void schedule(Function&& source) noexcept {
+        void schedule(Function&& source, Job_base* parent = m_current_job) noexcept {
             Job *job = allocate_job( std::forward<Function>(source) );
-            job->m_parent = m_current_job;
-            if (m_current_job != nullptr) {         //if there is a parent, increase its number of children by one
-                m_current_job->m_children++;
+            job->m_parent = parent;
+            if (parent != nullptr) {         //if there is a parent, increase its number of children by one
+                parent->m_children++;
             }
             schedule(job);
         };
@@ -716,32 +716,32 @@ namespace vgjs {
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule( Function&& f ) noexcept {
-        JobSystem::instance()->schedule( std::forward<Function>(f) );
+    inline void schedule( Function&& f, Job_base* parent = current_job()) noexcept {
+        JobSystem::instance()->schedule( std::forward<Function>(f), parent );
     }
 
     /**
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule(Function& f) noexcept {
-        JobSystem::instance()->schedule(std::forward<Function>(f));
+    inline void schedule(Function& f, Job_base* parent = current_job()) noexcept {
+        JobSystem::instance()->schedule(std::forward<Function>(f), parent);
     }
 
     /**
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule( std::function<void(void)>&& f ) noexcept {
-        JobSystem::instance()->schedule(Function{ std::forward<Function>(f) }); // forward to the job system
+    inline void schedule( std::function<void(void)>&& f, Job_base* parent = current_job()) noexcept {
+        JobSystem::instance()->schedule(Function{ std::forward<Function>(f) }, parent); // forward to the job system
     };
 
     /**
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule(std::function<void(void)>& f) noexcept {
-        JobSystem::instance()->schedule(Function{ std::forward<Function>(f) });   // forward to the job system
+    inline void schedule(std::function<void(void)>& f, Job_base* parent = current_job()) noexcept {
+        JobSystem::instance()->schedule(Function{ std::forward<Function>(f) }, parent);   // forward to the job system
     };
 
 
@@ -750,9 +750,9 @@ namespace vgjs {
     * \param[in] functions A vector of functions to schedule
     */
     template<typename T>
-    inline void schedule( std::pmr::vector<T>& functions ) noexcept {
+    inline void schedule( std::pmr::vector<T>& functions, Job_base* parent = current_job() ) noexcept {
         for (auto& f : functions) {
-            schedule( std::forward<T>(f) );
+            schedule( std::forward<T>(f), parent );
         }
     };
 
