@@ -45,7 +45,7 @@ namespace coro {
     }
 
     Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
-        //std::cout << "Recursive " << i << " of " << N << std::endl;
+        std::cout << "Recursive " << i << " of " << N << std::endl;
 
         if (i < N) {
             co_await recursive(std::allocator_arg, mr, i + 1, N);
@@ -194,7 +194,10 @@ namespace coro {
 
         //co_await -1;
 
-        co_await coroTest(i);
+        //co_await coroTest(i);
+
+        co_await loop(std::allocator_arg, &g_global_mem4, i);
+
 
         std::cout << "End coroTest() " << cnt << std::endl;
 
@@ -205,7 +208,7 @@ namespace coro {
         cnt = 0;
         std::cout << "Starting coro test()\n";
 
-        schedule(driver(2));
+        schedule(driver(1000));
 
         std::cout << "Ending coro test()\n";
 

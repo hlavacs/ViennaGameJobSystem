@@ -226,8 +226,6 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                m_promise->m_children.fetch_add((int)m_number);       //protect the parent from detroying too early
-
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
                     std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), m_promise ) , 0) ...}; //called for every tuple element
                 };
