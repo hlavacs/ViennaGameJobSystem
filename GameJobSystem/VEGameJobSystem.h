@@ -121,9 +121,11 @@ namespace vgjs {
         Job_base*                   m_continuation = nullptr;   //continuation follows this job (a coro is its own continuation)
         std::function<void(void)>   m_function;      //function to compute
 
+        Job() : Job_base() { m_children = 1; }
+
         void reset() noexcept {         //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
-            m_children = 0;
+            m_children = 1;
             m_parent = nullptr;
             m_continuation = nullptr;
             m_thread_index = -1;
@@ -411,7 +413,7 @@ namespace vgjs {
         */
         inline bool child_finished(Job* job) noexcept {
             uint32_t num = job->m_children.fetch_sub(1);        //one less child
-            if (num <= 1) {                                     //was it the last child?
+            if (num == 1) {                                     //was it the last child?
                 on_finished(job);                               //if yes then finish this job
                 return true;
             }
@@ -448,17 +450,21 @@ namespace vgjs {
                     std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
 
                     if (is_logging()) {
-                        t1 = std::chrono::high_resolution_clock::now();	//time of finishing
+                        t1 = std::chrono::high_resolution_clock::now();	//time of finishing;
                     }
+
+                    auto is_job = m_current_job->is_job();
+                    auto type = m_current_job->m_type;
+                    auto id = m_current_job->m_id;
 
                     (*m_current_job)();                                    //if any job found execute it
 
                     if (is_logging()) {
                         t2 = std::chrono::high_resolution_clock::now();	//time of finishing
-                        log_data(t1, t2, m_thread_index, false, m_current_job->m_type, m_current_job->m_id);
+                        log_data(t1, t2, m_thread_index, false, type, id );
                     }
 
-                    if (m_current_job->is_job()) {
+                    if (is_job ) {
                         child_finished((Job*)m_current_job);                     //a coro might just be suspended by co_await
                     }
                 }
@@ -677,7 +683,7 @@ namespace vgjs {
 
         if (job->m_continuation != nullptr) {						 //is there a successor Job?
             
-            if (job->is_job() && job->m_parent != nullptr) {         //is this a job and there is a parent?                
+            if (job->m_parent != nullptr) {         //is this a job and there is a parent?                
                 job->m_parent->m_children++;
                 job->m_continuation->m_parent = job->m_parent;       //add successor as child to the parent
             }

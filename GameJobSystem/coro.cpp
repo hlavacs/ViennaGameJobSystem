@@ -155,10 +155,8 @@ namespace coro {
     Coro<int> coroTest(int i);
 
     Coro<int> coroTest1(int i) {
-        //std::cout << "Before coroTest1() " << std::endl;
+        std::cout << "Before coroTest1() " << std::endl;
         //co_await 1;
-        //std::cout << "After coroTest1() " << std::endl;
-
 
         if (i > 0) {
             std::pmr::vector<Coro<int>> ch;
@@ -168,33 +166,31 @@ namespace coro {
             co_await ch;
         }
 
+        std::cout << "After coroTest1() " << std::endl;
+
         co_return 0;
     }
 
     Coro<int> coroTest(int i) {
-        //std::cout << "Begin coroTest() " << std::endl;
-        co_await 1; // coroTest1(i - 1)(-1, 0, 2);
-        //std::cout << "End coroTest() " << std::endl;
+        std::cout << "Begin coroTest() " << std::endl;
+        co_await coroTest1(i - 1)(-1, 0, 2);
+        std::cout << "End coroTest() " << std::endl;
 
         co_return 0;
     }
 
 
-    void driver() {
-        schedule(coroTest(5)(-1,0,1));
+    Coro<int> driver( int i) {
 
-        //schedule( loop(std::allocator_arg, &g_global_mem4, 1000) );
+        co_await coroTest(i);
 
-        //schedule( recursive2(std::allocator_arg, &g_global_mem4, 1, 18) );
-
-        //schedule( compute(std::allocator_arg, &g_global_mem4, 90) );
-
+        co_return 0;
     }
 
 	void test() {
         std::cout << "Starting coro test()\n";
 
-        schedule( Function( F( driver()), -1, 0, 0 ));
+        schedule( driver( 1) );
 
         std::cout << "Ending coro test()\n";
 

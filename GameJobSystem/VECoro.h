@@ -104,6 +104,7 @@ namespace vgjs {
         */
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
+            std::cout << "Coro new " << sz << "\n";
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
             char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
             if (ptr == nullptr) {
@@ -151,7 +152,6 @@ namespace vgjs {
         */
         template<typename... Args>
         void* operator new(std::size_t sz, Args&&... args) noexcept {
-            //std::cout << "Coro new2 " << sz << "\n";
             return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
         }
 
@@ -161,7 +161,7 @@ namespace vgjs {
         * \param[in] sz Number of bytes to deallocate
         */
         void operator delete(void* ptr, std::size_t sz) noexcept {
-            //std::cout << "Coro delete " << sz << "\n";
+            std::cout << "Coro delete " << sz << "\n";
             auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
             auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
             (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
@@ -278,6 +278,7 @@ namespace vgjs {
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
                 m_promise->m_thread_index = m_thread_index;
+                JobSystem::instance()->schedule( m_promise );
             }
 
             awaiter(Coro_promise_base* promise, int32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
@@ -330,10 +331,8 @@ namespace vgjs {
         */
         bool resume() noexcept {
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
-            if (coro) {
-                if (!coro.done()) {
-                    coro.resume();              //coro could destroy itself here!!
-                }
+            if (coro && !coro.done()) {
+                coro.resume();              //coro could destroy itself here!!
             }
             return true;
         };
@@ -395,16 +394,23 @@ namespace vgjs {
         struct final_awaiter : public std::experimental::suspend_always {
             final_awaiter() noexcept {}
 
-            void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+            bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
                 auto& promise = h.promise();
 
-                if (promise.m_parent != nullptr) {
-                    uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
-                    if (num <= 1) {                                             //was it the last child?
-                        JobSystem::instance()->schedule(promise.m_parent);
+                bool ret = true;
+                if (promise.m_parent != nullptr ) {
+                    if (promise.m_parent->is_job()) {
+                        JobSystem::instance()->child_finished((Job*)promise.m_parent);
+                        ret = false;
+                    }
+                    else {
+                        uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
+                        if (num == 1) {                                             //was it the last child?
+                            JobSystem::instance()->schedule(promise.m_parent);
+                        }
                     }
                 }
-                return;  //if false then the coro frame is destroyed, but we might want to get the result first
+                return ret;
             }
         };
 
@@ -450,8 +456,8 @@ namespace vgjs {
         * i.e. a Job.
         */
         ~Coro() noexcept {
-            if (m_coro ) { //do not ask for done()!
-                m_coro.destroy();                           //if you do not want this then move Coro
+            if (m_coro && !(m_coro.promise().m_parent != nullptr && m_coro.promise().m_parent->is_job() ) ) {
+                m_coro.destroy();       //if you do not want this then move Coro
             }
         }
 
@@ -490,10 +496,8 @@ namespace vgjs {
         * \brief Resume the coro at its suspension point
         */
         bool resume() noexcept {    //resume the Coro by calling resume() on the handle
-            if (m_coro) {
-                if (!m_coro.done()) {
-                    m_coro.promise().resume();
-                }
+            if (m_coro && !m_coro.done()) {
+                m_coro.resume();
             }
             return true;
         };

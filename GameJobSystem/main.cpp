@@ -25,8 +25,8 @@ namespace mixed {
 
 void driver( int i ) {
 
-	//coro::test();
-	func::test();
+	coro::test();
+	//func::test();
 	//mixed::test();
 
 	if (i <= 1) {
