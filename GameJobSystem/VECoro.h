@@ -34,13 +34,16 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
+    template<typename T>
+    concept CORO = std::is_base_of<Coro_base, T>::value;
+
     /**
     * \brief Schedule a Coro into the job system.
     * Basic function for scheduling a coroutine Coro into the job system.
     * \param[in] coro A coroutine Coro, whose promise is a job that is scheduled into the job system
     */
     template<typename T>
-    requires (std::is_base_of<Coro_base, T>::value)
+    requires CORO<T>   
     void schedule( T& coro, Job_base* parent = current_job()) noexcept {
         if (parent != nullptr) {
             parent->m_children++;                               //await the completion of all children      
@@ -55,7 +58,7 @@ namespace vgjs {
     * \param[in] coro A coroutine Coro, whose promise is a job that is scheduled into the job system
     */
     template<typename T>
-    requires (std::is_base_of<Coro_base, T>::value)
+    requires CORO<T>
     void schedule( T&& coro, Job_base* parent = current_job()) noexcept {
         schedule(coro, parent);
     };
@@ -65,7 +68,7 @@ namespace vgjs {
     * \param[in] functions A vector of functions to schedule
     */
     template<typename T>
-    requires (std::is_base_of<Coro_base, T>::value)
+    requires CORO<T>
     inline void schedule(std::pmr::vector<T>& coros, Job_base* parent = current_job()) noexcept {
         if (parent != nullptr) {
             parent->m_children.fetch_add((int)coros.size());       //await the completion of all children      
@@ -212,17 +215,19 @@ namespace vgjs {
         struct awaiter : std::experimental::suspend_always {
             Coro_promise_base* m_promise;
             std::tuple<std::pmr::vector<Ts>...>& m_tuple;                //vector with all children to start
+            std::size_t m_number = 0;
 
             bool await_ready() noexcept {                                 //suspend only if there are no Coros
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::size_t num = 0;
-                    std::initializer_list<int>{ ( num += std::get<Idx>(m_tuple).size(), 0) ...}; //called for every tuple element
-                    return (num == 0);
+                    std::initializer_list<int>{ (m_number += std::get<Idx>(m_tuple).size(), 0) ...}; //called for every tuple element
+                    return (m_number == 0);
                 };
                 return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+                m_promise->m_children.fetch_add((int)m_number);       //protect the parent from detroying too early
+
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
                     std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), m_promise ) , 0) ...}; //called for every tuple element
                 };
@@ -463,9 +468,7 @@ namespace vgjs {
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
-        Coro(Coro<T>&& t)  noexcept : Coro_base(), m_coro(std::exchange(t.m_coro, {}))  {
-            m_parent_is_job = current_job() == nullptr || ( current_job() != nullptr && current_job()->is_job() );
-        }
+        Coro(Coro<T>&& t)  noexcept : Coro_base(), m_coro(std::exchange(t.m_coro, {}))  {}
         void operator= (Coro<T>&& t) { std::swap( m_coro, t.m_coro); }
 
         /**
@@ -475,7 +478,7 @@ namespace vgjs {
         */
         ~Coro() noexcept {
             if (m_coro && !m_parent_is_job) {
-                m_coro.destroy();       //TODO CRASHES HERE
+                m_coro.destroy(); 
             }
         }
 
