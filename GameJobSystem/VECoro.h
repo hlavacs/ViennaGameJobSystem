@@ -446,7 +446,7 @@ namespace vgjs {
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
-        explicit Coro(std::experimental::coroutine_handle<promise_type> h, std::promise<T> &promise) noexcept 
+        explicit Coro(std::experimental::coroutine_handle<promise_type> h, std::promise<T> &promise) noexcept
             : m_coro(h) {
             m_future = promise.get_future();
         }
@@ -466,7 +466,7 @@ namespace vgjs {
         * \returns the promised value or std::nullopt
         */
         std::optional<T> get() noexcept {
-            if (!ready()) {
+            if (!is_ready()) {
                 return std::nullopt;
             }
             return std::optional<T>{ m_future.get() };
@@ -476,7 +476,7 @@ namespace vgjs {
             return m_future.valid();
         }
 
-        bool ready() noexcept {
+        bool is_ready() noexcept {
             return m_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
         }
 
