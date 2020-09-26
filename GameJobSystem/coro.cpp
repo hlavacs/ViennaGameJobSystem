@@ -81,7 +81,7 @@ namespace coro {
 
         co_await tk1;
 
-        co_return tk1.get();
+        co_return 0;
     }
 
     void FCompute( int i ) {
@@ -126,7 +126,9 @@ namespace coro {
         if (printb) std::cout << "Before loop " << std::endl;
 
         auto mf = cc.Number10();
+
         co_await mf;
+
         if (printb) std::cout << "Class member function " << mf.get() << std::endl;
 
         co_await tv;
@@ -185,9 +187,9 @@ namespace coro {
     Coro<int> coroTest(int i) {
         cnt++;
 
-        std::cout << "Begin coroTest() " << std::endl;
+        //std::cout << "Begin coroTest() " << std::endl;
         co_await coroTest1(i - 1)(-1, 0, 2);
-        std::cout << "End coroTest() " << std::endl;
+        //std::cout << "End coroTest() " << std::endl;
 
         co_return cnt;
     }
@@ -218,7 +220,7 @@ namespace coro {
         //auto dr = driver(4);  //this starts a new tree
         //dr.resume();
 
-        schedule(driver(1));
+        schedule(driver(10));
 
         std::cout << "Ending coro test()\n";
 

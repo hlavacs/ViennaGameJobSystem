@@ -43,7 +43,7 @@ namespace func {
     }
 
     void printData( int i ) {
-        std::cout << "Print Data " << i << std::endl;
+        //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
             cnt++;
             Function r{ F(compute(i)) };

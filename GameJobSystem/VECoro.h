@@ -318,11 +318,11 @@ namespace vgjs {
         template<typename U> friend class Coro;
 
     private:
-        T m_value{};                    //the value that should be returned
-
+        //T               m_value{};                    //the value that should be returned
+        std::promise<T> m_promise;
     public:
 
-        Coro_promise() noexcept : Coro_promise_base{}, m_value{} {};
+        Coro_promise() noexcept : Coro_promise_base{}{};
 
         fptr get_deallocator() noexcept { return coro_deallocator<T>; };    //called for deallocation
 
@@ -331,7 +331,7 @@ namespace vgjs {
         * \returns the Coro future from the promise.
         */
         Coro<T> get_return_object() noexcept {
-            return Coro<T>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) };
+            return Coro<T>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), m_promise };
         }
 
         /**
@@ -350,15 +350,7 @@ namespace vgjs {
         * \param[in] t The value that was returned.
         */
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
-            m_value = t;
-        }
-
-        /**
-        * \brief Return the store value.
-        * \returns the stored value.
-        */
-        T get() noexcept {      //return the stored m_value to the caller
-            return m_value;
+            m_promise.set_value(t);
         }
 
         /**
@@ -405,11 +397,9 @@ namespace vgjs {
             bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
                 auto& promise = h.promise();
 
-                bool ret = true;
                 if (promise.m_parent != nullptr ) {
                     if (promise.m_parent->is_job()) {
                         JobSystem::instance()->child_finished((Job*)promise.m_parent);
-                        ret = false;
                     }
                     else {
                         uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
@@ -418,7 +408,7 @@ namespace vgjs {
                         }
                     }
                 }
-                return ret;
+                return false;
             }
         };
 
@@ -450,34 +440,46 @@ namespace vgjs {
     public:
 
         using promise_type = Coro_promise<T>;
-        bool  m_parent_is_null = (current_job() == nullptr);
-        bool  m_parent_is_job = (current_job() != nullptr && current_job()->is_job());
+        std::future<T>  m_future;
 
     private:
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
-        explicit Coro(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
-        Coro(Coro<T>&& t)  noexcept : Coro_base(), m_coro(std::exchange(t.m_coro, {}))  {}
+        explicit Coro(std::experimental::coroutine_handle<promise_type> h, std::promise<T> &promise) noexcept 
+            : m_coro(h) {
+            m_future = promise.get_future();
+        }
+
+        Coro(Coro<T>&& t)  noexcept 
+            : Coro_base(), m_coro(std::exchange(t.m_coro, {})), m_future(std::exchange(t.m_future, {})) {}
+
         void operator= (Coro<T>&& t) { std::swap( m_coro, t.m_coro); }
 
         /**
-        * \brief Destructor of the Coro promise. Might deallocate the promise,
-        * if the promise has finished. This is done only if the parent is a normal function,
-        * i.e. a Job.
+        * \brief Destructor of the Coro promise. 
         */
-        ~Coro() noexcept {
-            if (m_coro && !( m_parent_is_null || m_parent_is_job) ) {
-                m_coro.destroy(); 
-            }
-        }
+        ~Coro() noexcept {}
 
         /**
-        * \brief Retrieve the promised value
-        * \returns the value that is stored by this Coro future.
+        * \brief Retrieve the promised value or block until the value is here
+        * \returns the promised value or block until the value is here
         */
-        T get() noexcept {                  //
-            return m_coro.promise().get();
+        T get() noexcept {
+            return m_future.get();
+        }
+
+        bool valid() noexcept {
+            return m_future.valid();
+        }
+
+        bool ready() noexcept {
+            return m_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+        }
+
+        template< class Rep, class Period >
+        bool wait_for(const std::chrono::duration<Rep, Period>& duration ) noexcept {
+            return m_future.wait_for(duration);
         }
 
         /**
