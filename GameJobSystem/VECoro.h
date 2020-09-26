@@ -44,9 +44,9 @@ namespace vgjs {
     */
     template<typename T>
     requires CORO<T>   
-    void schedule( T& coro, Job_base* parent = current_job()) noexcept {
+    void schedule( T& coro, Job_base* parent = current_job(), int32_t children = 1) noexcept {
         if (parent != nullptr) {
-            parent->m_children++;                               //await the completion of all children      
+            parent->m_children.fetch_add((int)children);       //await the completion of all children      
         }
         coro.promise()->m_parent = parent;
         JobSystem::instance()->schedule(coro.promise() );      //schedule the promise as job
@@ -59,26 +59,10 @@ namespace vgjs {
     */
     template<typename T>
     requires CORO<T>
-    void schedule( T&& coro, Job_base* parent = current_job()) noexcept {
-        schedule(coro, parent);
+    void schedule( T&& coro, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        schedule(coro, parent, children);
     };
 
-    /**
-    * \brief Schedule functions into the system. T can be a Function, std::function or a task<U>
-    * \param[in] functions A vector of functions to schedule
-    */
-    template<typename T>
-    requires CORO<T>
-    inline void schedule(std::pmr::vector<T>& coros, Job_base* parent = current_job()) noexcept {
-        if (parent != nullptr) {
-            parent->m_children.fetch_add((int)coros.size());       //await the completion of all children      
-        }
-
-        for (auto& coro : coros) {
-            coro.promise()->m_parent = parent;
-            JobSystem::instance()->schedule(coro.promise());      //schedule the promise as job
-        }
-    };
 
     //---------------------------------------------------------------------------------------------------
 
@@ -226,9 +210,15 @@ namespace vgjs {
             }
 
             void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ ( schedule( std::get<Idx>(m_tuple), m_promise ) , 0) ...}; //called for every tuple element
+                auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
+                    schedule(vec, m_promise, (int)m_number);
+                    m_number = 0;
                 };
+
+                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
+                    std::initializer_list<int>{ ( g(std::get<Idx>(m_tuple)) , 0) ...}; //called for every tuple element
+                };
+
                 f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
             }
 

@@ -717,8 +717,8 @@ namespace vgjs {
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule( Function&& f, Job_base* parent = current_job()) noexcept {
-        if (parent != nullptr) { parent->m_children++; }
+    inline void schedule( Function&& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
         JobSystem::instance()->schedule( std::forward<Function>(f), parent );
     }
 
@@ -726,8 +726,8 @@ namespace vgjs {
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule(Function& f, Job_base* parent = current_job()) noexcept {
-        if (parent != nullptr) { parent->m_children++; }
+    inline void schedule(Function& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
         JobSystem::instance()->schedule(std::forward<Function>(f), parent);
     }
 
@@ -735,8 +735,8 @@ namespace vgjs {
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule( std::function<void(void)>&& f, Job_base* parent = current_job()) noexcept {
-        if (parent != nullptr) { parent->m_children++; }
+    inline void schedule( std::function<void(void)>&& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
         JobSystem::instance()->schedule(Function{ std::forward<Function>(f) }, parent); // forward to the job system
     };
 
@@ -744,8 +744,8 @@ namespace vgjs {
     * \brief Schedule a function into the system.
     * \param[in] f A function to schedule
     */
-    inline void schedule(std::function<void(void)>& f, Job_base* parent = current_job()) noexcept {
-        if (parent != nullptr) { parent->m_children++; }
+    inline void schedule(std::function<void(void)>& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
         JobSystem::instance()->schedule(Function{ std::forward<Function>(f) }, parent);   // forward to the job system
     };
 
@@ -755,12 +755,16 @@ namespace vgjs {
     * \param[in] functions A vector of functions to schedule
     */
     template<typename T>
-    inline void schedule( std::pmr::vector<T>& functions, Job_base* parent = current_job() ) noexcept {
+    inline void schedule( std::pmr::vector<T>& functions, Job_base* parent = current_job(), int32_t children = -1) noexcept {
+        
+        if (children < 0) { 
+            children = (int)functions.size(); 
+        }
 
-        if (parent != nullptr) { parent->m_children.fetch_add((int)functions.size()); }
+        if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
 
         for (auto& f : functions) {
-            JobSystem::instance()->schedule( std::forward<T>(f), parent );
+            schedule( std::forward<T>(f), parent, 0 ); //might call the coro version, so do not call job system here!
         }
     };
 
