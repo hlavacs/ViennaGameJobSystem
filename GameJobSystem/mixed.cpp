@@ -111,7 +111,7 @@ namespace mixed {
 
         //JobSystem::instance()->enable_logging();
 
-        schedule( Function( F(driver( 4000 , "Driver")), -1, 0, 0 ) );
+        schedule( Function( F(driver( 4 , "Driver")), -1, 0, 0 ) );
         //schedule( F( driver(4, "Driver") ) );
 
         std::cout << "Ending mixed test()\n";
