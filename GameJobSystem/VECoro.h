@@ -319,7 +319,6 @@ namespace vgjs {
         template<typename U> friend class Coro;
 
     private:
-        //T               m_value{};                    //the value that should be returned
         std::promise<T> m_promise;
     public:
 
