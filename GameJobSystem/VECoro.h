@@ -10,6 +10,7 @@
 #include <future>
 #include <vector>
 #include <functional>
+#include <optional>
 #include <condition_variable>
 #include <queue>
 #include <map>
@@ -465,8 +466,11 @@ namespace vgjs {
         * \brief Retrieve the promised value or block until the value is here
         * \returns the promised value or block until the value is here
         */
-        T get() noexcept {
-            return m_future.get();
+        std::optional<T> get() noexcept {
+            if (!ready()) {
+                return std::nullopt;
+            }
+            return std::optional<T>{ m_future.get() };
         }
 
         bool valid() noexcept {

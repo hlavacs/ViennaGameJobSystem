@@ -129,7 +129,7 @@ namespace coro {
 
         co_await mf;
 
-        if (printb) std::cout << "Class member function " << mf.get() << std::endl;
+        if (printb) std::cout << "Class member function " << mf.get().value() << std::endl;
 
         co_await tv;
 
