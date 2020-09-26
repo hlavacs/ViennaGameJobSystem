@@ -45,7 +45,7 @@ namespace coro {
     }
 
     Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
-        std::cout << "Recursive " << i << " of " << N << std::endl;
+        //std::cout << "Recursive " << i << " of " << N << std::endl;
 
         if (i < N) {
             co_await recursive(std::allocator_arg, mr, i + 1, N);
@@ -94,7 +94,10 @@ namespace coro {
 
     Coro<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
-        std::cout << "Starting loop\n";
+
+        bool printb = false;
+
+        if(printb) std::cout << "Starting loop\n";
 
         CoroClass cc(99);
 
@@ -120,11 +123,11 @@ namespace coro {
             jv.push_back( Function( F(FuncCompute(i)), -1, 0, 0) );
         }
         
-        std::cout << "Before loop " << std::endl;
+        if (printb) std::cout << "Before loop " << std::endl;
 
         auto mf = cc.Number10();
         co_await mf;
-        std::cout << "Class member function " << mf.get() << std::endl;
+        if (printb) std::cout << "Class member function " << mf.get() << std::endl;
 
         co_await tv;
 
@@ -132,21 +135,21 @@ namespace coro {
 
         co_await recursive2(std::allocator_arg, &g_global_mem4, 1, 10);
 
-        std::cout << "Before First FCompute 999\n";
+        if (printb) std::cout << "Before First FCompute 999\n";
 
         co_await F( FCompute(999) );
 
-        std::cout << "After First FCompute 999\n";
+        if (printb) std::cout << "After First FCompute 999\n";
 
         co_await Function( F(FCompute(999)) );
 
-        std::cout << "After Second FCompute 999\n";
+        if (printb) std::cout << "After Second FCompute 999\n";
 
         co_await fv;
 
         co_await jv;
 
-        std::cout << "Ending loop " << std::endl;
+        if (printb) std::cout << "Ending loop " << std::endl;
 
         co_return sum;
     }
@@ -182,9 +185,9 @@ namespace coro {
     Coro<int> coroTest(int i) {
         cnt++;
 
-        //std::cout << "Begin coroTest() " << std::endl;
+        std::cout << "Begin coroTest() " << std::endl;
         co_await coroTest1(i - 1)(-1, 0, 2);
-        //std::cout << "End coroTest() " << std::endl;
+        std::cout << "End coroTest() " << std::endl;
 
         co_return 0;
     }
@@ -194,9 +197,9 @@ namespace coro {
 
         //co_await -1;
 
-        //co_await coroTest(i);
+        co_await coroTest(i);
 
-        co_await loop(std::allocator_arg, &g_global_mem4, i);
+        //co_await loop(std::allocator_arg, &g_global_mem4, i);
 
 
         std::cout << "End coroTest() " << cnt << std::endl;
@@ -208,7 +211,10 @@ namespace coro {
         cnt = 0;
         std::cout << "Starting coro test()\n";
 
-        schedule(driver(1000));
+        //auto dr = driver(4);  //this starts a new tree
+        //dr.resume();
+
+        schedule(driver(10));
 
         std::cout << "Ending coro test()\n";
 

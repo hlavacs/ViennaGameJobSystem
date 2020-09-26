@@ -43,9 +43,9 @@ namespace func {
     }
 
     void printData( int i ) {
-        cnt++;
-        //std::cout << "Print Data " << i << std::endl;
+        std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
+            cnt++;
             Function r{ F(compute(i)) };
             schedule( r );
             //schedule( F( printData(i-1); ) );
@@ -60,9 +60,9 @@ namespace func {
     }
 
     void driver(int i) {
-        //std::cout << "Driver " << i << std::endl;
+        std::cout << "Driver " << i << std::endl;
 
-        schedule(Function{ F(printData(i)) });
+        schedule(Function{ F(printData(i)) } );
 
         //schedule(FUNCTION(loop(100000)));
     }
