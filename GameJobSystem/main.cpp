@@ -25,8 +25,8 @@ namespace mixed {
 
 void driver( int i ) {
 
-	//vgjs::schedule( F(coro::test()) );
-	vgjs::schedule ( F(func::test()) );
+	vgjs::schedule( F(coro::test()) );
+	//vgjs::schedule ( F(func::test()) );
 	//vgjs::schedule( F(mixed::test()) );
 
 	if (i <= 1) {

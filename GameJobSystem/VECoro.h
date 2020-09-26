@@ -450,12 +450,14 @@ namespace vgjs {
     public:
 
         using promise_type = Coro_promise<T>;
-        bool  m_parent_is_job = current_job() == nullptr || (current_job() != nullptr && current_job()->is_job());
+        bool  m_parent_is_null = (current_job() == nullptr);
+        bool  m_parent_is_job = (current_job() != nullptr && current_job()->is_job());
 
     private:
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
+        explicit Coro(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
         Coro(Coro<T>&& t)  noexcept : Coro_base(), m_coro(std::exchange(t.m_coro, {}))  {}
         void operator= (Coro<T>&& t) { std::swap( m_coro, t.m_coro); }
 
@@ -465,7 +467,7 @@ namespace vgjs {
         * i.e. a Job.
         */
         ~Coro() noexcept {
-            if (m_coro && !m_parent_is_job) {
+            if (m_coro && !( m_parent_is_null || m_parent_is_job) ) {
                 m_coro.destroy(); 
             }
         }
@@ -511,7 +513,6 @@ namespace vgjs {
             return true;
         };
 
-        explicit Coro(std::experimental::coroutine_handle<promise_type> h) noexcept : m_coro(h) {}
     };
 
 }

@@ -189,7 +189,7 @@ namespace coro {
         co_await coroTest1(i - 1)(-1, 0, 2);
         std::cout << "End coroTest() " << std::endl;
 
-        co_return 0;
+        co_return cnt;
     }
 
 
@@ -199,12 +199,16 @@ namespace coro {
 
         co_await coroTest(i);
 
+        //auto ct = coroTest(i);  //this starts a new tree
+        //ct.resume();
+
+
         //co_await loop(std::allocator_arg, &g_global_mem4, i);
 
 
         std::cout << "End coroTest() " << cnt << std::endl;
 
-        co_return 0;
+        co_return 99;
     }
 
 	void test() {
@@ -214,7 +218,7 @@ namespace coro {
         //auto dr = driver(4);  //this starts a new tree
         //dr.resume();
 
-        schedule(driver(10));
+        schedule(driver(1));
 
         std::cout << "Ending coro test()\n";
 
