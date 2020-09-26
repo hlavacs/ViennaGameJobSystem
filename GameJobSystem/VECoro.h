@@ -463,8 +463,8 @@ namespace vgjs {
         ~Coro() noexcept {}
 
         /**
-        * \brief Retrieve the promised value or block until the value is here
-        * \returns the promised value or block until the value is here
+        * \brief Retrieve the promised value or std::nullopt - nonblocking
+        * \returns the promised value or std::nullopt
         */
         std::optional<T> get() noexcept {
             if (!ready()) {
