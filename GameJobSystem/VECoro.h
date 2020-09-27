@@ -333,6 +333,37 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
+    template<typename T, typename Enable >
+    class Coro_return;
+
+
+    template<typename T>
+    class Coro_return<T, std::enable_if_t< !std::is_void_v<T> >> : public Coro_promise_base {
+    public:
+        std::promise<T> m_promise;
+
+        Coro_return() noexcept : Coro_promise_base{} {};
+
+        void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
+            m_promise.set_value(t);
+        }
+    };
+
+
+    template<typename T>
+    class Coro_return<T, std::enable_if_t< std::is_void_v<T> >> : public Coro_promise_base {
+    public:
+        std::promise<bool> m_promise;
+
+        Coro_return() noexcept : Coro_promise_base{} {};
+
+        void return_void() noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
+            m_promise.set_value(true);
+        }
+
+    };
+
+
     /**
     * \brief Promise of the Coro. Depends on the return type.
     * 
