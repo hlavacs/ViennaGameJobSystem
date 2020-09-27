@@ -23,9 +23,13 @@
 
 namespace vgjs {
 
+    class Coro_promise_base;
+    template<typename T> class Coro_promise;
+    template<> class Coro_promise<void>;
+
     class Coro_base;
     template<typename T> class Coro;
-    class Coro_promise_base;
+    template<> class Coro<void>;
 
     template<typename>
     struct is_pmr_vector : std::false_type {};
@@ -314,12 +318,9 @@ namespace vgjs {
     */
     template<typename T>
     class Coro_promise : public Coro_promise_base {
-        template<typename U> struct final_awaiter;
-        template<typename U> friend struct final_awaiter;
-        template<typename U> friend class Coro;
-
     private:
         std::promise<T> m_promise;
+
     public:
 
         Coro_promise() noexcept : Coro_promise_base{}{};
