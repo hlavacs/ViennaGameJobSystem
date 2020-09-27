@@ -162,7 +162,7 @@ namespace coro {
     std::atomic<uint32_t> cnt = 0;
 
 
-    Coro<int> coroTest2(int i) {
+    Coro<bool> coroTest2(int i) {
         if (i > 0) {
             std::pmr::vector<Coro<int>> ch;
 
@@ -170,7 +170,7 @@ namespace coro {
             ch.push_back(coroTest(i));
             co_await ch;
         }
-        co_return 0;
+        co_return true;
     }
 
     Coro<int> coroTest1(int i) {

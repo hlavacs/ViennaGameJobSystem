@@ -333,36 +333,6 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
-    template<typename T, typename Enable >
-    class Coro_return;
-
-
-    template<typename T>
-    class Coro_return<T, std::enable_if_t< !std::is_void_v<T> >> : public Coro_promise_base {
-    public:
-        std::promise<T> m_promise;
-
-        Coro_return() noexcept : Coro_promise_base{} {};
-
-        void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
-            m_promise.set_value(t);
-        }
-    };
-
-
-    template<typename T>
-    class Coro_return<T, std::enable_if_t< std::is_void_v<T> >> : public Coro_promise_base {
-    public:
-        std::promise<bool> m_promise;
-
-        Coro_return() noexcept : Coro_promise_base{} {};
-
-        void return_void() noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
-            m_promise.set_value(true);
-        }
-
-    };
-
 
     /**
     * \brief Promise of the Coro. Depends on the return type.
@@ -370,13 +340,11 @@ namespace vgjs {
     * The Coro promise can hold values that are produced by the Coro. They can be
     * retrieved later by calling get() on the Coro (which calls get() on the promise)
     */
-    template<typename T = void>
+    template<typename T>
     class Coro_promise : public Coro_promise_base {
     private:
 
-        using value_type = typename std::conditional< std::is_void_v<T>, bool, T>::type;
-
-        std::promise<value_type> m_promise;
+        std::promise<T> m_promise;
 
     public:
 
@@ -388,15 +356,15 @@ namespace vgjs {
         * \brief Get Coro coroutine future from promise.
         * \returns the Coro future from the promise.
         */
-        Coro<value_type> get_return_object() noexcept {
-            return Coro<value_type>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), m_promise };
+        Coro<T> get_return_object() noexcept {
+            return Coro<T>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), m_promise };
         }
 
         /**
         * \brief Resume the Coro at its suspension point.
         */
         bool resume() noexcept {
-            auto coro = std::experimental::coroutine_handle<Coro_promise<value_type>>::from_promise(*this);
+            auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
             if (coro && !coro.done()) {
                 coro.resume();              //coro could destroy itself here!!
             }
@@ -407,15 +375,9 @@ namespace vgjs {
         * \brief Store the value returned by co_return.
         * \param[in] t The value that was returned.
         */
-        template<typename = std::enable_if_t< !std::is_void_v<T> >>
-        void return_value(value_type t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
+        void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
             m_promise.set_value(t);
         }
-
-        /*template<typename = std::enable_if_t< std::is_void_v<T> >>
-        void return_void() noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
-            m_promise.set_value(true);
-        }*/
 
         /**
         * \brief Return an awaitable from a tuple of vectors.
@@ -444,12 +406,10 @@ namespace vgjs {
             return { this, (int32_t)thread_index };
         }
 
-        final_awaiter<value_type> final_suspend() noexcept { //create the final awaiter at the final suspension point
+        final_awaiter<T> final_suspend() noexcept { //create the final awaiter at the final suspension point
             return {};
         }
     };
-
-
 
     //---------------------------------------------------------------------------------------------------
 
