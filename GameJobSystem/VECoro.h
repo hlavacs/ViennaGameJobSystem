@@ -29,13 +29,16 @@ namespace vgjs {
 
     class Coro_base;
     template<typename T> class Coro;
-    template<> class Coro<void>;
 
     template<typename>
     struct is_pmr_vector : std::false_type {};
 
     template<typename T>
     struct is_pmr_vector<std::pmr::vector<T>> : std::true_type {};
+
+    template<typename T>
+    void coro_deallocator(Job_base* job) noexcept;
+
 
     //---------------------------------------------------------------------------------------------------
 
@@ -176,17 +179,6 @@ namespace vgjs {
     };
 
 
-    //---------------------------------------------------------------------------------------------------
-
-    /**
-    * \brief Base class of coroutine Coro. Independent of promise return type.
-    */
-    class Coro_base {
-    public:
-        Coro_base() noexcept {};                                              //constructor
-        virtual bool resume() noexcept { return true; };                     //resume the Coro
-        virtual Coro_promise_base* promise() noexcept { return nullptr; };   //get the promise to use it as Job 
-    };
 
     //---------------------------------------------------------------------------------------------------
 
@@ -305,10 +297,41 @@ namespace vgjs {
         awaiter operator co_await() noexcept { return { m_promise, m_thread_index }; };
     };
 
-    //---------------------------------------------------------------------------------------------------
 
-    template<typename T>
-    void coro_deallocator( Job_base *job) noexcept;
+    /**
+    * \brief When a coroutine reaches its end, it may suspend a last time using such a final awaiter
+    *
+    * Suspending as last act prevents the promise to be destroyed. This way the caller
+    * can retrieve the stored value by calling get(). Also we want to resume the parent
+    * if all children have finished their Coros.
+    * If the parent was a Job, then if the Coro<T> is still alive, the coro will suspend,
+    * and the Coro<T> must destroy the promise in its destructor. If the Coro<T> has destructed,
+    * then the coro must destroy the promise itself by resuming the final awaiter.
+    */
+    template<typename U>
+    struct final_awaiter : public std::experimental::suspend_always {
+        final_awaiter() noexcept {}
+
+        bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+            auto& promise = h.promise();
+
+            if (promise.m_parent != nullptr) {
+                if (promise.m_parent->is_job()) {
+                    JobSystem::instance()->child_finished((Job*)promise.m_parent);
+                }
+                else {
+                    uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
+                    if (num == 1) {                                             //was it the last child?
+                        JobSystem::instance()->schedule(promise.m_parent);
+                    }
+                }
+            }
+            return false;
+        }
+    };
+
+
+    //---------------------------------------------------------------------------------------------------
 
     /**
     * \brief Promise of the Coro. Depends on the return type.
@@ -316,10 +339,13 @@ namespace vgjs {
     * The Coro promise can hold values that are produced by the Coro. They can be
     * retrieved later by calling get() on the Coro (which calls get() on the promise)
     */
-    template<typename T>
+    template<typename T = void>
     class Coro_promise : public Coro_promise_base {
     private:
-        std::promise<T> m_promise;
+
+        using value_type = typename std::conditional< std::is_void_v<T>, bool, T>::type;
+
+        std::promise<value_type> m_promise;
 
     public:
 
@@ -331,15 +357,15 @@ namespace vgjs {
         * \brief Get Coro coroutine future from promise.
         * \returns the Coro future from the promise.
         */
-        Coro<T> get_return_object() noexcept {
-            return Coro<T>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), m_promise };
+        Coro<value_type> get_return_object() noexcept {
+            return Coro<value_type>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), m_promise };
         }
 
         /**
         * \brief Resume the Coro at its suspension point.
         */
         bool resume() noexcept {
-            auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
+            auto coro = std::experimental::coroutine_handle<Coro_promise<value_type>>::from_promise(*this);
             if (coro && !coro.done()) {
                 coro.resume();              //coro could destroy itself here!!
             }
@@ -350,9 +376,15 @@ namespace vgjs {
         * \brief Store the value returned by co_return.
         * \param[in] t The value that was returned.
         */
-        void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
+        template<typename = std::enable_if_t< !std::is_void_v<T> >>
+        void return_value(value_type t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
             m_promise.set_value(t);
         }
+
+        /*template<typename = std::enable_if_t< std::is_void_v<T> >>
+        void return_void() noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
+            m_promise.set_value(true);
+        }*/
 
         /**
         * \brief Return an awaitable from a tuple of vectors.
@@ -381,42 +413,14 @@ namespace vgjs {
             return { this, (int32_t)thread_index };
         }
 
-        /**
-        * \brief When a coroutine reaches its end, it may suspend a last time using such a final awaiter
-        *
-        * Suspending as last act prevents the promise to be destroyed. This way the caller
-        * can retrieve the stored value by calling get(). Also we want to resume the parent
-        * if all children have finished their Coros.
-        * If the parent was a Job, then if the Coro<T> is still alive, the coro will suspend,
-        * and the Coro<T> must destroy the promise in its destructor. If the Coro<T> has destructed,
-        * then the coro must destroy the promise itself by resuming the final awaiter.
-        */
-        template<typename U>
-        struct final_awaiter : public std::experimental::suspend_always {
-            final_awaiter() noexcept {}
-
-            bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
-                auto& promise = h.promise();
-
-                if (promise.m_parent != nullptr ) {
-                    if (promise.m_parent->is_job()) {
-                        JobSystem::instance()->child_finished((Job*)promise.m_parent);
-                    }
-                    else {
-                        uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
-                        if (num == 1) {                                             //was it the last child?
-                            JobSystem::instance()->schedule(promise.m_parent);
-                        }
-                    }
-                }
-                return false;
-            }
-        };
-
-        final_awaiter<T> final_suspend() noexcept { //create the final awaiter at the final suspension point
+        final_awaiter<value_type> final_suspend() noexcept { //create the final awaiter at the final suspension point
             return {};
         }
     };
+
+
+
+    //---------------------------------------------------------------------------------------------------
 
     template<typename T>
     inline void coro_deallocator( Job_base *job ) noexcept {    //called when the job system is destroyed
@@ -428,6 +432,17 @@ namespace vgjs {
     }
 
     //---------------------------------------------------------------------------------------------------
+
+    /**
+    * \brief Base class of coroutine Coro. Independent of promise return type.
+    */
+    class Coro_base {
+    public:
+        Coro_base() noexcept {};                                              //constructor
+        virtual bool resume() noexcept { return true; };                     //resume the Coro
+        virtual Coro_promise_base* promise() noexcept { return nullptr; };   //get the promise to use it as Job 
+    };
+
 
     /**
     * \brief The main Coro class. Can be constructed to return any value type
