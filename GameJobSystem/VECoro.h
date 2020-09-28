@@ -176,6 +176,7 @@ namespace vgjs {
             auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
             (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
         }
+
     };
 
 
@@ -298,6 +299,29 @@ namespace vgjs {
     };
 
 
+    template<typename U>
+    struct yield_awaiter : public std::experimental::suspend_always {
+        yield_awaiter() noexcept {}
+
+        void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+            auto& promise = h.promise();
+
+            if (promise.m_parent != nullptr) {
+                if (promise.m_parent->is_job()) {
+                    JobSystem::instance()->child_finished((Job*)promise.m_parent);
+                }
+                else {
+                    uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
+                    if (num == 1) {                                             //was it the last child?
+                        JobSystem::instance()->schedule(promise.m_parent);
+                    }
+                }
+            }
+            return;
+        }
+    };
+
+
     /**
     * \brief When a coroutine reaches its end, it may suspend a last time using such a final awaiter
     *
@@ -344,7 +368,7 @@ namespace vgjs {
     class Coro_promise : public Coro_promise_base {
     private:
 
-        std::promise<T> m_promise;
+        std::shared_ptr<std::optional<T>> m_value;
 
     public:
 
@@ -357,13 +381,16 @@ namespace vgjs {
         * \returns the Coro future from the promise.
         */
         Coro<T> get_return_object() noexcept {
-            return Coro<T>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), m_promise };
+            m_value = std::make_shared<std::optional<T>>(std::nullopt);
+            return Coro<T>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), m_value };
         }
 
         /**
         * \brief Resume the Coro at its suspension point.
         */
         bool resume() noexcept {
+            *m_value = std::nullopt;
+
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
             if (coro && !coro.done()) {
                 coro.resume();              //coro could destroy itself here!!
@@ -376,7 +403,12 @@ namespace vgjs {
         * \param[in] t The value that was returned.
         */
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
-            m_promise.set_value(t);
+            *m_value = t;
+        }
+
+        yield_awaiter<T> yield_value(T t) {
+            *m_value = t;
+            return {};
         }
 
         /**
@@ -447,19 +479,18 @@ namespace vgjs {
     public:
 
         using promise_type = Coro_promise<T>;
-        std::future<T>  m_future;
+        std::shared_ptr<std::optional<T>> m_value;
 
     private:
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
-        explicit Coro(std::experimental::coroutine_handle<promise_type> h, std::promise<T> &promise) noexcept
-            : m_coro(h) {
-            m_future = promise.get_future();
+        explicit Coro(std::experimental::coroutine_handle<promise_type> h, std::shared_ptr<std::optional<T>>& value) noexcept
+            : m_coro(h), m_value(value) {
         }
 
         Coro(Coro<T>&& t)  noexcept 
-            : Coro_base(), m_coro(std::exchange(t.m_coro, {})), m_future(std::exchange(t.m_future, {})) {}
+            : Coro_base(), m_coro(std::exchange(t.m_coro, {})), m_value(std::exchange(t.m_value, {})) {}
 
         void operator= (Coro<T>&& t) { std::swap( m_coro, t.m_coro); }
 
@@ -472,24 +503,21 @@ namespace vgjs {
         * \brief Retrieve the promised value or std::nullopt - nonblocking
         * \returns the promised value or std::nullopt
         */
-        std::optional<T> get() noexcept {
-            if (!is_ready()) {
-                return std::nullopt;
-            }
-            return std::optional<T>{ m_future.get() };
+        std::optional<T>& get() noexcept {
+            return *m_value;
         }
 
         bool valid() noexcept {
-            return m_future.valid();
+            return m_value != std::nullopt;
         }
 
         bool is_ready() noexcept {
-            return m_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+            return m_value != std::nullopt;
         }
 
         template< class Rep, class Period >
         bool wait_for(const std::chrono::duration<Rep, Period>& duration ) noexcept {
-            return m_future.wait_for(duration);
+            return is_ready();
         }
 
         /**
@@ -520,7 +548,7 @@ namespace vgjs {
         */
         bool resume() noexcept {    //resume the Coro by calling resume() on the handle
             if (m_coro && !m_coro.done()) {
-                m_coro.resume();
+                m_coro.promise().resume();
             }
             return true;
         };

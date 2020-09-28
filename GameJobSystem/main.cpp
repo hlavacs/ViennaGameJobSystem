@@ -26,8 +26,8 @@ namespace mixed {
 void driver( int i ) {
 
 	vgjs::schedule( F(coro::test()) );
-	vgjs::schedule ( F(func::test()) );
-	vgjs::schedule( F(mixed::test()) );
+	//vgjs::schedule ( F(func::test()) );
+	//vgjs::schedule( F(mixed::test()) );
 
 	if (i <= 1) {
 		vgjs::continuation(F(std::cout << "terminate()\n";  vgjs::terminate(); ));
@@ -43,7 +43,7 @@ int main()
 
 	JobSystem::instance();
 
-	schedule( F(driver(5000)) );
+	schedule( F(driver(10)) );
 
 	wait_for_termination();
 	std::cout << "Exit\n";
