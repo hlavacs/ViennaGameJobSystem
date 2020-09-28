@@ -211,13 +211,13 @@ namespace coro {
         co_await yt;
         std::cout << "Yielding " << yt.get().value() << "\n";
 
-        //co_await coroTest(i);
+        co_await coroTest(i);
 
         //auto ct = coroTest(i);  //this starts a new tree
         //ct.resume();
 
 
-        //co_await loop(std::allocator_arg, &g_global_mem4, i);
+        co_await loop(std::allocator_arg, &g_global_mem4, i);
 
 
         std::cout << "End coroTest() " << cnt << std::endl;
