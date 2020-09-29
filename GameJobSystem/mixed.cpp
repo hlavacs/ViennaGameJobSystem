@@ -71,7 +71,7 @@ namespace mixed {
 
         //std::this_thread::sleep_for(std::chrono::milliseconds(i));
 
-        std::cout << "Loop " << i << std::endl;
+        //std::cout << "Loop " << i << std::endl;
 
         auto f = printDataCoro(5,10)(-1,2,0);
         schedule( f );

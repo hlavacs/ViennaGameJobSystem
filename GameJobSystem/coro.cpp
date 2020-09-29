@@ -218,10 +218,10 @@ namespace coro {
         auto* pyt = coro_queue.pop();
 
         g_yt_in = i;
-        co_await *pyt;
-        std::cout << "Yielding " << yt.get().value() << "\n";
+        //co_await *pyt;
+        //std::cout << "Yielding " << yt.get().value() << "\n";
 
-        //co_await coroTest(i);
+       co_await coroTest(i);
 
         //auto ct = coroTest(i);  //this starts a new tree
         //ct.resume();
