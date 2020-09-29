@@ -366,7 +366,7 @@ namespace vgjs {
             auto& promise = h.promise();
 
             if (promise.m_parent != nullptr) {          //if there is a parent
-                if (promise.m_is_parent_job) {       //if it is a Job
+                if (promise.m_is_parent_function) {       //if it is a Job
                     JobSystem::instance()->child_finished((Job*)promise.m_parent); //indicate that this child has finished
                 }
                 else {  //parent is a coro
@@ -403,7 +403,7 @@ namespace vgjs {
             auto& promise = h.promise();
 
             if (promise.m_parent != nullptr) {          //if there is a parent
-                if (promise.m_is_parent_job) {       //if it is a Job
+                if (promise.m_is_parent_function) {       //if it is a Job
                     JobSystem::instance()->child_finished((Job*)promise.m_parent);//indicate that this child has finished
                 }
                 else {
@@ -413,7 +413,7 @@ namespace vgjs {
                     }
                 }
             }
-            return !promise.m_is_parent_job;
+            return !promise.m_is_parent_function;
         }
     };
 
@@ -434,7 +434,7 @@ namespace vgjs {
         template<typename T> friend class Coro;
 
     private:
-        bool m_is_parent_job = current_job()==nullptr ? true : current_job()->is_job();
+        bool m_is_parent_function = current_job()==nullptr ? true : current_job()->is_function();
         std::shared_ptr<std::optional<T>> m_value_ptr;  //a shared view of the return value
         T m_value;
 
@@ -452,20 +452,20 @@ namespace vgjs {
         * \returns the Coro<T> from the promise.
         */
         Coro<T> get_return_object() noexcept {
-            if (m_is_parent_job) {
+            if (m_is_parent_function) {
                 m_value_ptr = std::make_shared<std::optional<T>>(std::nullopt);
             }
 
             return Coro<T>{ 
                 std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), 
-                    m_value_ptr, m_is_parent_job };
+                    m_value_ptr, m_is_parent_function };
         }
 
         /**
         * \brief Resume the Coro at its suspension point.
         */
         bool resume() noexcept {
-            if (m_is_parent_job) {
+            if (m_is_parent_function) {
                 *m_value_ptr = std::nullopt;
             }
 
@@ -481,7 +481,7 @@ namespace vgjs {
         * \param[in] t The value that was returned.
         */
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
-            if (m_is_parent_job) {
+            if (m_is_parent_function) {
                 *m_value_ptr = t;
                 return;
             }
@@ -493,7 +493,7 @@ namespace vgjs {
         * \param[in] t The value that was yielded.
         */
         yield_awaiter<T> yield_value(T t) {
-            if (m_is_parent_job) {
+            if (m_is_parent_function) {
                 *m_value_ptr = t;
             }
             else {
@@ -577,7 +577,7 @@ namespace vgjs {
     public:
 
         using promise_type = Coro_promise<T>;
-        bool m_is_parent_job;
+        bool m_is_parent_function;
         std::shared_ptr<std::optional<T>> m_value_ptr;
 
     private:
@@ -591,9 +591,9 @@ namespace vgjs {
         * \param[in] value Shared value to trade the results
         */
         explicit Coro(  std::experimental::coroutine_handle<promise_type> h, 
-                        std::shared_ptr<std::optional<T>>& value_ptr, bool is_parent_job ) noexcept
-                            : m_coro(h), m_is_parent_job(is_parent_job) {
-            if (m_is_parent_job) {
+                        std::shared_ptr<std::optional<T>>& value_ptr, bool is_parent_function ) noexcept
+                            : m_coro(h), m_is_parent_function(is_parent_function) {
+            if (m_is_parent_function) {
                 m_value_ptr = value_ptr;
             }
         }
@@ -605,7 +605,7 @@ namespace vgjs {
         Coro(Coro<T>&& t)  noexcept
             : Coro_base(), m_coro(std::exchange(t.m_coro, {})), 
                 m_value_ptr(std::exchange(t.m_value_ptr, {})), 
-                m_is_parent_job(std::exchange(t.m_is_parent_job, {})) {}
+            m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {}
 
         void operator= (Coro<T>&& t) { std::swap( m_coro, t.m_coro); }
 
@@ -613,7 +613,7 @@ namespace vgjs {
         * \brief Destructor of the Coro promise. 
         */
         ~Coro() noexcept {
-            if (!m_is_parent_job && m_coro) {
+            if (!m_is_parent_function && m_coro) {
                 m_coro.destroy();
             }
         }
@@ -623,7 +623,7 @@ namespace vgjs {
         * \returns the promised value or std::nullopt
         */
         std::optional<T> get() noexcept {
-            if (m_is_parent_job) {
+            if (m_is_parent_function) {
                 return *m_value_ptr;
             }
             return std::optional<T>(m_coro.promise().m_value);

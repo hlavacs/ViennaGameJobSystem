@@ -108,7 +108,7 @@ namespace vgjs {
             resume();
         }
         virtual fptr get_deallocator() noexcept { return job_deallocator; };    //called for deallocation
-        virtual bool is_job() noexcept { return false; }         //test whether this is a job or e.g. a coro
+        virtual bool is_function() noexcept { return false; }         //test whether this is a function or e.g. a coro
     };
 
 
@@ -140,7 +140,7 @@ namespace vgjs {
         }
 
         bool deallocate() noexcept { return true; };  //assert this is a job so it has been created by the job system
-        bool is_job() noexcept { return true;  };     //assert that this is a job
+        bool is_function() noexcept { return true;  };     //assert that this is a job
     };
 
 
@@ -422,7 +422,7 @@ namespace vgjs {
             uint32_t num = job->m_children.fetch_sub(1);        //one less child
             if (num == 1) {                                     //was it the last child?
 
-                if (job->is_job()) {            //Jobs call always on_finished()
+                if (job->is_function()) {            //Jobs call always on_finished()
                     on_finished((Job*)job);     //if yes then finish this job
                 }
                 else {
@@ -464,7 +464,7 @@ namespace vgjs {
                         t1 = std::chrono::high_resolution_clock::now();	//time of finishing;
                     }
 
-                    auto is_job = m_current_job->is_job();      //save certain info since a coro might be destroyed
+                    auto is_function = m_current_job->is_function();      //save certain info since a coro might be destroyed
                     auto type = m_current_job->m_type;
                     auto id = m_current_job->m_id;
 
@@ -475,7 +475,7 @@ namespace vgjs {
                         log_data(t1, t2, m_thread_index, false, type, id );
                     }
 
-                    if (is_job ) {
+                    if (is_function) {
                         child_finished((Job*)m_current_job);  //a job always finishes itself, a coro will deal with this itself
                     }
                 }
@@ -612,7 +612,7 @@ namespace vgjs {
         */
         void continuation( Function&& f ) noexcept {
             Job_base* current = current_job();
-            if (current == nullptr || !current->is_job()) {
+            if (current == nullptr || !current->is_function()) {
                 return;
             }
             ((Job*)current)->m_continuation = allocate_job(std::forward<Function>(f));
