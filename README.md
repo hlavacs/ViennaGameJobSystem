@@ -115,16 +115,16 @@ Function parameters should always be copied (see below)! Functions can also be m
 ## Coroutines
 The second type of task to be scheduled are coroutines. 
 Coroutines can suspend their function body (and return to the caller), and later on resume them where they had left. Any function that uses the keywords co_await, co_yield, or co_return is a coroutine (see e.g. https://lewissbaker.github.io/). 
-In this case, in order to be compatible with the job system, coroutines must be of type Coro<T>, where T is any type to be computed. T must be copyable, refernces can be wrapped e.g. into std::ref. 
+In this case, in order to be compatible with the job system, coroutines must be of type Coro\<T\>, where T is any type to be computed. T must be copyable, refernces can be wrapped e.g. into std::ref. 
 
 Note: At the moment, T cannot be void, and the coroutine must return a result.
 
-An instance of Coro<T> acts like a future, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling get(). Since the result may not be ready when get() is called, get() actually returns a std::optional<T>&, and you can check whether the result is already there.
+An instance of Coro\<T\> acts like a future, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling get(). Since the result may not be ready when get() is called, get() actually returns a std::optional\<T\>&, and you can check whether the result is already there.
 
 Note: do not keep this reference, since its source can go out of scope in the future. 
 
-Additionally to this future, also a promise of type Coro_promise<T> is allocated from the heap.
-The promise stores the coro's state and suspend points. Since this allocation is more expensive than getting memory from the stack, it is possible to pass in a pointer to a std::pmr::memory_resource to be used for allocation. A Coro_promise that reaches its end point automatically destroys. The Coro<T> still can access the return value because this value is kept in a std::shared_ptr<std::optional<T>>, not in the Coro_promise<T> itself.
+Additionally to this future, also a promise of type Coro_promise\<T\> is allocated from the heap.
+The promise stores the coro's state and suspend points. Since this allocation is more expensive than getting memory from the stack, it is possible to pass in a pointer to a std::pmr::memory_resource to be used for allocation. A Coro_promise\<T\> that reaches its end point automatically destroys. The Coro\<T\> still can access the return value because this value is kept in a std::shared_ptr<std::optional<T>>, not in the Coro_promise\<T\> itself.
 
     class CoroClass {	//a dummy C++ class that has a coro as one of its member functions
         int number = 1;	//store a number
@@ -177,7 +177,7 @@ Coros should NOT call schedule() themselves! Instead they MUST use co_await and 
 Coros can coawait a number of different types. Single types include
 * C++ function packed into lambdas [=](){} or F() / FUNCTION() 
 * Function{} class
-* Coro<T> for any type T
+* Coro\<T\> for any type T
 
 Since the coro suspends and awaits the finishing of all of its children, this would allow only one child to await. Thus, coros can additionally await std::pmr::vectors, or even std::tuples containing K std::pmr::vectors of the above types. This allows to start and await any number of children of arbitrary types. The following code shows how to start multiple children from a coro.
 
@@ -259,7 +259,7 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
         schedule( loop(std::allocator_arg, &g_global_mem4, 90) );
     }
 
-Coroutine futures Coro<T> are also "callable", and you can pass in parameters similar to the Function{} class, setting thread index, type and id:
+Coroutine futures Coro\<T\> are also "callable", and you can pass in parameters similar to the Function{} class, setting thread index, type and id:
 
 	//schedule to thread 0, set type to 11 and id to 99
     co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10)(0,11,99) ; 
