@@ -302,7 +302,7 @@ A coroutine can be used as a generator or fiber (https://en.wikipedia.org/wiki/F
         std::cout << "Yielding " << yt.get().value() << "\n";
     }
 
-The advantage of generators/fibers is that they are created only once, but can be called any number of times, hence the overhead is similar to that of C++ functions - or even better. The downside is that passing in parameters is more tricky. Also you need an arbitration mechanism to prevent two jobs calling the fiber in parallel. E.g., you can put fibers in a JobQueue<Coro<int>> queue and retrieve them from there.
+The advantage of generators/fibers is that they are created only once, but can be called any number of times, hence the overhead is similar to that of C++ functions - or even better. The downside is that passing in parameters is more tricky. Also you need an arbitration mechanism to prevent two jobs calling the fiber in parallel. E.g., you can put fibers in a JobQueue<Coro&ltint>> queue and retrieve them from there.
 
 
 ## Finishing and Continuing Jobs
