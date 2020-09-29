@@ -56,7 +56,7 @@ namespace coro {
 
     Coro<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
-        //co_await 0;
+        co_await 0;
 
         float f = i + 0.5f;
         //std::cout << "ComputeF " << f << std::endl;

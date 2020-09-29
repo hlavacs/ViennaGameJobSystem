@@ -195,16 +195,15 @@ namespace vgjs {
     * The caller will then await the completion of the Coros. Afterwards,
     * the return values can be retrieved by calling get().
     */
-    template<typename... Ts>
+    template<typename PT, typename... Ts>
     struct awaitable_tuple {
 
         /**
         * \brief Awaiter for awaiting a tuple of vector of type Coro<T>, Function{}, std::function<void(void)>.
         */
         struct awaiter : std::experimental::suspend_always {
-            Coro_promise_base* m_promise;                       //parent of the new jobs
-            std::tuple<std::pmr::vector<Ts>...>& m_tuple;       //vector with all children to start
-            std::size_t m_number = 0;   //total number of all new children to schedule
+            std::tuple<std::pmr::vector<Ts>...>&    m_tuple;       //vector with all children to start
+            std::size_t                             m_number = 0;   //total number of all new children to schedule
 
             /**
             * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
@@ -220,9 +219,9 @@ namespace vgjs {
             /**
             * \brief Go through all tuple elements and schedule them. Presets number of new children to avoid a race.
             */
-            void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
+            void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
                 auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
-                    schedule(vec, m_promise, (int)m_number);    //in first call the number of children is the total number of all jobs
+                    schedule(vec, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
                     m_number = 0;                               //after this always 0
                 };
 
@@ -235,25 +234,21 @@ namespace vgjs {
 
             /**
             * \brief Constructor just passes on data.
-            * \param[in] promise The promise that scheduled them, is the parent of all children
             * \param[in] children The new jobs to schedule
             */
-            awaiter(Coro_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children) noexcept
-                : m_promise(promise), m_tuple(children) {};
+            awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
         };
 
-        Coro_promise_base* m_promise;
         std::tuple<std::pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
 
         /**
         * \brief Constructor just passes on data.
-        * \param[in] promise The promise that scheduled them, is the parent of all children
         * \param[in] children The new jobs to schedule
         */
-        awaitable_tuple(Coro_promise_base* promise, std::tuple<std::pmr::vector<Ts>...>& children ) noexcept
-            : m_promise(promise), m_tuple(children) {};
+        awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children ) noexcept : m_tuple(children) {};
 
-        awaiter operator co_await() noexcept { return { m_promise, m_tuple }; }; //co_await operator
+        //co_await operator is defined for this awaitable, and results in the awaiter
+        awaiter operator co_await() noexcept { return { m_tuple }; };
     };
 
 
@@ -263,11 +258,10 @@ namespace vgjs {
     * The caller will await the completion of the Coro(s). Afterwards,
     * the return values can be retrieved by calling get() for Coro<t>.
     */
-    template<typename T>
+    template<typename PT, typename T>
     struct awaitable_coro {
 
         struct awaiter : std::experimental::suspend_always {
-            Coro_promise_base* m_promise;    //parent of the new child/children
             T& m_child;                      //child/children
 
             /**
@@ -284,29 +278,27 @@ namespace vgjs {
             * \brief Forward the child to the correct version of schedule()
             * \param[in] continuation Ignored because T could actually by a vector!
             */
-            void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                schedule( std::forward<T>(m_child), m_promise);  //schedule the promise, function or vector
+            void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                schedule(std::forward<T>(m_child), &h.promise());  //schedule the promise, function or vector
             }
 
             /**
             * \brief Constructor just passes on data.
-            * \param[in] promise The promise that scheduled the new job is its parent
             * \param[in] child The new job to schedule
             */
-            awaiter(Coro_promise_base* promise, T& child) noexcept : m_promise(promise), m_child(child) {};
+            awaiter(T& child) noexcept : m_child(child) {};
         };
 
-        Coro_promise_base* m_promise;   //parent of the new child/children
         T& m_child;                     //child/children
 
         /**
         * \brief Constructor just passes on data.
-        * \param[in] promise The promise that scheduled the new job is its parent
         * \param[in] child The new job to schedule
         */
-        awaitable_coro(Coro_promise_base* promise, T& child ) noexcept : m_promise(promise), m_child(child) {};
+        awaitable_coro(T& child ) noexcept : m_child(child) {};
 
-        awaiter operator co_await() noexcept { return { m_promise, m_child }; }; //co_await operator
+        //co_await operator is defined for this awaitable, and results in the awaiter
+        awaiter operator co_await() noexcept { return { m_child }; }; 
     };
 
 
@@ -315,10 +307,10 @@ namespace vgjs {
     * After suspending the thread number is set to the target thread, then the job
     * is immediately rescheduled into the system
     */
+    template<typename PT>
     struct awaitable_resume_on {
         struct awaiter : std::experimental::suspend_always {
-            Coro_promise_base*  m_promise;      //the coro to move
-            int32_t             m_thread_index; //the thread index to use
+            int32_t m_thread_index; //the thread index to use
 
             /**
             * \brief Test whether the job is already on the right thread.
@@ -331,30 +323,28 @@ namespace vgjs {
             * \brief Set the thread index and reschedule the coro
             * \param[in] continuation Ignored
             */
-            void await_suspend(std::experimental::coroutine_handle<> continuation) noexcept {
-                m_promise->m_thread_index = m_thread_index;
-                JobSystem::instance()->schedule( m_promise );
+            void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                h.promise().m_thread_index = m_thread_index;
+                JobSystem::instance()->schedule( &h.promise() );
             }
 
             /**
             * \brief Constructor just passes on data.
-            * \param[in] promise The coro to move.
             * \param[in] thread_index The thread that this coro should be moved to
             */
-            awaiter(Coro_promise_base* promise, int32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
+            awaiter(int32_t thread_index) noexcept : m_thread_index(thread_index) {};
         };
 
-        Coro_promise_base*  m_promise;      //the coro to move
-        int32_t             m_thread_index; //the thread index to use
+        int32_t m_thread_index; //the thread index to use
 
         /**
         * \brief Constructor just passes on data.
-        * \param[in] promise The coro to move.
         * \param[in] thread_index The thread that this coro should be moved to
         */
-        awaitable_resume_on(Coro_promise_base* promise, int32_t thread_index) noexcept : m_promise(promise), m_thread_index(thread_index) {};
+        awaitable_resume_on( int32_t thread_index ) noexcept : m_thread_index(thread_index) {};
 
-        awaiter operator co_await() noexcept { return { m_promise, m_thread_index }; }; //co_await operator
+        //co_await operator is defined for this awaitable, and results in the awaiter
+        awaiter operator co_await() noexcept { return { m_thread_index }; };
     };
 
 
@@ -496,17 +486,17 @@ namespace vgjs {
         * \returns the correct awaitable.
         */
         template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& Coros or functions
-        awaitable_tuple<Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& coros) noexcept {
-            return { this, coros };
+        awaitable_tuple<T, Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept {
+            return { tuple };
         }
 
         /**
         * \brief Return an awaitable from basic types like functions, Coros, or vectors thereof
         * \returns the correct awaitable.
         */
-        template<typename T>        //called by co_await for Coros or functions, or std::pmr::vector thereof
-        awaitable_coro<T> await_transform(T& coro) noexcept {
-            return { this, coro };
+        template<typename U>        //called by co_await for Coros or functions, or std::pmr::vector thereof
+        awaitable_coro<T, U> await_transform(U& coro) noexcept {
+            return { coro };
         }
 
         /**
@@ -514,10 +504,14 @@ namespace vgjs {
         * This is used when the coro should change the current thread.
         * \returns the correct awaitable.
         */
-        awaitable_resume_on await_transform(int thread_index) noexcept { //called by co_await for INT, for changing the thread
-            return { this, (int32_t)thread_index };
+        awaitable_resume_on<T> await_transform(int thread_index) noexcept { //called by co_await for INT, for changing the thread
+            return { (int32_t)thread_index };
         }
 
+        /**
+        * \brief Return the final awaiter after the final suspension point.
+        * \returns the final awaiter.
+        */
         final_awaiter<T> final_suspend() noexcept { //create the final awaiter at the final suspension point
             return {};
         }
