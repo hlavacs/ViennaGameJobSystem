@@ -1,7 +1,8 @@
 # Vienna Game Engine Job System
 The Vienna Game Engine Job System (VGJS) is a C++20 library for parallelizing arbitrary tasks, as for example are typically found in game engines. It was designed and implemented by Prof. Helmut Hlavacs from the University of Vienna, Faculty of Computer Science. Important features are:
 * Supports C++20 (coroutines, concepts, polymorphic allocators and memory resources, ...)
-* Can be run with coroutines (better convenience), without (better performance), or a mixture
+* Can be run with coroutines (better convenience), with C++ functions (better performance), or both
+* Use coroutines as fibers to improve on performance
 * Enables a data oriented, data parallel paradigm
 * Intended as partner project of the Vienna Vulkan Engine (https://github.com/hlavacs/ViennaVulkanEngine) implementing a game engine using the VGJS
 
@@ -14,12 +15,15 @@ If you additionally want coroutines then include
 
     #include "VECoro.h"
 
-VGJS runs a number of N worker threads, EACH having TWO work queues, a local queue and a global queue. When scheduling jobs, a target thread can be specified or not. If the job is specified to run om thread K, then the job is put into thread K's LOCAL queue. Only thread K can take it from there. If no thread is specified or -1 is chosen, then a random thread J is chosen and the job is inserted into thread J's GLOBAL queue. Any thread can get it from there, if it runs out of local jobs. This paradigm is called work stealing. By using multple global queues, the amount of contention between threads is minimized.
+VGJS runs a number of N worker threads, EACH having TWO work queues, a local queue and a global queue. When scheduling jobs, a target thread can be specified or not. If the job is specified to run on thread K, then the job is put into thread K's LOCAL queue. Only thread K can take it from there. If no thread is specified or -1 is chosen, then a random thread J is chosen and the job is inserted into thread J's GLOBAL queue. Any thread can steal it from there, if it runs out of local jobs. This paradigm is called work stealing. By using multiple global queues, the amount of contention between threads is minimized.
 
-Each thread grabs jobs entered into one of its queues and runs them. 
+Each thread continuously grabs jobs from one of its queues and runs them. 
 
 ## Using the Job system
-The job system is started by accessing its singleton pointer. See the main() function provided:
+The job system is started by accessing its singleton pointer with vgjs::JobSystem::instance(). 
+The system is destroyed by calling vgjs::terminate(). 
+The main thread can wait for this termination by calling vgjs::wait_for_termination().
+
 
     #include "VEGameJobSystem.h"
     #include "VECoro.h"
@@ -47,8 +51,8 @@ The job system is started by accessing its singleton pointer. See the main() fun
     	return 0;
     }
 
-In the above example we see the three main possibilies to schedule C++ functions: using the macros F() or FUNCTION(), using a lambda function [=](){} (use '=' for copying the parameters!), or using the class Function{}, which enables to pass on more parameters (see below). 
-First a single function loop(10) is scheduled to run as a first job. Then the main thread waits for the system to terminate. Funtion loop(10) starts 10 jobs which simply print out numbers. Then it sets a continuation for itself. Only functions running as jobs can do this. So, neither the main() function, nor a coroutine may call this function (actually such a call would simply be ignored.)
+In the above example we see the three main possibilies to schedule C++ functions: using the macros F() or FUNCTION(), using a lambda function [=](){} (use '=' for copying the parameters!), or using the class Function{}, which enables to pass on more parameters. 
+First a single function loop(10) is scheduled to run as a first job. Then the main thread waits for the system to terminate. Funtion loop(10) starts 10 jobs which simply print out numbers. Then it sets a continuation for itself. Only functions running as jobs can schedule a continuation. So, neither the main() function, nor a coroutine may call this function (actually such a call would simply be ignored.)
 
 The call to JobSystem::instance() first creates the job system, and afterwards retrieves a pointer to its singleton instance. It accepts three parameters, which can be provided or not. They are only used when the system is created:
 
@@ -91,8 +95,8 @@ Finally, the third parameters specifies a memory resource to be used for allocat
     }
 
 ## Functions
-There are two types of tasks that can be scheduled to the job system - C++ functions and coroutines. Scheduling is doen via a call to the vgjs::schedule() function wrapper, which in turn calls the job system to schedule the function.
-Functions can be wrapped into macros F() or FUNCTION(), into a lambda of type [=](){}, or into the class Function{}, the latter allowing to specify more parameters. Of course, a function simply CALL another function any time without scheduling it. 
+There are two types of tasks that can be scheduled to the job system - C++ functions and coroutines. Scheduling is done via a call to the vgjs::schedule() function wrapper, which in turn calls the job system to schedule the function.
+Functions can be wrapped into macros F() or FUNCTION(), into a lambda of type [=](){}, or into the class Function{}, the latter allowing to specify more parameters. Of course, a function can simply CALL another function any time without scheduling it. 
 
 	void any_function() {
 		schedule( F(loop(10)) ); 					//schedule function loop(10) to run on a random thread
@@ -106,36 +110,45 @@ Functions can be wrapped into macros F() or FUNCTION(), into a lambda of type [=
 	}
 
 Functions scheduling other functions create a parent-child relationship. Functions are immediately scheduled to be run, schedule() can be called any number of times to start an arbitrary number of children to run in parallel.
-Function parameters should always be copied (see below)! Functions can also me member-functions, since they are wrapped into lambdas anyway. Just make sure that the class instance does not go out of scope!
+Function parameters should always be copied (see below)! Functions can also be member-functions, since they are wrapped into lambdas anyway. Just make sure that the class instance does not go out of scope!
 
 ## Coroutines
 The second type of task to be scheduled are coroutines. 
-Coroutines can suspend their function body (returning to the caller), and later on resume them where they had left. Any function that uses the keywords co_await, co_yield, or co_return is a coroutine. 
-In this case, in order to be compatible with the job system, coroutines must be of type Coro<T>, where T is any type to be computed. 
+Coroutines can suspend their function body (and return to the caller), and later on resume them where they had left. Any function that uses the keywords co_await, co_yield, or co_return is a coroutine (see e.g. https://lewissbaker.github.io/). 
+In this case, in order to be compatible with the job system, coroutines must be of type Coro<T>, where T is any type to be computed. T must be copyable, refernces can be wrapped e.g. into std::ref. 
 
-An instance of Coro<T> acts like a future, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling get(). Additionally to this future, also a promise of type Coro_promise<T> is allocated from the heap. The promise stores the coro's state, suspend points and return value. Since this allocation is more expensive than getting memory from the stack, it is possible to pass in a pointer to a memory resource to be used for allocation. A coro that ends is usually destroyed by its future Coro<T>. See below for more infos on this.
+Note: At the moment, T cannot be void, and the coroutine must return a result.
+
+An instance of Coro<T> acts like a future, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling get(). Since the result may not be ready when get() is called, get() actually returns a std::optional<T>&, and you can check whether the result is already there.
+
+Note: do not keep this reference, since its source can go out of scope in the future. 
+
+Additionally to this future, also a promise of type Coro_promise<T> is allocated from the heap.
+The promise stores the coro's state and suspend points. Since this allocation is more expensive than getting memory from the stack, it is possible to pass in a pointer to a std::pmr::memory_resource to be used for allocation. A Coro_promise that reaches its end point automatically destroys. The Coro<T> still can access the return value because this value is kept in a std::shared_ptr<std::optional<T>>, not in the Coro_promise<T> itself.
 
     class CoroClass {	//a dummy C++ class that has a coro as one of its member functions
         int number = 1;	//store a number
     public:
         CoroClass( int nr ) : number(nr) {};
-        Coro<int> Number10() { co_return number * 10; } //member coro - return the number times 10
+
+         //member coro - return the number times 10, when it returns, it cannot be reused again!
+        Coro<int> Number10() { co_return number * 10; }
     };
 
 	//the coro compute() uses normal new and delete to allocate its promise
     Coro<int> compute(int i) {
-        CoroClass cc(99);			//class instance stores number 99
-        auto mf = cc.Number(10);	//get an instance of the class coro
-        co_await mf;				//run it
-        co_return 2 * mf.get();		//get result and return it
+        CoroClass cc(99);			        //class instance stores number 99
+        auto mf = cc.Number(10);	        //get an instance of the class coro
+        co_await mf;				        //run it and wait for the result
+        co_return 2 * mf.get().value();		//get result and return it
     }
 
 	//the coro do_compute() uses g_global_mem to allocate its promise!
     Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
-        co_await 0;				//move this job to the thread with number 0
-        auto tk1 = compute(1); 	//create the coro compute() with parameter 1- it initially suspends
-        co_await tk1;			//run it and wait for it to finish
-        co_return tk1.get();	//get the promised value and return it
+        co_await 0;				        //move this job to the thread with number 0
+        auto tk1 = compute(1); 	        //create the coro compute() with parameter 1- it initially suspends
+        co_await tk1;			        //run it and wait for it to finish
+        co_return tk1.get().value();	//get the promised value and return it
     }
 
 	//the coro loop() uses g_global_mem to allocate its promise! 
@@ -152,6 +165,7 @@ An instance of Coro<T> acts like a future, in that it allows to create the coro,
 
 	int main() {
 		JobSystem::instance();
+
 		//pass on the memory resource to be used to allocate the promise, precede it with std::allocator_arg
 		schedule( loop(std::allocator_arg, &g_global_mem, 10) ); //schedule coro loop() from a function
 		wait_for_termination();
@@ -160,22 +174,24 @@ An instance of Coro<T> acts like a future, in that it allows to create the coro,
 Since any program starts with the main() function, from a C++ function, a coro can be scheduled by calling schedule(). 
 Coros should NOT call schedule() themselves! Instead they MUST use co_await and co_return for starting their own children and returning values.
 
-Coros can co_await a number of different types. Single types include
+Coros can coawait a number of different types. Single types include
 * C++ function packed into lambdas [=](){} or F() / FUNCTION() 
 * Function{} class
 * Coro<T> for any type T
 
-Since the coro suspends and awaits the finishing of its children, this would allow only 1 child to await. Thus, coros can additionally await std::pmr::vectors, or even std::tuples containing K std::pmr::vectors of the above types. This allows to start and await any number of children of arbitrary types. The following code shows how to start multiple children from a coro.
+Since the coro suspends and awaits the finishing of all of its children, this would allow only one child to await. Thus, coros can additionally await std::pmr::vectors, or even std::tuples containing K std::pmr::vectors of the above types. This allows to start and await any number of children of arbitrary types. The following code shows how to start multiple children from a coro.
 
     //A recursive coro
     Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
         if (i < N) {
-            std::pmr::vector<Coro<int>> vec{ mr };
+            std::pmr::vector<Coro<int>> vec{ mr }; //a vector holding Coro<int> instances
+
+            vec.emplace_back( recursive(std::allocator_arg, mr, i + 1, N)); //insert 2 instances
             vec.emplace_back( recursive(std::allocator_arg, mr, i + 1, N));
-            vec.emplace_back( recursive(std::allocator_arg, mr, i + 1, N));
-			co_await vec;
+
+			co_await vec; //await all of them at once
         }
-        co_return 0;
+        co_return vec[0].get().value(); //use the result of one of them
     }
 
     //A coro returning a float
@@ -193,7 +209,7 @@ Since the coro suspends and awaits the finishing of its children, this would all
     Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
         auto tk1 = compute(std::allocator_arg, mr, 1);
         co_await tk1;
-        co_return tk1.get();
+        co_return tk1.get().value();
     }
 
     void FCompute( int i ) {
@@ -230,7 +246,7 @@ Since the coro suspends and awaits the finishing of its children, this would all
         
         co_await tv; //await all elements of the Coro<int> vector
         co_await tk; //await all elements of the vectors in the tuples
-        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10); //await the recursive calls
+        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10); //await the recursive calls for a Coro<int>
         co_await F( FCompute(999) );			//await the function using std::function<void(void)>
         co_await Function( F(FCompute(999)) );	//await the function using Function{}
         co_await fv; //await all elements of the std::function<void(void)> vector
@@ -243,7 +259,7 @@ Since the coro suspends and awaits the finishing of its children, this would all
         schedule( loop(std::allocator_arg, &g_global_mem4, 90) );
     }
 
-Coroutines are also "callable", and you can pass in parameters similar to the Function{} class, setting thread index, type and id:
+Coroutine futures Coro<T> are also "callable", and you can pass in parameters similar to the Function{} class, setting thread index, type and id:
 
 	//schedule to thread 0, set type to 11 and id to 99
     co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10)(0,11,99) ; 
@@ -260,6 +276,34 @@ Coroutines can also change their thread by awaiting a thread index number:
         co_return 10.0f * i;
     }
 
+## Generators and Fibers
+A coroutine can be used as a generator or fiber (https://en.wikipedia.org/wiki/Fiber_(computer_science)). Essentially, this is a coroutine that never coreturns but suspends and waits to be called, compute a value, return the value, and suspend again. The coro can call any other child with co_await, but return its result using co_yield.
+
+    Coro<int> yield_test(int &input_parameter) {
+        int value = 0;          //initialize the fiber here
+        while (true) {          //a fiber never returns
+            int res = value * input_parameter; //use internal and input parameters
+            co_yield res;       //set std::optional<T> value to indicate that this fiber is ready, and suspend
+            //here its std::optional<T> value is set to std::nullopt to indicate thet the fiber is working
+            co_await other(value, input_parameter);  //call any child
+            ++value;            //do something useful
+        }
+        co_return value; //have this only to satisfy the compiler
+    }
+
+    int g_yt_in = 0;                //parameter that can be set from the outside
+    auto yt = yield_test(g_yt_in);  //create a fiber using an input parameter
+
+    Coro<int> driver( int i) {
+
+        g_yt_in = i; //set input parameter
+        co_await yt; //call the fiber and wait for it to complete
+
+        std::cout << "Yielding " << yt.get().value() << "\n";
+    }
+
+The advantage of generators/fibers is that they are created only once, but can be called any number of times, hence the overhead is similar to that of C++ functions - or even better. The downside is that passing in parameters is more tricky. Also you need an arbitration mechanism to prevent two jobs calling the fiber in parallel. E.g., you can put fibers in a JobQueue<Coro<int>> queue and retrieve them from there.
+
 
 ## Finishing and Continuing Jobs
 A job starting children defines a parent-child relationship with them. Since children can start children themselves, the result is a call tree of jobs running possibly in parallel on the CPU cores. In order to enable synchronization without blocking threads, the concept of "finishing" is introduced. 
@@ -268,14 +312,13 @@ A parent synchronizes with its children through this non-blocking finishing proc
 
 In C++ functions, children are started with the schedule() command, which is non-blocking. The waiting occurs after the parent function returns and ends itself. The job related to the parent remains in the system, and waits for its children to finish (if there are any). After finishing, the job notifies its own parent, and may start a continuation, which is another job that was previously defined by calling continuation(). 
 
-If the parent is a coro, then children are spawned by calling the co_await operator. Here the coro waits until all children have finished and resumes right after the co_await. Since the coro continues, it does not finish yet. Only after calling co_return, the coro finishes, and notifies its own parent. A coro should NOT call continuation()!
-
+If the parent is a coro, then children are spawned by calling the co_await operator. Here the coro waits until all children have finished and resumes right after the co_await. Since the coro continues, it does not finish yet. Only after calling co_return, the coro finishes, and notifies its own parent. A coro should NOT call schedule() or continuation()!
 
 
 ## Never use Pointers and References to Local Variables in Functions - only in Coroutines!
-It is important to notice that running Functions is completely decoupled. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parent Functions should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in the dependency tree, everything that is shared amongst jobs and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL data structures or heaps.
+It is important to notice that running Functions is completely decoupled from each other. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parent Functions should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in the dependency tree, everything that is shared amongst functions and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL/PERMANENT data structures or heaps.
 
-When sharing global variables in Functions that might be changed by several jobs in parallel, e.g. counters counting something up or down, you should consider using std::atomic<> or std::mutex, in order to avoid unpredictable runtime behavior. In a job, never wait for anything for long, use polling instead and finally return. Waiting will block the thread that runs the job and take away overall processing efficiency.
+When sharing global variables in Functions that might be changed by several jobs in parallel, e.g. counters counting something up or down, you should consider using std::atomic<T> in order to avoid unpredictable runtime behavior. In a job, never wait for anything for long, use polling instead and finally return. Waiting will block the thread that runs the job and take away overall processing efficiency.
 
 This does NOT apply to coroutines, since coroutines do not go out of context when running children. So coroutines CAN pass references or pointers to local varaiables!
 

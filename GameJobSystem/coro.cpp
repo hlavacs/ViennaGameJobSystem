@@ -81,7 +81,7 @@ namespace coro {
 
         co_await tk1;
 
-        co_return 0;
+        co_return tk1.get().value();
     }
 
     void FCompute( int i ) {
@@ -194,30 +194,40 @@ namespace coro {
         co_return cnt;
     }
 
-    Coro<int> yield_test() {
+    Coro<int> yield_test(int &input_parameter) {
         int value = 0;
         while (true) {
-            co_yield ++value;
+            co_yield value * input_parameter;
+            co_await coroTest(5);
+            ++value;
         }
         co_return value;
     }
 
-    auto yt = yield_test();
+    int g_yt_in = 0;
+    auto yt = yield_test(g_yt_in);
+
+    JobQueue<Coro<int>> coro_queue;
 
     Coro<int> driver( int i) {
 
+        coro_queue.push( &yt );
+
         //co_await -1;
 
-        co_await yt;
+        auto* pyt = coro_queue.pop();
+
+        g_yt_in = i;
+        co_await *pyt;
         std::cout << "Yielding " << yt.get().value() << "\n";
 
-        co_await coroTest(i);
+        //co_await coroTest(i);
 
         //auto ct = coroTest(i);  //this starts a new tree
         //ct.resume();
 
 
-        co_await loop(std::allocator_arg, &g_global_mem4, i);
+        //co_await loop(std::allocator_arg, &g_global_mem4, i);
 
 
         std::cout << "End coroTest() " << cnt << std::endl;

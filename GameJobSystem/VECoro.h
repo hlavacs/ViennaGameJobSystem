@@ -536,9 +536,9 @@ namespace vgjs {
     /**
     * \brief Base class of coroutine Coro. Independent of promise return type.
     */
-    class Coro_base {
+    class Coro_base : public Job_base {
     public:
-        Coro_base() noexcept {};                                              //constructor
+        Coro_base() noexcept : Job_base() {};                                              //constructor
         virtual bool resume() noexcept { return true; };                     //resume the Coro
         virtual Coro_promise_base* promise() noexcept { return nullptr; };   //get the promise to use it as Job 
     };
