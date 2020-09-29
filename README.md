@@ -124,7 +124,8 @@ An instance of Coro\<T\> acts like a future, in that it allows to create the cor
 Note: do not keep this reference, since its source can go out of scope in the future. 
 
 Additionally to this future, also a promise of type Coro_promise\<T\> is allocated from the heap.
-The promise stores the coro's state and suspend points. Since this allocation is more expensive than getting memory from the stack, it is possible to pass in a pointer to a std::pmr::memory_resource to be used for allocation. A Coro_promise\<T\> that reaches its end point automatically destroys. The Coro\<T\> still can access the return value because this value is kept in a std::shared_ptr<std::optional<T>>, not in the Coro_promise\<T\> itself.
+The promise stores the coro's state, value and suspend points. Since this allocation is more expensive than getting memory from the stack, it is possible to pass in a pointer to a std::pmr::memory_resource to be used for allocation. A Coro_promise\<T\> that reaches its end point might automatically destroy (if the parent is a function). The future Coro\<T\> still can access the return value because this value is kept in a std::shared_ptr<std::optional<T>>, not in the Coro_promise\<T\> itself. If the parent is a coroutine then the Coro_promise\<T\> only suspends at its end, and its own future Coro\<T\> must destroy it in its destructor.
+
 
     class CoroClass {	//a dummy C++ class that has a coro as one of its member functions
         int number = 1;	//store a number

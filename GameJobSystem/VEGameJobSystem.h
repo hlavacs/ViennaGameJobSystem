@@ -90,13 +90,19 @@ namespace vgjs {
     typedef void (*fptr)(Job_base* job);
     void job_deallocator(Job_base* job);
 
+    /**
+    * \brief Base class of things you can put into a queue
+    */
+    class Queuable {
+    public:
+        Queuable* m_next = nullptr;           //next job in the queue
+    };
 
     /**
     * \brief Base class of coro task promises and jobs.
     */
-    class Job_base {
+    class Job_base : public Queuable {
     public:
-        Job_base*           m_next = nullptr;           //next job in the queue
         std::atomic<int>    m_children = 0;             //number of children this job is waiting for
         Job_base*           m_parent = nullptr;         //parent job that created this job
         int32_t             m_thread_index = -1;        //thread that the job should run on and ran on
@@ -179,7 +185,7 @@ namespace vgjs {
     * The queue allows for multiple producers multiple consumers. It uses a lightweight
     * atomic flag as lock. 
     */
-    template<typename JOB = Job_base>
+    template<typename JOB = Queuable>
     class JobQueue {
         friend JobSystem;
         std::atomic_flag            m_lock = ATOMIC_FLAG_INIT;  //for locking the queue
@@ -234,7 +240,7 @@ namespace vgjs {
                 m_tail = job;           //let m_tail point to the job
             }
             else {
-                m_tail->m_next = job;   //add the job to the queue tail
+                m_tail->m_next = (JOB*)job;   //add the job to the queue tail
                 m_tail = job;           //m_tail points to the new job
             }
 

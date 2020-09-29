@@ -72,7 +72,7 @@ namespace func {
         cnt = 0;
         std::cout << "Starting func test()\n";
 
-        schedule( F(driver(10)) );
+        schedule( F(driver(13)) );
 
         continuation( F( std::cout << "Ending func test() " << cnt << "\n" ) );
     }
