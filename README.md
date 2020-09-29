@@ -45,9 +45,9 @@ The main thread can wait for this termination by calling vgjs::wait_for_terminat
 
     int main()
     {
-        JobSystem::instance();		//create the job system, start as many threads as there are hardware threads
-        schedule( F(loop(10)) ); 	//Macros F() or FUNCTION() pack loop(10) into a lambda [=](){ loop(10); }
-        wait_for_termination();		//wait for the last thread to terminate
+        JobSystem::instance();      //create the job system, start as many threads as there are hardware threads
+        schedule( F(loop(10)) );    //Macros F() or FUNCTION() pack loop(10) into a lambda [=](){ loop(10); }
+        wait_for_termination();     //wait for the last thread to terminate
         return 0;
     }
 
@@ -71,10 +71,10 @@ If the second parameter start_idx is not 0, then the main thread should enter th
 
     int main()
     {
-        JobSystem::instance(0, 1);	//start only N-1 threads, leave thread 0 for now
-        schedule( F(loop(10)) ); 	//schedule the initial job
+        JobSystem::instance(0, 1);  //start only N-1 threads, leave thread 0 for now
+        schedule( F(loop(10)) );    //schedule the initial job
         JobSystem::instance()->thread_task(0);	//main thread enters the job system as thread 0
-        wait_for_termination();		//wait for the last thread to terminate
+        wait_for_termination();     //wait for the last thread to terminate
         return 0;
     }
 
@@ -88,9 +88,9 @@ Finally, the third parameters specifies a memory resource to be used for allocat
 
     int main()
     {
-        JobSystem::instance(0, 0, &g_global_mem);	//use the memory resource g_global_mem to allocate job structures
-        schedule( F(loop(10)) ); 	//schedule the initial job
-        wait_for_termination();		//wait for the last thread to terminate
+        JobSystem::instance(0, 0, &g_global_mem); //use the memory resource g_global_mem to allocate job structures
+        schedule( F(loop(10)) );    //schedule the initial job
+        wait_for_termination();     //wait for the last thread to terminate
         return 0;
     }
 
@@ -99,14 +99,14 @@ There are two types of tasks that can be scheduled to the job system - C++ funct
 Functions can be wrapped into macros F() or FUNCTION(), into a lambda of type [=](){}, or into the class Function{}, the latter allowing to specify more parameters. Of course, a function can simply CALL another function any time without scheduling it. 
 
     void any_function() {
-        schedule( F(loop(10)) ); 					//schedule function loop(10) to run on a random thread
+        schedule( F(loop(10)) );                    //schedule function loop(10) to run on a random thread
         schedule( FUNCTION(loop(10); loop(100);) ); //schedule function loop(10) and loop(100) to run on a random thread
         schedule( [=](){ (loop(10); loop(100);}  ); //schedule functions loop(10) and loop(100) to run on a random thread
 
-        Function func{ F(loop(10)), 1, 0, 999 }; 	//Function to run on thread 1, with type 0 and id 999 (for logging)
-        schedule( func );	//lvalue, so do not move the function func, it can be reused afterwards
+        Function func{ F(loop(10)), 1, 0, 999 };    //Function to run on thread 1, with type 0 and id 999 (for logging)
+        schedule( func );  //lvalue, so do not move the function func, it can be reused afterwards
 
-        schedule( Function{ F(loop(10)), 2 } );		//schedule to run on thread 2, use rvalue, so move semantics apply
+        schedule( Function{ F(loop(10)), 2 } );     //schedule to run on thread 2, use rvalue, so move semantics apply
     }
 
 Functions scheduling other functions create a parent-child relationship. Functions are immediately scheduled to be run, schedule() can be called any number of times to start an arbitrary number of children to run in parallel.
@@ -115,20 +115,18 @@ Function parameters should always be copied (see below)! Functions can also be m
 ## Coroutines
 The second type of task to be scheduled are coroutines. 
 Coroutines can suspend their function body (and return to the caller), and later on resume them where they had left. Any function that uses the keywords co_await, co_yield, or co_return is a coroutine (see e.g. https://lewissbaker.github.io/). 
-In this case, in order to be compatible with the job system, coroutines must be of type Coro\<T\>, where T is any type to be computed. T must be copyable, refernces can be wrapped e.g. into std::ref. 
+In this case, in order to be compatible with the job system, coroutines must be of type Coro\<T\>, where T is any type to be computed. T must be copyable, references can be wrapped e.g. into std::ref. 
 
 Note: At the moment, T cannot be void, and the coroutine must return a result.
 
-An instance of Coro\<T\> acts like a future, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling get(). Since the result may not be ready when get() is called, get() actually returns a std::optional\<T\>&, and you can check whether the result is already there.
-
-Note: do not keep this reference, since its source can go out of scope in the future. 
+An instance of Coro\<T\> acts like a future, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling get(). Since the result may not be ready when get() is called, get() actually returns a std::optional\<T\>, and you can check whether the result is already there.
 
 Additionally to this future, also a promise of type Coro_promise\<T\> is allocated from the heap.
 The promise stores the coro's state, value and suspend points. Since this allocation is more expensive than getting memory from the stack, it is possible to pass in a pointer to a std::pmr::memory_resource to be used for allocation. A Coro_promise\<T\> that reaches its end point might automatically destroy (if the parent is a function). The future Coro\<T\> still can access the return value because this value is kept in a std::shared_ptr<std::optional<T>>, not in the Coro_promise\<T\> itself. If the parent is a coroutine then the Coro_promise\<T\> only suspends at its end, and its own future Coro\<T\> must destroy it in its destructor.
 
 
-    class CoroClass {	//a dummy C++ class that has a coro as one of its member functions
-        int number = 1;	//store a number
+    class CoroClass {   //a dummy C++ class that has a coro as one of its member functions
+        int number = 1; //store a number
     public:
         CoroClass( int nr ) : number(nr) {};
 
@@ -138,18 +136,18 @@ The promise stores the coro's state, value and suspend points. Since this alloca
 
     //the coro compute() uses normal new and delete to allocate its promise
     Coro<int> compute(int i) {
-        CoroClass cc(99);			        //class instance stores number 99
-        auto mf = cc.Number(10);	        //get an instance of the class coro
-        co_await mf;				        //run it and wait for the result
-        co_return 2 * mf.get().value();		//get result and return it
+        CoroClass cc(99);                   //class instance stores number 99
+        auto mf = cc.Number(10);            //get an instance of the class coro
+        co_await mf;                        //run it and wait for the result
+        co_return 2 * mf.get().value();     //get result and return it
     }
 
     //the coro do_compute() uses g_global_mem to allocate its promise!
     Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
-        co_await 0;				        //move this job to the thread with number 0
-        auto tk1 = compute(1); 	        //create the coro compute() with parameter 1- it initially suspends
-        co_await tk1;			        //run it and wait for it to finish
-        co_return tk1.get().value();	//get the promised value and return it
+        co_await 0;                     //move this job to the thread with number 0
+        auto tk1 = compute(1);          //create the coro compute() with parameter 1- it initially suspends
+        co_await tk1;                   //run it and wait for it to finish
+        co_return tk1.get().value();    //get the promised value and return it
     }
 
     //the coro loop() uses g_global_mem to allocate its promise! 
@@ -160,7 +158,7 @@ The promise stores the coro's state, value and suspend points. Since this alloca
         co_return 0; //have to return a value
     }
 
-    auto g_global_mem =  							//my own memory pool
+    auto g_global_mem =                        //my own memory pool
         std::pmr::synchronized_pool_resource(
             { .max_blocks_per_chunk = 1000, .largest_required_pool_block = 1 << 10 }, std::pmr::new_delete_resource());
 
@@ -190,7 +188,7 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
             vec.emplace_back( recursive(std::allocator_arg, mr, i + 1, N)); //insert 2 instances
             vec.emplace_back( recursive(std::allocator_arg, mr, i + 1, N));
 
-	        co_await vec; //await all of them at once
+	        co_await vec;  //await all of them at once
         }
         co_return vec[0].get().value(); //use the result of one of them
     }
@@ -223,12 +221,12 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
 
     Coro<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
 
-        auto tv = std::pmr::vector<Coro<int>>{mr};	//vector of Coro<int>
-        auto tk = std::make_tuple(					//tuple holding two vectors - Coro<int> and Coro<float>
+        auto tv = std::pmr::vector<Coro<int>>{mr};  //vector of Coro<int>
+        auto tk = std::make_tuple(                  //tuple holding two vectors - Coro<int> and Coro<float>
             std::pmr::vector<Coro<int>>{mr}, 
             std::pmr::vector<Coro<float>>{mr});
         auto fv = std::pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
-        std::pmr::vector<Function> jv{ mr };		//vector of Function{} instances
+        std::pmr::vector<Function> jv{ mr };        //vector of Function{} instances
 
         //loop adds elements to these vectors
         for (int i = 0; i < count; ++i) {
@@ -239,7 +237,7 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
 
             fv.emplace_back( F( FCompute(i) ) );
 
-            Function f( F(FuncCompute(i)), -1, 0, 0 );
+            Function f( F(FuncCompute(i)), -1, 0, 0 ); //schedule to random thread, use type 0 and id 0
             jv.push_back( f );
 
             jv.push_back( Function( F(FuncCompute(i)), -1, 0, 0) );
@@ -248,8 +246,8 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
         co_await tv; //await all elements of the Coro<int> vector
         co_await tk; //await all elements of the vectors in the tuples
         co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10); //await the recursive calls for a Coro<int>
-        co_await F( FCompute(999) );			//await the function using std::function<void(void)>
-        co_await Function( F(FCompute(999)) );	//await the function using Function{}
+        co_await F( FCompute(999) );            //await the function using std::function<void(void)>
+        co_await Function( F(FCompute(999)) );  //await the function using Function{}
         co_await fv; //await all elements of the std::function<void(void)> vector
         co_await jv; //await all elements of the Function{} vector
 
@@ -271,9 +269,9 @@ Coroutines can also change their thread by awaiting a thread index number:
 
         //do something until here ...
 
-        co_await 0;				//move this job to thread 0
+        co_await 0;             //move this job to thread 0
 
-        float f = i + 0.5f;		//continue on thread 0
+        float f = i + 0.5f;     //continue on thread 0
         co_return 10.0f * i;
     }
 
