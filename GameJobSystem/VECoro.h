@@ -430,15 +430,16 @@ namespace vgjs {
     template<typename T>
     class Coro_promise : public Coro_promise_base {
     private:
-
-        std::shared_ptr<std::optional<T>> m_value;  //a shared view of the return value
+        bool m_is_parent_job = current_job()==nullptr ? true : current_job()->is_job();
+        std::shared_ptr<std::optional<T>> m_value_ptr;  //a shared view of the return value
+        T m_value;
 
     public:
 
         /**
         * \brief Constructor
         */
-        Coro_promise() noexcept : Coro_promise_base{}{};
+        Coro_promise() noexcept : Coro_promise_base{} {};
 
         fptr get_deallocator() noexcept { return coro_deallocator<T>; };    //called for deallocation
 
@@ -447,15 +448,18 @@ namespace vgjs {
         * \returns the Coro<T> from the promise.
         */
         Coro<T> get_return_object() noexcept {
-            m_value = std::make_shared<std::optional<T>>(std::nullopt);
-            return Coro<T>{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), m_value };
+            m_value_ptr = std::make_shared<std::optional<T>>(std::nullopt);
+
+            return Coro<T>{ 
+                std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), 
+                    m_value_ptr, m_is_parent_job };
         }
 
         /**
         * \brief Resume the Coro at its suspension point.
         */
         bool resume() noexcept {
-            *m_value = std::nullopt;
+            *m_value_ptr = std::nullopt;
 
             auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
             if (coro && !coro.done()) {
@@ -469,7 +473,7 @@ namespace vgjs {
         * \param[in] t The value that was returned.
         */
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
-            *m_value = t;
+            *m_value_ptr = t;
         }
 
         /**
@@ -477,7 +481,7 @@ namespace vgjs {
         * \param[in] t The value that was yielded.
         */
         yield_awaiter<T> yield_value(T t) {
-            *m_value = t;
+            *m_value_ptr = t;
             return {};
         }
 
@@ -556,7 +560,8 @@ namespace vgjs {
     public:
 
         using promise_type = Coro_promise<T>;
-        std::shared_ptr<std::optional<T>> m_value;
+        bool m_is_parent_job;
+        std::shared_ptr<std::optional<T>> m_value_ptr;
 
     private:
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
@@ -568,8 +573,9 @@ namespace vgjs {
         * \param[in] h Handle of this new coro.
         * \param[in] value Shared value to trade the results
         */
-        explicit Coro(std::experimental::coroutine_handle<promise_type> h, std::shared_ptr<std::optional<T>>& value) noexcept
-            : m_coro(h), m_value(value) {
+        explicit Coro(  std::experimental::coroutine_handle<promise_type> h, 
+                        std::shared_ptr<std::optional<T>>& value, bool is_parent_job ) noexcept
+                            : m_coro(h), m_value_ptr(value), m_is_parent_job(is_parent_job){
         }
 
         /**
@@ -577,7 +583,9 @@ namespace vgjs {
         * \param[in] t The old Coro<T>.
         */
         Coro(Coro<T>&& t)  noexcept
-            : Coro_base(), m_coro(std::exchange(t.m_coro, {})), m_value(std::exchange(t.m_value, {})) {}
+            : Coro_base(), m_coro(std::exchange(t.m_coro, {})), 
+                m_value_ptr(std::exchange(t.m_value_ptr, {})), 
+                m_is_parent_job(std::exchange(t.m_is_parent_job, {})) {}
 
         void operator= (Coro<T>&& t) { std::swap( m_coro, t.m_coro); }
 
@@ -591,7 +599,7 @@ namespace vgjs {
         * \returns the promised value or std::nullopt
         */
         std::optional<T>& get() noexcept {
-            return *m_value;
+            return *m_value_ptr;
         }
 
         /**

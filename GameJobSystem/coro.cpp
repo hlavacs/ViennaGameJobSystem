@@ -227,7 +227,7 @@ namespace coro {
         //ct.resume();
 
 
-        //co_await loop(std::allocator_arg, &g_global_mem4, i);
+        co_await loop(std::allocator_arg, &g_global_mem4, i);
 
 
         std::cout << "End coroTest() " << cnt << std::endl;
