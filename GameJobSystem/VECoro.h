@@ -217,7 +217,9 @@ namespace vgjs {
             }
 
             /**
-            * \brief Go through all tuple elements and schedule them. Presets number of new children to avoid a race.
+            * \brief Go through all tuple elements and schedule them. 
+            * Presets number of new children to avoid a race.
+            * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
             */
             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
                 auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
@@ -276,10 +278,10 @@ namespace vgjs {
 
             /**
             * \brief Forward the child to the correct version of schedule()
-            * \param[in] continuation Ignored because T could actually by a vector!
+            * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
             */
             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                schedule(std::forward<T>(m_child), &h.promise());  //schedule the promise, function or vector
+                schedule(std::forward<T>(m_child), &h.promise());  //schedule the coro, function or vector
             }
 
             /**
@@ -315,13 +317,13 @@ namespace vgjs {
             /**
             * \brief Test whether the job is already on the right thread.
             */
-            bool await_ready() noexcept {   //default: go on with suspension if the job is already on the right thread
+            bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
                 return (m_thread_index == JobSystem::instance()->thread_index());
             }
 
             /**
             * \brief Set the thread index and reschedule the coro
-            * \param[in] continuation Ignored
+            * \param[in] h The coro handle, can be used to get the promise.
             */
             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
                 h.promise().m_thread_index = m_thread_index;
