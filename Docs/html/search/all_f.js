@@ -1,10 +1,8 @@
 var searchData=
 [
-  ['t1',['t1',['../classvgjs_1_1_job.html#ac7073c77b67aa7dd3a586a98d11d5478',1,'vgjs::Job']]],
-  ['t2',['t2',['../classvgjs_1_1_job.html#a1abc9fc3889e602bb6059ef8812b6126',1,'vgjs::Job']]],
-  ['terminate',['terminate',['../classvgjs_1_1_job_system.html#abd37bc28bfcd7dc7872dd7aba7cb4013',1,'vgjs::JobSystem']]],
-  ['threadtask',['threadTask',['../classvgjs_1_1_job_system.html#ab1415dcc624f44af41031d338f8cb4a7',1,'vgjs::JobSystem']]],
-  ['tick',['tick',['../classvve_1_1_ve_clock.html#a0e7cf2cd90aeff2ace0d16fe870826bc',1,'vve::VeClock']]],
-  ['tid',['TID',['../namespacevgjs.html#a596f7ea411187cd753808240e5461ab2',1,'vgjs']]],
-  ['time_5fdelta',['time_delta',['../main_8cpp.html#a55e3be532dfcb9d36bea8ad03d53d500',1,'main.cpp']]]
+  ['save_5fjob_137',['save_job',['../namespacevgjs.html#ab99650b41f883b585300fec13b0e319b',1,'vgjs']]],
+  ['save_5flog_5ffile_138',['save_log_file',['../namespacevgjs.html#ac94ec8bde4399d9dab82093b2ccd8c00',1,'vgjs']]],
+  ['schedule_139',['schedule',['../classvgjs_1_1_job_system.html#a44637c87b8cfa08ba290d34be57328e0',1,'vgjs::JobSystem::schedule(Job_base *job) noexcept'],['../classvgjs_1_1_job_system.html#ab19dd313ba380f8e08782d43afb0232a',1,'vgjs::JobSystem::schedule(Function &amp;&amp;source, Job_base *parent=m_current_job, int32_t children=1) noexcept'],['../classvgjs_1_1_job_system.html#ad9df683ea02e717ba22bdb263de103ec',1,'vgjs::JobSystem::schedule(std::function&lt; void(void)&gt; &amp;&amp;f, Job_base *parent=m_current_job, int32_t children=1) noexcept'],['../namespacevgjs.html#ae0d46eba3cf5fcb657d9eb017f496039',1,'vgjs::schedule(T &amp;coro, Job_base *parent=current_job(), int32_t children=1) noexcept'],['../namespacevgjs.html#a48c602a94063b370ae40f7814f977c9a',1,'vgjs::schedule(T &amp;&amp;coro, Job_base *parent=current_job(), int32_t children=1) noexcept'],['../namespacevgjs.html#a1cde12743339563286128afe9d5205eb',1,'vgjs::schedule(Function &amp;&amp;f, Job_base *parent=current_job(), int32_t children=1) noexcept'],['../namespacevgjs.html#aa3ec27e280923ee17a68b0ee8577f300',1,'vgjs::schedule(Function &amp;f, Job_base *parent=current_job(), int32_t children=1) noexcept'],['../namespacevgjs.html#a9c3947a01afd36f5c0cf510b3273f8d3',1,'vgjs::schedule(std::function&lt; void(void)&gt; &amp;&amp;f, Job_base *parent=current_job(), int32_t children=1) noexcept'],['../namespacevgjs.html#adfe4f96ce5e87c8eeba09d219c8b1fb9',1,'vgjs::schedule(std::function&lt; void(void)&gt; &amp;f, Job_base *parent=current_job(), int32_t children=1) noexcept'],['../namespacevgjs.html#a8e4933ed855340d106027d452c1d2498',1,'vgjs::schedule(std::pmr::vector&lt; T &gt; &amp;functions, Job_base *parent=current_job(), int32_t children=-1) noexcept']]],
+  ['size_140',['size',['../classvgjs_1_1_job_queue.html#a310d14ed55e479a4d4067e276afb98d8',1,'vgjs::JobQueue']]],
+  ['start_5ftime_141',['start_time',['../classvgjs_1_1_job_system.html#ae829f026c67345cd5c1aa886bbd6d6b3',1,'vgjs::JobSystem']]]
 ];

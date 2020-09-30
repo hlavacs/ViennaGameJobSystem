@@ -1,9 +1,8 @@
 var searchData=
 [
-  ['job',['Job',['../classvgjs_1_1_job.html#a8ac31aea98d8f4782d415ae56f908767',1,'vgjs::Job']]],
-  ['jobmemory',['JobMemory',['../classvgjs_1_1_job_memory.html#a39b7152b540783435890abb9022b6462',1,'vgjs::JobMemory']]],
-  ['jobqueue',['JobQueue',['../classvgjs_1_1_job_queue.html#a6aea331e1151ec3fefc91391b7c20925',1,'vgjs::JobQueue']]],
-  ['jobqueuefifo',['JobQueueFIFO',['../classvgjs_1_1_job_queue_f_i_f_o.html#a9c2de466471abbfad5ee6a4bb0f62d19',1,'vgjs::JobQueueFIFO']]],
-  ['jobqueuelockfree',['JobQueueLockFree',['../classvgjs_1_1_job_queue_lock_free.html#ad03f4382ad3c3cb63fcf83a304831f81',1,'vgjs::JobQueueLockFree']]],
-  ['jobsystem',['JobSystem',['../classvgjs_1_1_job_system.html#a11c790746f2736dffce5426d9fe95e52',1,'vgjs::JobSystem::JobSystem(uint32_t threadCount=0, uint32_t start_idx=0)'],['../classvgjs_1_1_job_system.html#afec451c50f55cb3bffef2664a5c08eb4',1,'vgjs::JobSystem::JobSystem(const JobSystem &amp;)=delete'],['../classvgjs_1_1_job_system.html#a407aad0c04f25c1748c5bc69a37e2243',1,'vgjs::JobSystem::JobSystem(JobSystem &amp;&amp;)=default']]]
+  ['initial_5fsuspend_234',['initial_suspend',['../classvgjs_1_1_coro__promise__base.html#aff308d6ad103508b26f51039d7c814a4',1,'vgjs::Coro_promise_base']]],
+  ['instance_235',['instance',['../classvgjs_1_1_job_system.html#accbc8f2d657a337a6d31645d3b75975b',1,'vgjs::JobSystem']]],
+  ['is_5ffunction_236',['is_function',['../classvgjs_1_1_job__base.html#abfb0968db3a895d122f430c080ae6285',1,'vgjs::Job_base::is_function()'],['../classvgjs_1_1_job.html#a2580805ed9a446413f64f3690e654fcc',1,'vgjs::Job::is_function()']]],
+  ['is_5finstance_5fcreated_237',['is_instance_created',['../classvgjs_1_1_job_system.html#aa2c31b8c0ce827acd3c755ea6e18b14b',1,'vgjs::JobSystem']]],
+  ['is_5flogging_238',['is_logging',['../classvgjs_1_1_job_system.html#abdb8cb6365ff23db0a4e206accf92f94',1,'vgjs::JobSystem::is_logging()'],['../namespacevgjs.html#a66e45bcba666b894edd855b7587af243',1,'vgjs::is_logging()']]]
 ];

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['forwardtime',['forwardTime',['../main_8cpp.html#ad3e0ad3785a4f73a30a740e70125ca3e',1,'main.cpp']]]
+  ['enable_5flogging_221',['enable_logging',['../classvgjs_1_1_job_system.html#a3f8127a13d44ed16817949ffd415ee43',1,'vgjs::JobSystem::enable_logging()'],['../namespacevgjs.html#a1861cdc932915f3d834f318759621276',1,'vgjs::enable_logging()']]]
 ];

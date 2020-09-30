@@ -1,11 +1,8 @@
 var searchData=
 [
-  ['getinstance',['getInstance',['../classvgjs_1_1_job_system.html#a32433394998b4cd99ab30838e1556724',1,'vgjs::JobSystem']]],
-  ['getjobpointer',['getJobPointer',['../classvgjs_1_1_job_system.html#af91237695b2428724b428b8006b18959',1,'vgjs::JobSystem']]],
-  ['getnextjob',['getNextJob',['../classvgjs_1_1_job_memory.html#a4c15c5d75096c393efe56edb07112bdc',1,'vgjs::JobMemory']]],
-  ['getnumberjobs',['getNumberJobs',['../classvgjs_1_1_job_system.html#a9aedfeb216b815ef0f3d581e972ce24e',1,'vgjs::JobSystem']]],
-  ['getthreadcount',['getThreadCount',['../classvgjs_1_1_job_system.html#a1a86d5d340027564488b03ca053d5b29',1,'vgjs::JobSystem']]],
-  ['getthreadindex',['getThreadIndex',['../classvgjs_1_1_job_system.html#aa8744ea82e673a3e15ed8b4bbab8b441',1,'vgjs::JobSystem']]],
-  ['getthreadindexfromid',['getThreadIndexFromID',['../namespacevgjs.html#ae8822246736655966f39146bb7d44d1e',1,'vgjs']]],
-  ['getthreadlabelfromid',['getThreadLabelFromID',['../namespacevgjs.html#a6dd824591663cc5f241640736d769b84',1,'vgjs']]]
+  ['fcompute_222',['FCompute',['../namespacecoro.html#a032e279b9ea3dbdcbc0ba474c570de68',1,'coro']]],
+  ['final_5fawaiter_223',['final_awaiter',['../structvgjs_1_1final__awaiter.html#a70f5c76c9619e548bbd86dd4ddc0a5f4',1,'vgjs::final_awaiter']]],
+  ['final_5fsuspend_224',['final_suspend',['../classvgjs_1_1_coro__promise.html#a4ce6aef779d645f3fc301ac212bc8100',1,'vgjs::Coro_promise']]],
+  ['funccompute_225',['FuncCompute',['../namespacecoro.html#ab267c2b6ad8f98548d290567a2d5376c',1,'coro']]],
+  ['function_226',['Function',['../structvgjs_1_1_function.html#a94aeca7761ea22bc792ad2d3bfbeac8e',1,'vgjs::Function::Function(std::function&lt; void(void)&gt; &amp;&amp;f, int32_t thread_index=-1, int32_t type=-1, int32_t id=-1)'],['../structvgjs_1_1_function.html#ae2832ab7eceba75564a778fb1eb86ad3',1,'vgjs::Function::Function(std::function&lt; void(void)&gt; &amp;f, int32_t thread_index=-1, int32_t type=-1, int32_t id=-1)'],['../structvgjs_1_1_function.html#a949e37391f62ba32ad6d3078f620d8fb',1,'vgjs::Function::Function(const Function &amp;f)'],['../structvgjs_1_1_function.html#a9e3cad7c92969f72eb2bd4b14df3af76',1,'vgjs::Function::Function(Function &amp;f)']]]
 ];

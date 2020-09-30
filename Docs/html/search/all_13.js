@@ -1,6 +1,4 @@
 var searchData=
 [
-  ['_7ejob',['~Job',['../classvgjs_1_1_job.html#ab588feba7736c518a7299bf322c2b428',1,'vgjs::Job']]],
-  ['_7ejobmemory',['~JobMemory',['../classvgjs_1_1_job_memory.html#ac6d32df1568b3373dca9ece044ec6000',1,'vgjs::JobMemory']]],
-  ['_7ejobsystem',['~JobSystem',['../classvgjs_1_1_job_system.html#a089a3fe015203eef1fb5ce580fd58811',1,'vgjs::JobSystem']]]
+  ['wait_5ffor_5ftermination_152',['wait_for_termination',['../classvgjs_1_1_job_system.html#adbf3d7a6ddd1b67e37ab8851f7759dfd',1,'vgjs::JobSystem::wait_for_termination()'],['../namespacevgjs.html#a04c2529b44d979104db72e946834daec',1,'vgjs::wait_for_termination()']]]
 ];

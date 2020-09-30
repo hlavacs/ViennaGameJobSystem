@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['next_5fupdate_5ftime',['next_update_time',['../main_8cpp.html#a5d170cd9bc7026a02c63721a51222733',1,'main.cpp']]],
-  ['now_5ftime',['now_time',['../main_8cpp.html#aaf0cc913e5c57a3e98a6aefb50fa2a1d',1,'main.cpp']]]
+  ['number_113',['number',['../classcoro_1_1_coro_class.html#a242496ae774c139c19d8adf64ff1a1cc',1,'coro::CoroClass']]],
+  ['number10_114',['Number10',['../classcoro_1_1_coro_class.html#aa15b597cb1a93d59459e29b7e0ec103f',1,'coro::CoroClass']]]
 ];
