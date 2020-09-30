@@ -313,6 +313,13 @@ In C++ functions, children are started with the schedule() command, which is non
 
 If the parent is a coro, then children are spawned by calling the co_await operator. Here the coro waits until all children have finished and resumes right after the co_await. Since the coro continues, it does not finish yet. Only after calling co_return, the coro finishes, and notifies its own parent. A coro should NOT call schedule() or continuation()!
 
+## Breaking the Parent-Child Relationship
+Jobs having a parent will trigger a continuation of this parent after they have finished. This also means that these continuations depend on the children and have to wait. Startiung a job that does not have a parent is easily done by using nullptr as the second argument of the schedule() call.
+
+    void driver() {
+        schedule( loop(std::allocator_arg, &g_global_mem4, 90), nullptr );
+    }
+
 
 ## Never use Pointers and References to Local Variables in Functions - only in Coroutines!
 It is important to notice that running Functions is completely decoupled from each other. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parent Functions should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in the dependency tree, everything that is shared amongst functions and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL/PERMANENT data structures or heaps.
