@@ -114,8 +114,8 @@ namespace vgjs {
         void operator() () noexcept {           //wrapper as function operator
             resume();
         }
-        virtual fptr get_deallocator() noexcept { return job_deallocator; };    //called for deallocation
         bool is_function() noexcept { return m_is_function; }         //test whether this is a function or e.g. a coro
+        virtual fptr get_deallocator() noexcept { return job_deallocator; };    //called for deallocation
     };
 
 
@@ -294,9 +294,14 @@ namespace vgjs {
         uint32_t									m_start_idx = 0;        ///<idx of first thread that is created
         static inline thread_local  int32_t		    m_thread_index = -1;    ///<each thread has its own number
         std::atomic<bool>							m_terminate = false;	///<Flag for terminating the pool
-        static inline thread_local Job_base*        m_current_job = nullptr;///<Pointer to the current job of this thread
+        static inline thread_local Job_base*        m_current_job = nullptr;///<Pointer to the current job of this thread0
+
         std::vector<JobQueue<Job_base>>             m_global_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
         std::vector<JobQueue<Job_base>>             m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
+
+        //std::vector<JobQueue<Coro_promise_base>>    m_global_coro_queues;	///<each thread has its own Job queue, multiple produce, single consume
+        //std::vector<JobQueue<Coro_promise_base>>    m_local_coro_queues;	///<each thread has its own Job queue, multiple produce, single consume
+
         JobQueue<Job>                               m_recycle;              ///<save old jobs for recycling
         JobQueue<Job>                               m_delete;               ///<save old jobs for recycling
         std::pmr::vector<std::pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs

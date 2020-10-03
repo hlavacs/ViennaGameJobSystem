@@ -119,10 +119,14 @@ In this case, in order to be compatible with the job system, coroutines must be 
 
 Note: At the moment, T cannot be void, and the coroutine must return a result.
 
-An instance of Coro\<T\> acts like a future, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling get(). Since the result may not be ready when get() is called, get() actually returns a std::optional\<T\>, and you can check whether the result is already there.
+An instance of Coro\<T\> acts like a future, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling get(). Since the result may not be ready when get() is called, get() actually returns a std::pair\<bool,T\>, and you can check the bool in this pair whether the result is already available.
 
 Additionally to this future, also a promise of type Coro_promise\<T\> is allocated from the heap.
-The promise stores the coro's state, value and suspend points. Since this allocation is more expensive than getting memory from the stack, it is possible to pass in a pointer to a std::pmr::memory_resource to be used for allocation. A Coro_promise\<T\> that reaches its end point might automatically destroy (if the parent is a function). The future Coro\<T\> still can access the return value because this value is kept in a std::shared_ptr<std::optional<T>>, not in the Coro_promise\<T\> itself. If the parent is a coroutine then the Coro_promise\<T\> only suspends at its end, and its own future Coro\<T\> must destroy it in its destructor.
+The promise stores the coro's state, value and suspend points. Since this allocation is more expensive than getting memory from the stack, it is possible to pass in a pointer to a std::pmr::memory_resource to be used for allocation. 
+
+If the parent is a function, the parent might return any time and a Coro_promise\<T\> that reaches its end point automatically destroys. The future Coro\<T\> still can access the return value because this value is kept in a std::shared_ptr<std::pair<bool,T>>, not in the Coro_promise\<T\> itself. 
+
+If the parent is a coroutine then the Coro_promise\<T\> only suspends at its end, and its own future Coro\<T\> must destroy it in its destructor. In this case the std::pair<bool,T> is kept in the Coro_promise\<T\>, and there is no shared pointer.
 
 
     class CoroClass {   //a dummy C++ class that has a coro as one of its member functions
@@ -282,8 +286,8 @@ A coroutine can be used as a generator or fiber (https://en.wikipedia.org/wiki/F
         int value = 0;          //initialize the fiber here
         while (true) {          //a fiber never returns
             int res = value * input_parameter; //use internal and input parameters
-            co_yield res;       //set std::optional<T> value to indicate that this fiber is ready, and suspend
-            //here its std::optional<T> value is set to std::nullopt to indicate thet the fiber is working
+            co_yield res;       //set std::pair<bool,T> value to indicate that this fiber is ready, and suspend
+            //here its std::pair<bool,T> value is set to (false, T{}) to indicate thet the fiber is working
             co_await other(value, input_parameter);  //call any child
             ++value;            //do something useful
         }
