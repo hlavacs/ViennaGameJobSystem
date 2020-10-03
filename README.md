@@ -54,7 +54,7 @@ The main thread can wait for this termination by calling vgjs::wait_for_terminat
 In the above example we see the three main possibilies to schedule C++ functions: using the macros F() or FUNCTION(), using a lambda function [=](){} (use '=' for copying the parameters!), or using the class Function{}, which enables to pass on more parameters. 
 First a single function loop(10) is scheduled to run as a first job. Then the main thread waits for the system to terminate. Funtion loop(10) starts 10 jobs which simply print out numbers. Then it sets a continuation for itself. Only functions running as jobs can schedule a continuation. So, neither the main() function, nor a coroutine may call this function (actually such a call would simply be ignored.)
 
-The call to JobSystem::instance() first creates the job system, and afterwards retrieves a pointer to its singleton instance. It accepts three parameters, which can be provided or not. They are only used when the system is created:
+The call to JobSystem::instance() first creates the job system, and afterwards retrieves a reference to its singleton instance. It accepts three parameters, which can be provided or not. They are only used when the system is created:
 
   	/**
     * \brief JobSystem class constructor
@@ -73,7 +73,7 @@ If the second parameter start_idx is not 0, then the main thread should enter th
     {
         JobSystem::instance(0, 1);  //start only N-1 threads, leave thread 0 for now
         schedule( F(loop(10)) );    //schedule the initial job
-        JobSystem::instance()->thread_task(0);	//main thread enters the job system as thread 0
+        JobSystem::instance().thread_task(0);	//main thread enters the job system as thread 0
         wait_for_termination();     //wait for the last thread to terminate
         return 0;
     }

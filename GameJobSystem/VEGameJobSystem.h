@@ -390,9 +390,9 @@ namespace vgjs {
         * \param[in] mr The memory resource to use for allocating Jobs.
         * \returns a pointer to the JobSystem instance.
         */
-        static JobSystem* instance(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) noexcept {
+        static JobSystem& instance(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) noexcept {
             static JobSystem instance(threadCount, start_idx, mr); //thread safe init guaranteed - Meyer's Singleton
-            return &instance;
+            return instance;
         };
 
         /**
@@ -736,7 +736,7 @@ namespace vgjs {
     * \returns the job that is currently executed.
     */
     inline Job_base* current_job() {
-        return (Job_base*)JobSystem::instance()->current_job();
+        return (Job_base*)JobSystem::instance().current_job();
     }
 
     /**
@@ -746,7 +746,7 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     inline void schedule( Function&& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance()->schedule( std::forward<Function>(f), parent, children );
+        JobSystem::instance().schedule( std::forward<Function>(f), parent, children );
     }
 
     /**
@@ -756,7 +756,7 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     inline void schedule(Function& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance()->schedule(std::forward<Function>(f), parent, children);
+        JobSystem::instance().schedule(std::forward<Function>(f), parent, children);
     }
 
     /**
@@ -766,7 +766,7 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     inline void schedule( std::function<void(void)>&& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance()->schedule( std::forward<std::function<void(void)>>(f), parent, children); // forward to the job system
+        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), parent, children); // forward to the job system
     };
 
     /**
@@ -776,7 +776,7 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     inline void schedule(std::function<void(void)>& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance()->schedule( std::forward<std::function<void(void)>>(f), parent, children);   // forward to the job system
+        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), parent, children);   // forward to the job system
     };
 
     /**
@@ -811,7 +811,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void continuation(Function&& f) noexcept {
-        JobSystem::instance()->continuation(std::forward<Function>(f)); // forward to the job system
+        JobSystem::instance().continuation(std::forward<Function>(f)); // forward to the job system
     }
 
     /**
@@ -819,7 +819,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void continuation(Function& f) noexcept {
-        JobSystem::instance()->continuation(Function{ std::forward<Function>(f) }); // forward to the job system
+        JobSystem::instance().continuation(Function{ std::forward<Function>(f) }); // forward to the job system
     }
 
     /**
@@ -827,7 +827,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void continuation(std::function<void(void)>&& f) noexcept {
-        JobSystem::instance()->continuation(Function{ f }); // forward to the job system
+        JobSystem::instance().continuation(Function{ f }); // forward to the job system
     }
 
     /**
@@ -835,7 +835,7 @@ namespace vgjs {
     * \param[in] f A function to schedule
     */
     inline void continuation(std::function<void(void)>& f) noexcept {
-        JobSystem::instance()->continuation(Function{ f }); // forward to the job system
+        JobSystem::instance().continuation(Function{ f }); // forward to the job system
     }
 
     //----------------------------------------------------------------------------------
@@ -844,14 +844,14 @@ namespace vgjs {
     * \brief Terminate the job system
     */
     inline void terminate() {
-        JobSystem::instance()->terminate();
+        JobSystem::instance().terminate();
     }
 
     /**
     * \brief Wait for the job system to terminate
     */
     inline void wait_for_termination() {
-        JobSystem::instance()->wait_for_termination();
+        JobSystem::instance().wait_for_termination();
     }
 
     /**
@@ -860,7 +860,7 @@ namespace vgjs {
     * in a memory data structure.
     */
     inline void enable_logging() {
-        JobSystem::instance()->enable_logging();
+        JobSystem::instance().enable_logging();
     }
 
     /**
@@ -869,14 +869,14 @@ namespace vgjs {
     * in a memory data structure.
     */
     inline void disable_logging() {
-        JobSystem::instance()->disable_logging();
+        JobSystem::instance().disable_logging();
     }
 
     /**
     * \returns whether logging is turned on
     */
     inline bool is_logging() {
-        return JobSystem::instance()->is_logging();
+        return JobSystem::instance().is_logging();
     }
 
     /**
@@ -884,14 +884,14 @@ namespace vgjs {
     * \returns a reference to the logging data.
     */
     inline auto& get_logs() {
-        return JobSystem::instance()->get_logs();
+        return JobSystem::instance().get_logs();
     }
 
     /**
     * \brief Clear all logs.
     */
     inline void clear_logs() {
-        JobSystem::instance()->clear_logs();
+        JobSystem::instance().clear_logs();
     }
 
 
@@ -909,8 +909,8 @@ namespace vgjs {
         std::chrono::high_resolution_clock::time_point& t1, std::chrono::high_resolution_clock::time_point& t2,
         int32_t exec_thread, bool finished, int32_t type, int32_t id) {
 
-        auto& logs = JobSystem::instance()->get_logs();
-        logs[JobSystem::instance()->thread_index()].emplace_back( t1, t2, JobSystem::instance()->thread_index(), finished, type, id);
+        auto& logs = JobSystem::instance().get_logs();
+        logs[JobSystem::instance().thread_index()].emplace_back( t1, t2, JobSystem::instance().thread_index(), finished, type, id);
     }
 
     /**
@@ -953,10 +953,10 @@ namespace vgjs {
     * \brief Dump all job data into a json log file.
     */
     inline void save_log_file() {
-        auto& logs = JobSystem::instance()->get_logs();
+        auto& logs = JobSystem::instance().get_logs();
         std::ofstream outdata;
         outdata.open("log.json");
-        auto& types = JobSystem::instance()->types();
+        auto& types = JobSystem::instance().types();
 
         if (outdata) {
             outdata << "{" << std::endl;
@@ -964,7 +964,7 @@ namespace vgjs {
             bool comma = false;
             for (uint32_t i = 0; i < logs.size(); ++i) {
                 for (auto& ev : logs[i]) {
-                    if (ev.m_t1 >= JobSystem::instance()->start_time() && ev.m_t2 >= ev.m_t1) {
+                    if (ev.m_t1 >= JobSystem::instance().start_time() && ev.m_t2 >= ev.m_t1) {
 
                         if (comma) outdata << "," << std::endl;
 
@@ -973,7 +973,7 @@ namespace vgjs {
                         if (it != types.end()) name = it->second;
 
                         save_job(outdata, "\"cat\"", 0, (uint32_t)ev.m_exec_thread,
-                            std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t1 - JobSystem::instance()->start_time()).count(),
+                            std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t1 - JobSystem::instance().start_time()).count(),
                             std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t2 - ev.m_t1).count(),
                             "\"X\"", "\"" + name + "\"", "\"id\": " + std::to_string(ev.m_id));
 
@@ -986,7 +986,7 @@ namespace vgjs {
             outdata << "}" << std::endl;
         }
         outdata.close();
-        JobSystem::instance()->clear_logs();
+        JobSystem::instance().clear_logs();
     }
 
 
