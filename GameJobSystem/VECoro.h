@@ -502,7 +502,8 @@ namespace vgjs {
 
         /**
         * \brief Store the value returned by co_yield.
-        * \param[in] t The value that was yielded.
+        * \param[in] t The value that was yielded
+        * \returns a yield_awaiter
         */
         yield_awaiter<T> yield_value(T t) {
             if (m_is_parent_function) {
@@ -511,7 +512,7 @@ namespace vgjs {
             else {
                 m_value = std::make_pair(true, t);
             }
-            return {};
+            return {};  //return a yield_awaiter
         }
 
         /**
@@ -617,9 +618,13 @@ namespace vgjs {
         Coro(Coro<T>&& t)  noexcept
             : Coro_base(), m_coro(std::exchange(t.m_coro, {})), 
                 m_value_ptr(std::exchange(t.m_value_ptr, {})), 
-            m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {}
+                m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {}
 
-        void operator= (Coro<T>&& t) { std::swap( m_coro, t.m_coro); }
+        void operator= (Coro<T>&& t) { 
+            std::swap( m_coro, t.m_coro); 
+            std::swap( m_value_ptr, t.m_value_ptr);
+            std::swap(m_value, t.m_value);
+        }
 
         /**
         * \brief Destructor of the Coro promise. 
