@@ -287,7 +287,6 @@ namespace vgjs {
 
     private:
         std::pmr::memory_resource*                  m_mr;                   ///<use to allocate/deallocate Jobs
-        static inline std::unique_ptr<JobSystem>    m_instance;	            ///<pointer to singleton
         std::vector<std::thread>	                m_threads;	            ///<array of thread structures
         std::atomic<uint32_t>   		            m_thread_count = 0;     ///<number of threads in the pool
         std::atomic<bool>                           m_terminated = false;   ///<flag set true when the last thread has exited
@@ -391,10 +390,9 @@ namespace vgjs {
         * \param[in] mr The memory resource to use for allocating Jobs.
         * \returns a pointer to the JobSystem instance.
         */
-        static std::unique_ptr<JobSystem>& instance(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) noexcept {
-            static std::once_flag once;
-            std::call_once(once, [&]() { m_instance = std::make_unique<JobSystem>(threadCount, start_idx, mr); });
-            return m_instance;
+        static JobSystem* instance(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) noexcept {
+            static JobSystem instance(threadCount, start_idx, mr); //thread safe init guaranteed - Meyer's Singleton
+            return &instance;
         };
 
         /**
@@ -402,7 +400,7 @@ namespace vgjs {
         * \returns true if the instance exists, else false.
         */
         static bool is_instance_created() noexcept {
-            return (m_instance != nullptr);
+            return m_thread_index >= 0;
         };
 
         JobSystem(const JobSystem&) = delete;				// non-copyable,
