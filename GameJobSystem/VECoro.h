@@ -87,8 +87,14 @@ namespace vgjs {
     * for the promise.
     */
     class Coro_promise_base : public Job_base {
+    protected:
+        std::experimental::coroutine_handle<> m_handle;
+        bool m_is_parent_function = current_job() == nullptr ? true : current_job()->is_function();
+        bool m_ready = false;
+
     public:
-        Coro_promise_base() noexcept {};        //constructor
+        Coro_promise_base(std::experimental::coroutine_handle<> handle) noexcept
+        : m_handle(handle) {};        //constructor
 
         /**
         * \brief Default behavior if an exception is not caught.
@@ -103,6 +109,21 @@ namespace vgjs {
         std::experimental::suspend_always initial_suspend() noexcept {  //always suspend at start when creating a coroutine Coro
             return {};
         }
+
+        /**
+        * \brief Resume the Coro at its suspension point.
+        */
+        bool resume() noexcept {
+            if (m_is_parent_function) {
+                m_ready = false;
+            }
+
+            if (m_handle && !m_handle.done()) {
+                m_handle.resume();       //coro could destroy itself here!!
+            }
+            return true;
+        };
+
 
         /**
         * \brief Use the given memory resource to create the promise object for a normal function.
@@ -435,8 +456,7 @@ namespace vgjs {
         template<typename T> friend struct final_awaiter;
         template<typename T> friend class Coro;
 
-    private:
-        bool m_is_parent_function = current_job()==nullptr ? true : current_job()->is_function();
+    protected:
         std::shared_ptr<std::optional<T>> m_value_ptr;  //a shared view of the return value
         T m_value;
 
@@ -445,7 +465,9 @@ namespace vgjs {
         /**
         * \brief Constructor
         */
-        Coro_promise() noexcept : Coro_promise_base{} {};
+        Coro_promise() noexcept 
+            : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+        };
 
         fptr get_deallocator() noexcept { return coro_deallocator<T>; };    //called for deallocation
 
@@ -463,26 +485,13 @@ namespace vgjs {
                     m_value_ptr, m_is_parent_function };
         }
 
-        /**
-        * \brief Resume the Coro at its suspension point.
-        */
-        bool resume() noexcept {
-            if (m_is_parent_function) {
-                *m_value_ptr = std::nullopt;
-            }
-
-            auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this);
-            if (coro && !coro.done()) {
-                coro.resume();       //coro could destroy itself here!!
-            }
-            return true;
-        };
 
         /**
         * \brief Store the value returned by co_return.
         * \param[in] t The value that was returned.
         */
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
+            m_ready = true;
             if (m_is_parent_function) {
                 *m_value_ptr = t;
                 return;
@@ -495,6 +504,7 @@ namespace vgjs {
         * \param[in] t The value that was yielded.
         */
         yield_awaiter<T> yield_value(T t) {
+            m_ready = true;
             if (m_is_parent_function) {
                 *m_value_ptr = t;
             }
@@ -580,6 +590,7 @@ namespace vgjs {
 
         using promise_type = Coro_promise<T>;
         bool m_is_parent_function;
+
         std::shared_ptr<std::optional<T>> m_value_ptr;
 
     private:

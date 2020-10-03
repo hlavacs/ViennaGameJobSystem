@@ -108,13 +108,14 @@ namespace vgjs {
         int32_t             m_thread_index = -1;        //thread that the job should run on and ran on
         int32_t             m_type = -1;                //for logging performance
         int32_t             m_id = -1;                  //for logging performance
+        bool                m_is_function = false;      //default - this is not a function
 
         virtual bool resume() = 0;                      //this is the actual work to be done
-        virtual void operator() () noexcept {           //wrapper as function operator
+        void operator() () noexcept {           //wrapper as function operator
             resume();
         }
         virtual fptr get_deallocator() noexcept { return job_deallocator; };    //called for deallocation
-        virtual bool is_function() noexcept { return false; }         //test whether this is a function or e.g. a coro
+        bool is_function() noexcept { return m_is_function; }         //test whether this is a function or e.g. a coro
     };
 
 
@@ -127,7 +128,10 @@ namespace vgjs {
         Job_base*                   m_continuation = nullptr;   //continuation follows this job (a coro is its own continuation)
         std::function<void(void)>   m_function;      //function to compute
 
-        Job() : Job_base() { m_children = 1; }
+        Job() : Job_base() {
+            m_children = 1;
+            m_is_function = true;
+        }
 
         void reset() noexcept {         //call only if you want to wipe out the Job data
             m_next = nullptr;           //e.g. when recycling from a used Jobs queue
@@ -146,7 +150,6 @@ namespace vgjs {
         }
 
         bool deallocate() noexcept { return true; };  //assert this is a job so it has been created by the job system
-        bool is_function() noexcept { return true;  };     //assert that this is a job
     };
 
 
