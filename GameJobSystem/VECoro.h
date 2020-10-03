@@ -90,7 +90,7 @@ namespace vgjs {
     protected:
         std::experimental::coroutine_handle<> m_handle;
         bool m_is_parent_function = current_job() == nullptr ? true : current_job()->is_function();
-        bool m_ready = false;
+        bool *m_ready_ptr; //points to flag which is true if value is ready, else false
 
     public:
         Coro_promise_base(std::experimental::coroutine_handle<> handle) noexcept
@@ -115,7 +115,7 @@ namespace vgjs {
         */
         bool resume() noexcept {
             if (m_is_parent_function) {
-                m_ready = false;
+                *m_ready_ptr = false;   //invalidate return value
             }
 
             if (m_handle && !m_handle.done()) {
@@ -457,8 +457,8 @@ namespace vgjs {
         template<typename T> friend class Coro;
 
     protected:
-        std::shared_ptr<std::optional<T>> m_value_ptr;  //a shared view of the return value
-        T m_value;
+        std::shared_ptr<std::pair<bool, T>> m_value_ptr;  //a shared view of the return value
+        std::pair<bool, T>                  m_value;
 
     public:
 
@@ -476,8 +476,10 @@ namespace vgjs {
         * \returns the Coro<T> from the promise.
         */
         Coro<T> get_return_object() noexcept {
+            m_ready_ptr = &m_value.first;
             if (m_is_parent_function) {
-                m_value_ptr = std::make_shared<std::optional<T>>(std::nullopt);
+                m_value_ptr = std::make_shared<std::pair<bool, T>>(std::make_pair(false, T{}));
+                m_ready_ptr = &(m_value_ptr->first);
             }
 
             return Coro<T>{ 
@@ -491,12 +493,11 @@ namespace vgjs {
         * \param[in] t The value that was returned.
         */
         void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
-            m_ready = true;
             if (m_is_parent_function) {
-                *m_value_ptr = t;
+                *m_value_ptr = std::make_pair( true, t );
                 return;
             }
-            m_value = t;
+            m_value = std::make_pair(true, t);
         }
 
         /**
@@ -504,12 +505,11 @@ namespace vgjs {
         * \param[in] t The value that was yielded.
         */
         yield_awaiter<T> yield_value(T t) {
-            m_ready = true;
             if (m_is_parent_function) {
-                *m_value_ptr = t;
+                *m_value_ptr = std::make_pair( true, t );
             }
             else {
-                m_value = t;
+                m_value = std::make_pair(true, t);
             }
             return {};
         }
@@ -590,8 +590,7 @@ namespace vgjs {
 
         using promise_type = Coro_promise<T>;
         bool m_is_parent_function;
-
-        std::shared_ptr<std::optional<T>> m_value_ptr;
+        std::shared_ptr<std::pair<bool,T>> m_value_ptr;
 
     private:
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
@@ -604,7 +603,7 @@ namespace vgjs {
         * \param[in] value Shared value to trade the results
         */
         explicit Coro(  std::experimental::coroutine_handle<promise_type> h, 
-                        std::shared_ptr<std::optional<T>>& value_ptr, bool is_parent_function ) noexcept
+                        std::shared_ptr<std::pair<bool,T>>& value_ptr, bool is_parent_function ) noexcept
                             : m_coro(h), m_is_parent_function(is_parent_function) {
             if (m_is_parent_function) {
                 m_value_ptr = value_ptr;
@@ -635,11 +634,11 @@ namespace vgjs {
         * \brief Retrieve the promised value or std::nullopt - nonblocking
         * \returns the promised value or std::nullopt
         */
-        std::optional<T> get() noexcept {
+        std::pair<bool,T> get() noexcept {
             if (m_is_parent_function) {
                 return *m_value_ptr;
             }
-            return std::optional<T>(m_coro.promise().m_value);
+            return m_coro.promise().m_value;
         }
 
         /**
