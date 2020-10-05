@@ -250,7 +250,7 @@ namespace vgjs {
                 };
 
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ ( g(std::get<Idx>(m_tuple)) , 0) ...}; //called for every tuple element
+                    std::initializer_list<int>{ (g(std::get<Idx>(m_tuple)) , 0) ...}; //called for every tuple element
                 };
 
                 f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
