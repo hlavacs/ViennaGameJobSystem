@@ -115,10 +115,174 @@ namespace vgjs {
     };
 
 
+    /**
+    * \brief Awaitable for awaiting a tuple of vector of type Coro<T>, Function{}, std::function<void(void)>.
+    *
+    * The tuple can contain vectors with different types.
+    * The caller will then await the completion of the Coros. Afterwards,
+    * the return values can be retrieved by calling get().
+    */
+    template<typename PT, typename... Ts>
+    struct awaitable_tuple {
+        struct awaiter : std::experimental::suspend_always {
+            std::tuple<std::pmr::vector<Ts>...>& m_tuple;       //vector with all children to start
+            std::size_t                          m_number = 0;   //total number of all new children to schedule
+
+            bool await_ready() noexcept;
+            void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+            awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
+        };
+
+        std::tuple<std::pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
+
+        awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
+        awaiter operator co_await() noexcept;
+    };
 
 
 
+    /**
+    * \brief Awaiter for awaiting a Coro of type Coro<T> or std::function<void(void)>, or std::pmr::vector thereof
+    *
+    * The caller will await the completion of the Coro(s). Afterwards,
+    * the return values can be retrieved by calling get() for Coro<t>.
+    */
+    template<typename PT, typename T>
+    struct awaitable_coro {
 
+        struct awaiter : std::experimental::suspend_always {
+            T& m_child;                      //child/children
+
+            bool await_ready() noexcept;
+            void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+            awaiter(T& child) noexcept : m_child(child) {};
+        };
+
+        T& m_child;                     //child/children
+
+        awaitable_coro(T& child) noexcept : m_child(child) {};
+        awaiter operator co_await() noexcept;
+    };
+
+
+    /**
+    * \brief Awaiter for changing the thread that the coro is run on.
+    * After suspending the thread number is set to the target thread, then the job
+    * is immediately rescheduled into the system
+    */
+    template<typename PT>
+    struct awaitable_resume_on {
+        struct awaiter : std::experimental::suspend_always {
+            int32_t m_thread_index; //the thread index to use
+
+            bool await_ready() noexcept;
+            void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+            awaiter(int32_t thread_index) noexcept : m_thread_index(thread_index) {};
+        };
+
+        int32_t m_thread_index; //the thread index to use
+        awaitable_resume_on(int32_t thread_index) noexcept : m_thread_index(thread_index) {};
+        awaiter operator co_await() noexcept;
+    };
+
+
+    /**
+    * \brief Promise of the Coro. Depends on the return type.
+    *
+    * The Coro promise can hold values that are produced by the Coro. They can be
+    * retrieved later by calling get() on the Coro (which calls get() on the promise)
+    */
+    template<typename T>
+    class Coro_promise : public Coro_promise_base {
+        template<typename T> friend struct yield_awaiter;
+        template<typename T> friend struct final_awaiter;
+        template<typename T> friend class Coro;
+
+    protected:
+        std::shared_ptr<std::pair<bool, T>> m_value_ptr;  //a shared view of the return value
+        std::pair<bool, T>                  m_value;
+
+    public:
+
+        Coro_promise() noexcept;
+        fptr    get_deallocator() noexcept { return coro_deallocator<T>; };    //called for deallocation
+        Coro<T> get_return_object() noexcept;
+        void    return_value(T t) noexcept;
+        yield_awaiter<T> yield_value(T t) noexcept;
+
+        template<typename... Ts>
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept;
+
+        template<typename U>
+        awaitable_coro<T, U> await_transform(U& coro) noexcept;
+
+        awaitable_resume_on<T> await_transform(int thread_index) noexcept;
+        final_awaiter<T> final_suspend() noexcept;
+    };
+
+    /**
+    * \brief Base class of coroutine Coro. Independent of promise return type.
+    */
+    class Coro_base : public Queuable {
+    public:
+        Coro_base() noexcept : Queuable() {};                                              //constructor
+        virtual bool resume() noexcept { return true; };                     //resume the Coro
+        virtual Coro_promise_base* promise() noexcept { return nullptr; };   //get the promise to use it as Job 
+    };
+
+    /**
+    * \brief The main Coro class. Can be constructed to return any value type
+    *
+    * The Coro is an accessor class much like a std::future that is used to
+    * access the promised value once it is awailable.
+    * It also holds a handle to the Coro promise.
+    */
+    template<typename T>
+    class Coro : public Coro_base {
+    public:
+
+        using promise_type = Coro_promise<T>;
+        bool m_is_parent_function;
+        std::shared_ptr<std::pair<bool, T>> m_value_ptr;
+
+    private:
+        std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
+
+    public:
+
+        explicit Coro(std::experimental::coroutine_handle<promise_type> h,
+            std::shared_ptr<std::pair<bool, T>>& value_ptr,
+            bool is_parent_function) noexcept;;
+
+        Coro(Coro<T>&& t)  noexcept
+            : Coro_base(), m_coro(std::exchange(t.m_coro, {})),
+            m_value_ptr(std::exchange(t.m_value_ptr, {})),
+            m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {};
+
+        void operator= (Coro<T>&& t);
+        ~Coro() noexcept;
+
+        std::pair<bool, T>  get() noexcept;
+        Coro_promise_base* promise() noexcept;
+        Coro<T>&& operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
+        bool                resume() noexcept;
+
+    };
+
+
+    template<>
+    class Coro_promise<void> : public Coro_promise_base {
+    };
+
+
+    template<>
+    class Coro<void> : public Coro_base {
+    };
+
+
+
+    //implementations
+    //---------------------------------------------------------------------------------------------------
 
     inline Coro_promise_base::Coro_promise_base(std::experimental::coroutine_handle<> handle) noexcept
         : m_handle(handle) {};        //constructor
@@ -229,184 +393,96 @@ namespace vgjs {
     }
 
 
-    //---------------------------------------------------------------------------------------------------
-
+    //--------------------------------------------------------------------------------------------------
 
     /**
-    * \brief Awaitable for awaiting a tuple of vector of type Coro<T>, Function{}, std::function<void(void)>.
-    *
-    * The tuple can contain vectors with different types.
-    * The caller will then await the completion of the Coros. Afterwards,
-    * the return values can be retrieved by calling get().
+    * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
     */
     template<typename PT, typename... Ts>
-    struct awaitable_tuple {
-
-        /**
-        * \brief Awaiter for awaiting a tuple of vector of type Coro<T>, Function{}, std::function<void(void)>.
-        */
-        struct awaiter : std::experimental::suspend_always {
-            std::tuple<std::pmr::vector<Ts>...>&    m_tuple;       //vector with all children to start
-            std::size_t                             m_number = 0;   //total number of all new children to schedule
-
-            /**
-            * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
-            */
-            bool await_ready() noexcept {                                 //suspend only if there are no Coros
-                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ (m_number += std::get<Idx>(m_tuple).size(), 0) ...}; //called for every tuple element
-                    return (m_number == 0);
-                };
-                return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-            }
-
-            /**
-            * \brief Go through all tuple elements and schedule them. 
-            * Presets number of new children to avoid a race.
-            * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
-            */
-            void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
-                    schedule(vec, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
-                    m_number = 0;                               //after this always 0
-                };
-
-                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ (g(std::get<Idx>(m_tuple)) , 0) ...}; //called for every tuple element
-                };
-
-                f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-            }
-
-            /**
-            * \brief Constructor just passes on data.
-            * \param[in] children The new jobs to schedule
-            */
-            awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
+    inline bool awaitable_tuple<PT, Ts...>::awaiter::await_ready() noexcept {                                 //suspend only if there are no Coros
+        auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
+            std::initializer_list<int>{ (m_number += std::get<Idx>(m_tuple).size(), 0) ...}; //called for every tuple element
+            return (m_number == 0);
         };
-
-        std::tuple<std::pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
-
-        /**
-        * \brief Constructor just passes on data.
-        * \param[in] children The new jobs to schedule
-        */
-        awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children ) noexcept : m_tuple(children) {};
-
-        //co_await operator is defined for this awaitable, and results in the awaiter
-        awaiter operator co_await() noexcept { return { m_tuple }; };
-    };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
+    }
 
     /**
-    * \brief Awaiter for awaiting a Coro of type Coro<T> or std::function<void(void)>, or std::pmr::vector thereof
-    *
-    * The caller will await the completion of the Coro(s). Afterwards,
-    * the return values can be retrieved by calling get() for Coro<t>.
+    * \brief Go through all tuple elements and schedule them.
+    * Presets number of new children to avoid a race.
+    * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
+    */
+    template<typename PT, typename... Ts>
+    inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+        auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
+            schedule(vec, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
+            m_number = 0;                               //after this always 0
+        };
+
+        auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
+            std::initializer_list<int>{ (g(std::get<Idx>(m_tuple)), 0) ...}; //called for every tuple element
+        };
+
+        f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
+    }
+
+    //co_await operator is defined for this awaitable, and results in the awaiter
+    template<typename PT, typename... Ts>
+    inline typename awaitable_tuple<PT, Ts...>::awaiter awaitable_tuple<PT, Ts...>::operator co_await() noexcept { return { m_tuple }; };
+
+    //--------------------------------------------------------------------------------------------------
+
+    /**
+    * \brief If m_child is a vector this makes sure that there are children in the vector
     */
     template<typename PT, typename T>
-    struct awaitable_coro {
+    inline bool awaitable_coro<PT,T>::awaiter::await_ready() noexcept {                   //suspend only if there are children to create
+        if constexpr (is_pmr_vector<T>::value) {
+            return m_child.empty();
+        }
+        return false;
+    }
 
-        struct awaiter : std::experimental::suspend_always {
-            T& m_child;                      //child/children
+    /**
+    * \brief Forward the child to the correct version of schedule()
+    * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
+    */
+    template<typename PT, typename T>
+    inline void awaitable_coro<PT,T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+        schedule(std::forward<T>(m_child), &h.promise());  //schedule the coro, function or vector
+    }
 
-            /**
-            * \brief If m_child is a vector this makes sure that there are children in the vector
-            */
-            bool await_ready() noexcept {                   //suspend only if there are children to create
-                if constexpr (is_pmr_vector<T>::value) {
-                    return m_child.empty();
-                }
-                return false;
-            }
+    //co_await operator is defined for this awaitable, and results in the awaiter
+    template<typename PT, typename T>
+    inline typename awaitable_coro<PT,T>::awaiter awaitable_coro<PT,T>::operator co_await() noexcept { return { m_child }; };
 
-            /**
-            * \brief Forward the child to the correct version of schedule()
-            * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
-            */
-            void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                schedule(std::forward<T>(m_child), &h.promise());  //schedule the coro, function or vector
-            }
-
-            /**
-            * \brief Constructor just passes on data.
-            * \param[in] child The new job to schedule
-            */
-            awaiter(T& child) noexcept : m_child(child) {};
-        };
-
-        T& m_child;                     //child/children
-
-        /**
-        * \brief Constructor just passes on data.
-        * \param[in] child The new job to schedule
-        */
-        awaitable_coro(T& child ) noexcept : m_child(child) {};
-
-        //co_await operator is defined for this awaitable, and results in the awaiter
-        awaiter operator co_await() noexcept { return { m_child }; }; 
-    };
+    //--------------------------------------------------------------------------------------------------
 
 
     /**
-    * \brief Awaiter for changing the thread that the coro is run on.
-    * After suspending the thread number is set to the target thread, then the job
-    * is immediately rescheduled into the system
+    * \brief Test whether the job is already on the right thread.
     */
     template<typename PT>
-    struct awaitable_resume_on {
-        struct awaiter : std::experimental::suspend_always {
-            int32_t m_thread_index; //the thread index to use
+    inline bool awaitable_resume_on<PT>::awaiter::await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
+        return (m_thread_index == JobSystem::instance().thread_index());
+    }
 
-            /**
-            * \brief Test whether the job is already on the right thread.
-            */
-            bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
-                return (m_thread_index == JobSystem::instance().thread_index());
-            }
+    /**
+    * \brief Set the thread index and reschedule the coro
+    * \param[in] h The coro handle, can be used to get the promise.
+    */
+    template<typename PT>
+    inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+        h.promise().m_thread_index = m_thread_index;
+        JobSystem::instance().schedule(&h.promise());
+    }
 
-            /**
-            * \brief Set the thread index and reschedule the coro
-            * \param[in] h The coro handle, can be used to get the promise.
-            */
-            void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                h.promise().m_thread_index = m_thread_index;
-                JobSystem::instance().schedule( &h.promise() );
-            }
+    template<typename PT>
+    inline typename awaitable_resume_on<PT>::awaiter awaitable_resume_on<PT>::operator co_await() noexcept { return { m_thread_index }; };
 
-            /**
-            * \brief Constructor just passes on data.
-            * \param[in] thread_index The thread that this coro should be moved to
-            */
-            awaiter(int32_t thread_index) noexcept : m_thread_index(thread_index) {};
-        };
 
-        int32_t m_thread_index; //the thread index to use
+    //---------------------------------------------------------------------------------------------------
 
-        /**
-        * \brief Constructor just passes on data.
-        * \param[in] thread_index The thread that this coro should be moved to
-        */
-        awaitable_resume_on( int32_t thread_index ) noexcept : m_thread_index(thread_index) {};
-
-        //co_await operator is defined for this awaitable, and results in the awaiter
-        awaiter operator co_await() noexcept { return { m_thread_index }; };
-    };
 
 
     /**
@@ -482,39 +558,6 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
 
 
-    /**
-    * \brief Promise of the Coro. Depends on the return type.
-    * 
-    * The Coro promise can hold values that are produced by the Coro. They can be
-    * retrieved later by calling get() on the Coro (which calls get() on the promise)
-    */
-    template<typename T>
-    class Coro_promise : public Coro_promise_base {
-        template<typename T> friend struct yield_awaiter;
-        template<typename T> friend struct final_awaiter;
-        template<typename T> friend class Coro;
-
-    protected:
-        std::shared_ptr<std::pair<bool, T>> m_value_ptr;  //a shared view of the return value
-        std::pair<bool, T>                  m_value;
-
-    public:
-
-        Coro_promise() noexcept;
-        fptr    get_deallocator() noexcept { return coro_deallocator<T>; };    //called for deallocation
-        Coro<T> get_return_object() noexcept;
-        void    return_value(T t) noexcept;
-        yield_awaiter<T> yield_value(T t) noexcept;
-
-        template<typename... Ts>
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept;
-
-        template<typename U>
-        awaitable_coro<T, U> await_transform(U& coro) noexcept;
-
-        awaitable_resume_on<T> await_transform(int thread_index) noexcept;
-        final_awaiter<T> final_suspend() noexcept;
-    };
 
 
     template<typename T>
@@ -628,56 +671,6 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
 
-    /**
-    * \brief Base class of coroutine Coro. Independent of promise return type.
-    */
-    class Coro_base : public Queuable {
-    public:
-        Coro_base() noexcept : Queuable() {};                                              //constructor
-        virtual bool resume() noexcept { return true; };                     //resume the Coro
-        virtual Coro_promise_base* promise() noexcept { return nullptr; };   //get the promise to use it as Job 
-    };
-
-
-    /**
-    * \brief The main Coro class. Can be constructed to return any value type
-    *
-    * The Coro is an accessor class much like a std::future that is used to
-    * access the promised value once it is awailable.
-    * It also holds a handle to the Coro promise.
-    */
-    template<typename T>
-    class Coro : public Coro_base {
-    public:
-
-        using promise_type = Coro_promise<T>;
-        bool m_is_parent_function;
-        std::shared_ptr<std::pair<bool,T>> m_value_ptr;
-
-    private:
-        std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
-
-    public:
-
-        explicit Coro(  std::experimental::coroutine_handle<promise_type> h,
-                        std::shared_ptr<std::pair<bool, T>>& value_ptr,
-                        bool is_parent_function) noexcept;;
-
-        Coro(Coro<T>&& t)  noexcept
-            : Coro_base(), m_coro(std::exchange(t.m_coro, {})),
-            m_value_ptr(std::exchange(t.m_value_ptr, {})),
-            m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {};
-
-        void operator= (Coro<T>&& t);
-        ~Coro() noexcept;
-
-        std::pair<bool, T>  get() noexcept;
-        Coro_promise_base*  promise() noexcept;
-        Coro<T>&&           operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
-        bool                resume() noexcept;
-
-    };
-
 
     template<typename T>
     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
@@ -754,9 +747,6 @@ namespace vgjs {
         }
         return true;
     };
-
-
-
 
 
 }
