@@ -1,4 +1,5 @@
-
+#ifndef VEGAMEJOBSYSTEM_H
+#define VEGAMEJOBSYSTEM_H
 
 
 /**
@@ -995,4 +996,5 @@ namespace vgjs {
 
 
 
+#endif
 

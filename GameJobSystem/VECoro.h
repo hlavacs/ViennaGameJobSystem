@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VECORO_H
+#define VECORO_h
 
 
 
@@ -683,3 +684,5 @@ namespace vgjs {
 
 }
 
+
+#endif
