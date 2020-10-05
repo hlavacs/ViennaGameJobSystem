@@ -91,120 +91,142 @@ namespace vgjs {
     protected:
         std::experimental::coroutine_handle<> m_handle;
         bool m_is_parent_function = current_job() == nullptr ? true : current_job()->is_function();
-        bool *m_ready_ptr; //points to flag which is true if value is ready, else false
+        bool* m_ready_ptr; //points to flag which is true if value is ready, else false
 
     public:
-        Coro_promise_base(std::experimental::coroutine_handle<> handle) noexcept
-        : m_handle(handle) {};        //constructor
+        Coro_promise_base(std::experimental::coroutine_handle<> handle) noexcept;
+        void unhandled_exception() noexcept;
+        std::experimental::suspend_always initial_suspend() noexcept;
+        bool resume() noexcept ;
 
-        /**
-        * \brief Default behavior if an exception is not caught.
-        */
-        void unhandled_exception() noexcept {   //in case of an exception terminate the program
-            std::terminate();
-        }
-
-        /**
-        * \brief When the coro is created it initially suspends.
-        */
-        std::experimental::suspend_always initial_suspend() noexcept {  //always suspend at start when creating a coroutine Coro
-            return {};
-        }
-
-        /**
-        * \brief Resume the Coro at its suspension point.
-        */
-        bool resume() noexcept {
-            if (m_is_parent_function) {
-                *m_ready_ptr = false;   //invalidate return value
-            }
-
-            if (m_handle && !m_handle.done()) {
-                m_handle.resume();       //coro could destroy itself here!!
-            }
-            return true;
-        };
-
-
-        /**
-        * \brief Use the given memory resource to create the promise object for a normal function.
-        * 
-        * Store the pointer to the memory resource right after the promise, so it can be used later
-        * for deallocating the promise.
-        * 
-        * \param[in] sz Number of bytes to allocate.
-        * \param[in] std::allocator_arg_t Dummy parameter to indicate that the next parameter is the memory resource to use.
-        * \param[in] mr The memory resource to use when allocating the promise.
-        * \param[in] args the rest of the coro args.
-        * \returns a pointer to the newly allocated promise.
-        */
         template<typename... Args>
-        void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-            //std::cout << "Coro new " << sz << "\n";
-            auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-            char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
-            if (ptr == nullptr) {
-                std::terminate();
-            }
-            *reinterpret_cast<std::pmr::memory_resource**>(ptr + allocatorOffset) = mr;
-            return ptr;
-        }
+        void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
 
-        /**
-        * \brief Use the given memory resource to create the promise object for a member function.
-        *
-        * Store the pointer to the memory resource right after the promise, so it can be used later
-        * for deallocating the promise.
-        *
-        * \param[in] sz Number of bytes to allocate.
-        * \param[in] Class The class that defines this member function.
-        * \param[in] std::allocator_arg_t Dummy parameter to indicate that the next parameter is the memory resource to use.
-        * \param[in] mr The memory resource to use when allocating the promise.
-        * \param[in] args the rest of the coro args.
-        * \returns a pointer to the newly allocated promise.
-        */
         template<typename Class, typename... Args>
-        void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-            return operator new(sz, std::allocator_arg, mr, args...);
-        }
+        void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
 
-        /**
-        * \brief Create a promise object for a class member function using the system standard allocator.
-        * \param[in] sz Number of bytes to allocate.
-        * \param[in] Class The class that defines this member function.
-        * \param[in] args the rest of the coro args.
-        * \returns a pointer to the newly allocated promise.
-        */
         template<typename Class, typename... Args>
-        void* operator new(std::size_t sz, Class, Args&&... args) noexcept {
-            return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
-        }
+        void* operator new(std::size_t sz, Class, Args&&... args) noexcept;
 
-        /**
-        * \brief Create a promise object using the system standard allocator.
-        * \param[in] sz Number of bytes to allocate.
-        * \param[in] args the rest of the coro args.
-        * \returns a pointer to the newly allocated promise.
-        */
         template<typename... Args>
-        void* operator new(std::size_t sz, Args&&... args) noexcept {
-            return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
-        }
+        void* operator new(std::size_t sz, Args&&... args) noexcept;
 
-        /**
-        * \brief Use the pointer after the promise as deallocator.
-        * \param[in] ptr Pointer to the memory to deallocate.
-        * \param[in] sz Number of bytes to deallocate.
-        */
-        void operator delete(void* ptr, std::size_t sz) noexcept {
-            //std::cout << "Coro delete " << sz << "\n";
-            auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-            auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
-            (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
-        }
-
+        void operator delete(void* ptr, std::size_t sz) noexcept;
     };
 
+
+
+
+
+
+
+    inline Coro_promise_base::Coro_promise_base(std::experimental::coroutine_handle<> handle) noexcept
+        : m_handle(handle) {};        //constructor
+
+    /**
+    * \brief Default behavior if an exception is not caught.
+    */
+    inline void Coro_promise_base::unhandled_exception() noexcept {   //in case of an exception terminate the program
+        std::terminate();
+    }
+
+    /**
+    * \brief When the coro is created it initially suspends.
+    */
+    inline std::experimental::suspend_always Coro_promise_base::initial_suspend() noexcept {  //always suspend at start when creating a coroutine Coro
+        return {};
+    }
+
+    /**
+    * \brief Resume the Coro at its suspension point.
+    */
+    inline bool Coro_promise_base::resume() noexcept {
+        if (m_is_parent_function) {
+            *m_ready_ptr = false;   //invalidate return value
+        }
+
+        if (m_handle && !m_handle.done()) {
+            m_handle.resume();       //coro could destroy itself here!!
+        }
+        return true;
+    };
+
+    /**
+    * \brief Use the given memory resource to create the promise object for a normal function.
+    *
+    * Store the pointer to the memory resource right after the promise, so it can be used later
+    * for deallocating the promise.
+*
+    * \param[in] sz Number of bytes to allocate.
+    * \param[in] std::allocator_arg_t Dummy parameter to indicate that the next parameter is the memory resource to use.
+    * \param[in] mr The memory resource to use when allocating the promise.
+    * \param[in] args the rest of the coro args.
+    * \returns a pointer to the newly allocated promise.
+    */
+    template<typename... Args>
+    inline void* Coro_promise_base::operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
+        //std::cout << "Coro new " << sz << "\n";
+        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
+        char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
+        if (ptr == nullptr) {
+            std::terminate();
+        }
+        *reinterpret_cast<std::pmr::memory_resource**>(ptr + allocatorOffset) = mr;
+        return ptr;
+    }
+
+    /**
+    * \brief Use the given memory resource to create the promise object for a member function.
+    *
+    * Store the pointer to the memory resource right after the promise, so it can be used later
+    * for deallocating the promise.
+    *
+    * \param[in] sz Number of bytes to allocate.
+    * \param[in] Class The class that defines this member function.
+    * \param[in] std::allocator_arg_t Dummy parameter to indicate that the next parameter is the memory resource to use.
+    * \param[in] mr The memory resource to use when allocating the promise.
+    * \param[in] args the rest of the coro args.
+    * \returns a pointer to the newly allocated promise.
+    */
+    template<typename Class, typename... Args>
+    inline void* Coro_promise_base::operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
+        return operator new(sz, std::allocator_arg, mr, args...);
+    }
+
+    /**
+    * \brief Create a promise object for a class member function using the system standard allocator.
+    * \param[in] sz Number of bytes to allocate.
+    * \param[in] Class The class that defines this member function.
+    * \param[in] args the rest of the coro args.
+    * \returns a pointer to the newly allocated promise.
+    */
+    template<typename Class, typename... Args>
+    inline void* Coro_promise_base::operator new(std::size_t sz, Class, Args&&... args) noexcept {
+        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
+    }
+
+    /**
+    * \brief Create a promise object using the system standard allocator.
+    * \param[in] sz Number of bytes to allocate.
+    * \param[in] args the rest of the coro args.
+    * \returns a pointer to the newly allocated promise.
+    */
+    template<typename... Args>
+    inline void* Coro_promise_base::operator new(std::size_t sz, Args&&... args) noexcept {
+        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
+    }
+
+    /**
+    * \brief Use the pointer after the promise as deallocator.
+    * \param[in] ptr Pointer to the memory to deallocate.
+    * \param[in] sz Number of bytes to deallocate.
+    */
+    inline void Coro_promise_base::operator delete(void* ptr, std::size_t sz) noexcept {
+        //std::cout << "Coro delete " << sz << "\n";
+        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
+        auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
+        (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
+    }
 
 
     //---------------------------------------------------------------------------------------------------
@@ -274,6 +296,21 @@ namespace vgjs {
         //co_await operator is defined for this awaitable, and results in the awaiter
         awaiter operator co_await() noexcept { return { m_tuple }; };
     };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     /**
@@ -463,94 +500,117 @@ namespace vgjs {
 
     public:
 
-        /**
-        * \brief Constructor
-        */
-        Coro_promise() noexcept 
-            : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
-        };
+        Coro_promise() noexcept;
+        fptr    get_deallocator() noexcept { return coro_deallocator<T>; };    //called for deallocation
+        Coro<T> get_return_object() noexcept;
+        void    return_value(T t) noexcept;
+        yield_awaiter<T> yield_value(T t) noexcept;
 
-        fptr get_deallocator() noexcept { return coro_deallocator<T>; };    //called for deallocation
+        template<typename... Ts>
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept;
 
-        /**
-        * \brief Get Coro<T> from the Coro_promise<T>. Creates a shared value to trade the result.
-        * \returns the Coro<T> from the promise.
-        */
-        Coro<T> get_return_object() noexcept {
-            m_ready_ptr = &m_value.first;
-            if (m_is_parent_function) {
-                m_value_ptr = std::make_shared<std::pair<bool, T>>(std::make_pair(false, T{}));
-                m_ready_ptr = &(m_value_ptr->first);
-            }
+        template<typename U>
+        awaitable_coro<T, U> await_transform(U& coro) noexcept;
 
-            return Coro<T>{ 
-                std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this), 
-                    m_value_ptr, m_is_parent_function };
+        awaitable_resume_on<T> await_transform(int thread_index) noexcept;
+        final_awaiter<T> final_suspend() noexcept;
+    };
+
+
+    template<typename T>
+    inline Coro_promise<T>::Coro_promise() noexcept
+       : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+    };
+
+    template<typename T>
+    inline fptr get_deallocator() noexcept { return coro_deallocator<T>; };    //called for deallocation
+
+    /**
+    * \brief Get Coro<T> from the Coro_promise<T>. Creates a shared value to trade the result.
+    * \returns the Coro<T> from the promise.
+    */
+    template<typename T>
+    inline Coro<T> Coro_promise<T>::get_return_object() noexcept {
+        m_ready_ptr = &m_value.first;
+        if (m_is_parent_function) {
+            m_value_ptr = std::make_shared<std::pair<bool, T>>(std::make_pair(false, T{}));
+            m_ready_ptr = &(m_value_ptr->first);
         }
 
+        return Coro<T>{
+            std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+                m_value_ptr, m_is_parent_function };
+    }
 
-        /**
-        * \brief Store the value returned by co_return.
-        * \param[in] t The value that was returned.
-        */
-        void return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
-            if (m_is_parent_function) {
-                *m_value_ptr = std::make_pair( true, t );
-                return;
-            }
+
+    /**
+    * \brief Store the value returned by co_return.
+    * \param[in] t The value that was returned.
+    */
+    template<typename T>
+    inline void Coro_promise<T>::return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
+        if (m_is_parent_function) {
+            *m_value_ptr = std::make_pair(true, t);
+            return;
+        }
+        m_value = std::make_pair(true, t);
+    }
+
+    /**
+    * \brief Store the value returned by co_yield.
+    * \param[in] t The value that was yielded
+    * \returns a yield_awaiter
+    */
+    template<typename T>
+    inline yield_awaiter<T> Coro_promise<T>::yield_value(T t) noexcept {
+        if (m_is_parent_function) {
+            *m_value_ptr = std::make_pair(true, t);
+        }
+        else {
             m_value = std::make_pair(true, t);
         }
+        return {};  //return a yield_awaiter
+    }
 
-        /**
-        * \brief Store the value returned by co_yield.
-        * \param[in] t The value that was yielded
-        * \returns a yield_awaiter
-        */
-        yield_awaiter<T> yield_value(T t) {
-            if (m_is_parent_function) {
-                *m_value_ptr = std::make_pair( true, t );
-            }
-            else {
-                m_value = std::make_pair(true, t);
-            }
-            return {};  //return a yield_awaiter
-        }
+    /**
+    * \brief Return an awaitable from a tuple of vectors.
+    * \returns the correct awaitable.
+    */
+    template<typename T>
+    template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& Coros or functions
+    inline awaitable_tuple<T, Ts...> Coro_promise<T>::await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept {
+        return { tuple };
+    }
 
-        /**
-        * \brief Return an awaitable from a tuple of vectors.
-        * \returns the correct awaitable.
-        */
-        template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& Coros or functions
-        awaitable_tuple<T, Ts...> await_transform( std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept {
-            return { tuple };
-        }
+    /**
+    * \brief Return an awaitable from basic types like functions, Coros, or vectors thereof
+    * \returns the correct awaitable.
+    */
+    template<typename T>
+    template<typename U>        //called by co_await for Coros or functions, or std::pmr::vector thereof
+    inline awaitable_coro<T, U> Coro_promise<T>::await_transform(U& coro) noexcept {
+        return { coro };
+    }
 
-        /**
-        * \brief Return an awaitable from basic types like functions, Coros, or vectors thereof
-        * \returns the correct awaitable.
-        */
-        template<typename U>        //called by co_await for Coros or functions, or std::pmr::vector thereof
-        awaitable_coro<T, U> await_transform(U& coro) noexcept {
-            return { coro };
-        }
+    /**
+    * \brief Return an awaitable for an integer number.
+    * This is used when the coro should change the current thread.
+    * \returns the correct awaitable.
+    */
+    template<typename T>
+    inline awaitable_resume_on<T> Coro_promise<T>::await_transform(int thread_index) noexcept { //called by co_await for INT, for changing the thread
+        return { (int32_t)thread_index };
+    }
 
-        /**
-        * \brief Return an awaitable for an integer number.
-        * This is used when the coro should change the current thread.
-        * \returns the correct awaitable.
-        */
-        awaitable_resume_on<T> await_transform(int thread_index) noexcept { //called by co_await for INT, for changing the thread
-            return { (int32_t)thread_index };
-        }
+    /**
+    * \brief Return the final awaiter after the final suspension point.
+    * \returns the final awaiter.
+    */
+    template<typename T>
+    inline final_awaiter<T> Coro_promise<T>::final_suspend() noexcept { //create the final awaiter at the final suspension point
+        return {};
+    }
 
-        /**
-        * \brief Return the final awaiter after the final suspension point.
-        * \returns the final awaiter.
-        */
-        final_awaiter<T> final_suspend() noexcept { //create the final awaiter at the final suspension point
-            return {};
-        }
-    };
 
     //---------------------------------------------------------------------------------------------------
 
@@ -599,88 +659,105 @@ namespace vgjs {
 
     public:
 
-        /**
-        * \brief Constructor.
-        * \param[in] h Handle of this new coro.
-        * \param[in] value Shared value to trade the results
-        */
-        explicit Coro(  std::experimental::coroutine_handle<promise_type> h, 
-                        std::shared_ptr<std::pair<bool,T>>& value_ptr, bool is_parent_function ) noexcept
-                            : m_coro(h), m_is_parent_function(is_parent_function) {
-            if (m_is_parent_function) {
-                m_value_ptr = value_ptr;
-            }
-        }
+        explicit Coro(  std::experimental::coroutine_handle<promise_type> h,
+                        std::shared_ptr<std::pair<bool, T>>& value_ptr,
+                        bool is_parent_function) noexcept;;
 
-        /**
-        * \brief Move constructor.
-        * \param[in] t The old Coro<T>.
-        */
         Coro(Coro<T>&& t)  noexcept
-            : Coro_base(), m_coro(std::exchange(t.m_coro, {})), 
-                m_value_ptr(std::exchange(t.m_value_ptr, {})), 
-                m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {}
+            : Coro_base(), m_coro(std::exchange(t.m_coro, {})),
+            m_value_ptr(std::exchange(t.m_value_ptr, {})),
+            m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {};
 
-        void operator= (Coro<T>&& t) { 
-            std::swap( m_coro, t.m_coro); 
-            std::swap( m_value_ptr, t.m_value_ptr);
-            std::swap(m_value, t.m_value);
-        }
+        void operator= (Coro<T>&& t);
+        ~Coro() noexcept;
 
-        /**
-        * \brief Destructor of the Coro promise. 
-        */
-        ~Coro() noexcept {
-            if (!m_is_parent_function && m_coro) {
-                m_coro.destroy();
-            }
-        }
-
-        /**
-        * \brief Retrieve the promised value or std::nullopt - nonblocking
-        * \returns the promised value or std::nullopt
-        */
-        std::pair<bool,T> get() noexcept {
-            if (m_is_parent_function) {
-                return *m_value_ptr;
-            }
-            return m_coro.promise().m_value;
-        }
-
-        /**
-        * \brief Retrieve a pointer to the promise.
-        * \returns a pointer to the promise.
-        */
-        Coro_promise_base* promise() noexcept { //get a pointer to the promise (can be used as Job)
-            return &m_coro.promise();
-        }
-
-        /**
-        * \brief Function operator so you can pass on parameters to the Coro.
-        * 
-        * \param[in] thread_index The thread that should execute this coro
-        * \param[in] type The type of the coro.
-        * \param[in] id A unique ID of the call.
-        * \returns a reference to this Coro so that it can be used with co_await.
-        */
-        Coro<T>&& operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1 ) {
-            m_coro.promise().m_thread_index = thread_index;
-            m_coro.promise().m_type = type;
-            m_coro.promise().m_id = id;
-            return std::move(*this);
-        } 
-
-        /**
-        * \brief Resume the coro at its suspension point
-        */
-        bool resume() noexcept {    //resume the Coro by calling resume() on the handle
-            if (m_coro && !m_coro.done()) {
-                m_coro.promise().resume();
-            }
-            return true;
-        };
+        std::pair<bool, T>  get() noexcept;
+        Coro_promise_base*  promise() noexcept;
+        Coro<T>&&           operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
+        bool                resume() noexcept;
 
     };
+
+
+    template<typename T>
+    inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+                            std::shared_ptr<std::pair<bool, T>>& value_ptr, 
+                            bool is_parent_function) noexcept
+                                : m_coro(h), m_is_parent_function(is_parent_function)  {
+        if (m_is_parent_function) {
+            m_value_ptr = value_ptr;
+        }
+    };
+
+
+    template<typename T>
+    inline void Coro<T>::operator= (Coro<T>&& t) {
+        std::swap(m_coro, t.m_coro);
+        std::swap(m_value_ptr, t.m_value_ptr);
+        std::swap(m_value, t.m_value);
+    }
+
+    /**
+    * \brief Destructor of the Coro promise.
+    */
+    template<typename T>
+    inline Coro<T>::~Coro() noexcept {
+        if (!m_is_parent_function && m_coro) {
+            m_coro.destroy();
+        }
+    }
+
+    /**
+    * \brief Retrieve the promised value or std::nullopt - nonblocking
+    * \returns the promised value or std::nullopt
+    */
+    template<typename T>
+    inline std::pair<bool, T> Coro<T>::get() noexcept {
+        if (m_is_parent_function) {
+            return *m_value_ptr;
+        }
+        return m_coro.promise().m_value;
+    }
+
+    /**
+    * \brief Retrieve a pointer to the promise.
+    * \returns a pointer to the promise.
+    */
+    template<typename T>
+    inline Coro_promise_base* Coro<T>::promise() noexcept { //get a pointer to the promise (can be used as Job)
+        return &m_coro.promise();
+    }
+
+    /**
+    * \brief Function operator so you can pass on parameters to the Coro.
+    *
+    * \param[in] thread_index The thread that should execute this coro
+    * \param[in] type The type of the coro.
+    * \param[in] id A unique ID of the call.
+    * \returns a reference to this Coro so that it can be used with co_await.
+    */
+    template<typename T>
+    inline Coro<T>&& Coro<T>::operator() (int32_t thread_index, int32_t type, int32_t id) {
+        m_coro.promise().m_thread_index = thread_index;
+        m_coro.promise().m_type = type;
+        m_coro.promise().m_id = id;
+        return std::move(*this);
+    }
+
+    /**
+    * \brief Resume the coro at its suspension point
+    */
+    template<typename T>
+    inline bool Coro<T>::resume() noexcept {    //resume the Coro by calling resume() on the handle
+        if (m_coro && !m_coro.done()) {
+            m_coro.promise().resume();
+        }
+        return true;
+    };
+
+
+
+
 
 }
 
