@@ -222,10 +222,10 @@ namespace vgjs {
         bool* m_ready_ptr; //points to flag which is true if value is ready, else false
 
     public:
-        Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept;
-        void unhandled_exception() noexcept;
-        std::experimental::suspend_always initial_suspend() noexcept;
-        bool resume() noexcept;
+        Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+        void                                unhandled_exception() noexcept { std::terminate(); };
+        std::experimental::suspend_always   initial_suspend() noexcept { return {}; };
+        bool                                resume() noexcept;
 
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
@@ -260,7 +260,6 @@ namespace vgjs {
         std::pair<bool, T>                  m_value;
 
     public:
-
         Coro_promise() noexcept;
         job_deallocator get_deallocator() noexcept { return coro_deallocator<T>{}; };    //called for deallocation
         Coro<T>         get_return_object() noexcept;
@@ -314,9 +313,9 @@ namespace vgjs {
 
     public:
 
-        explicit Coro(std::experimental::coroutine_handle<promise_type> h,
-            std::shared_ptr<std::pair<bool, T>>& value_ptr,
-            bool is_parent_function) noexcept;;
+        explicit Coro(  std::experimental::coroutine_handle<promise_type> h,
+                        std::shared_ptr<std::pair<bool, T>>& value_ptr,
+                        bool is_parent_function) noexcept;
 
         Coro(Coro<T>&& t)  noexcept
             : Coro_base(), m_coro(std::exchange(t.m_coro, {})),
@@ -336,24 +335,21 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
     //specializations for void
 
-
     /**
     * \brief When a coroutine calls co_yield this awaiter calls its parent.
     */
     template<>
     struct yield_awaiter<void> : public std::experimental::suspend_always {
-        void await_suspend(std::experimental::coroutine_handle<> h) noexcept;
+        void await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept;
     };
-
 
     /**
     * \brief When a coroutine reaches its end, it may suspend a last time using such a final awaiter
     */
     template<>
     struct final_awaiter<void> : public std::experimental::suspend_always {
-        bool await_suspend(std::experimental::coroutine_handle<> h) noexcept;
+        bool await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept;
     };
-
 
     /**
     * \brief Coro promise for void
@@ -368,8 +364,8 @@ namespace vgjs {
         Coro_promise() noexcept;
         job_deallocator get_deallocator() noexcept { return coro_deallocator<void>{}; };    //called for deallocation
         Coro<void>      get_return_object() noexcept;
-        void            return_void() noexcept;
-        yield_awaiter<void> yield_value() noexcept;
+        void            return_void() noexcept {};
+        yield_awaiter<void> yield_value() noexcept { return {}; };
 
         template<typename... Ts>
         awaitable_tuple<void, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
@@ -395,7 +391,7 @@ namespace vgjs {
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
-        explicit Coro(std::experimental::coroutine_handle<promise_type> h) noexcept {};
+        explicit Coro(std::experimental::coroutine_handle<promise_type> coro) noexcept : m_coro(coro) {};
         Coro(Coro<void>&& t)  noexcept : Coro_base(), m_coro(std::exchange(t.m_coro, {})) {};
 
         void operator= (Coro<void>&& t);
@@ -550,6 +546,28 @@ namespace vgjs {
         return;
     }
 
+
+    /**
+    * \brief After suspension, call parent to run it as continuation
+    * \param[in] h Handle of the coro, is used to get the promise (=Job)
+    */
+    inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+        Coro_promise<void>& promise = h.promise();
+
+        if (promise.m_parent != nullptr) {          //if there is a parent
+            if (promise.m_is_parent_function) {       //if it is a Job
+                JobSystem::instance().child_finished((Job*)promise.m_parent); //indicate that this child has finished
+            }
+            else {  //parent is a coro
+                uint32_t num = promise.m_parent->m_children.fetch_sub(1);   //one less child
+                if (num == 1) {                                             //was it the last child?
+                    JobSystem::instance().schedule(promise.m_parent);      //if last reschedule the parent coro
+                }
+            }
+        }
+        return;
+    }
+
     //---------------------------------------------------------------------------------------------------
 
     /**
@@ -575,25 +593,31 @@ namespace vgjs {
     }
 
 
+    /**
+    * \brief After suspension, call parent to run it as continuation
+    * \param[in] h Handle of the coro, is used to get the promise (=Job)
+    */
+    inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+        Coro_promise<void>& promise = h.promise();
+
+        if (promise.m_parent != nullptr) {          //if there is a parent
+            if (promise.m_is_parent_function) {       //if it is a Job
+                JobSystem::instance().child_finished((Job*)promise.m_parent);//indicate that this child has finished
+            }
+            else {
+                uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
+                if (num == 1) {                                             //was it the last child?
+                    JobSystem::instance().schedule(promise.m_parent);      //if last reschedule the parent coro
+                }
+            }
+        }
+        return false; //always destroy yourself
+    }
+
+
     //---------------------------------------------------------------------------------------------------
     //coro promises
 
-    inline Coro_promise_base::Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept
-        : m_coro(coro) {};        //constructor
-
-    /**
-    * \brief Default behavior if an exception is not caught.
-    */
-    inline void Coro_promise_base::unhandled_exception() noexcept {   //in case of an exception terminate the program
-        std::terminate();
-    }
-
-    /**
-    * \brief When the coro is created it initially suspends.
-    */
-    inline std::experimental::suspend_always Coro_promise_base::initial_suspend() noexcept {  //always suspend at start when creating a coroutine Coro
-        return {};
-    }
 
     /**
     * \brief Resume the Coro at its suspension point.
@@ -709,6 +733,15 @@ namespace vgjs {
             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
                 m_value_ptr, m_is_parent_function };
     }
+
+    /**
+    * \brief Get Coro<void> from the Coro_promise<T>. Creates a shared value to trade the result.
+    * \returns the Coro<void> from the promise.
+    */
+    inline Coro<void> Coro_promise<void>::get_return_object() noexcept {
+        return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) };
+    }
+
 
     /**
     * \brief Store the value returned by co_return.
