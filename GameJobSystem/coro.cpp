@@ -92,7 +92,7 @@ namespace coro {
         //std::cout << "FuncCompute " << i << std::endl;
     }
 
-    Coro<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
+    Coro<> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
         int sum = 0;
 
         bool printb = false;
@@ -153,7 +153,7 @@ namespace coro {
 
         if (printb) std::cout << "Ending loop " << std::endl;
 
-        co_return sum;
+        co_return;
     }
 
 
@@ -209,7 +209,7 @@ namespace coro {
 
     JobQueue<Coro<int>> coro_queue;
 
-    Coro<int> driver( int i) {
+    Coro<> driver( int i) {
 
         coro_queue.push( &yt );
 
@@ -232,7 +232,7 @@ namespace coro {
 
         std::cout << "End coroTest() " << cnt << std::endl;
 
-        co_return 99;
+        co_return ;
     }
 
 	void test() {

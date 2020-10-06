@@ -25,26 +25,28 @@
 namespace vgjs {
 
     //---------------------------------------------------------------------------------------------------
+    //declaration of all classes and structs 
+
     //struct for deallocating coroutine promises
     template<typename T> struct coro_deallocator;
     template<> struct coro_deallocator<void>;
     
     //awaitables for co_await and co_yield, and final awaiting
-    template<typename PT, typename... Ts> struct awaitable_tuple;
-    template<typename PT, typename T> struct awaitable_coro;
-    template<typename PT> struct awaitable_resume_on;
-    template<typename U> struct yield_awaiter;
-    template<typename U> struct final_awaiter;
+    template<typename PT, typename... Ts> struct awaitable_tuple; //co_await a tuple of vectors
+    template<typename PT, typename T> struct awaitable_coro; //co_await coros, functions, vectors
+    template<typename PT> struct awaitable_resume_on; //change the thread
+    template<typename U> struct yield_awaiter;  //co_yield
+    template<typename U> struct final_awaiter;  //final_suspend
 
     //coroutine promise classes
-    class Coro_promise_base;
-    template<typename T> class Coro_promise;
-    template<> class Coro_promise<void>;
+    class Coro_promise_base;                    //common base class independent of return type T
+    template<typename T> class Coro_promise;    //main promise class for all Ts
+    template<> class Coro_promise<void>;        //specializiation for T = void
 
     //coroutine future classes
-    class Coro_base;
-    template<typename T> class Coro;
-    template<> class Coro<void>;
+    class Coro_base;                    //common base class independent of return type T
+    template<typename T> class Coro;    //main promise class for all Ts
+    template<> class Coro<void>;        //specializiation for T = void
 
     //---------------------------------------------------------------------------------------------------
 
@@ -231,7 +233,7 @@ namespace vgjs {
     protected:
         std::experimental::coroutine_handle<> m_coro;
         bool m_is_parent_function = current_job() == nullptr ? true : current_job()->is_function();
-        bool* m_ready_ptr; //points to flag which is true if value is ready, else false
+        bool* m_ready_ptr = nullptr; //points to flag which is true if value is ready, else false
 
     public:
         Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept : m_coro(coro) {};
@@ -261,7 +263,7 @@ namespace vgjs {
     * The Coro promise can hold values that are produced by the Coro. They can be
     * retrieved later by calling get() on the Coro (which calls get() on the promise)
     */
-    template<typename T>
+    template<typename T = void>
     class Coro_promise : public Coro_promise_base {
         template<typename T> friend struct yield_awaiter;
         template<typename T> friend struct final_awaiter;
@@ -317,7 +319,7 @@ namespace vgjs {
     * access the promised value once it is awailable.
     * It also holds a handle to the Coro promise.
     */
-    template<typename T>
+    template<typename T = void >
     class Coro : public Coro_base {
     public:
         using promise_type = Coro_promise<T>;
@@ -332,7 +334,7 @@ namespace vgjs {
                         std::shared_ptr<std::pair<bool, T>>& value_ptr,
                         bool is_parent_function) noexcept;
 
-        Coro(Coro<T>&& t)  noexcept : Coro_base(t.m_coro, t.m_promise), m_coro(std::exchange(t.m_coro, {})),
+        Coro(Coro<T>&& t)  noexcept : Coro_base(m_coro, t.m_promise), m_coro(std::exchange(t.m_coro, {})),
                                         m_value_ptr(std::exchange(t.m_value_ptr, {})),
                                         m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {};
 
@@ -404,10 +406,10 @@ namespace vgjs {
 
     public:
         explicit Coro(std::experimental::coroutine_handle<promise_type> coro) noexcept : Coro_base(coro, &coro.promise()), m_coro(coro) {};
-        Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_coro, t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+        Coro(Coro<void>&& t)  noexcept : Coro_base(m_coro, t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
 
         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
-        ~Coro() noexcept;
+        ~Coro() noexcept {};
         Coro<void>&&       operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
     };
 
@@ -633,7 +635,7 @@ namespace vgjs {
     * \brief Resume the Coro at its suspension point.
     */
     inline bool Coro_promise_base::resume() noexcept {
-        if (m_is_parent_function) {
+        if (m_is_parent_function && m_ready_ptr!=nullptr) {
             *m_ready_ptr = false;   //invalidate return value
         }
 
@@ -728,6 +730,13 @@ namespace vgjs {
     template<typename T>
     inline Coro_promise<T>::Coro_promise() noexcept
        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+    };
+
+    /**
+    * \brief Constructor.
+    */
+    inline Coro_promise<void>::Coro_promise() noexcept
+        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
     };
 
     /**
@@ -831,6 +840,7 @@ namespace vgjs {
         }
     }
 
+
     /**
     * \brief Retrieve the promised value or std::nullopt - nonblocking
     * \returns the promised value or std::nullopt
@@ -853,9 +863,9 @@ namespace vgjs {
     */
     template<typename T>
     inline Coro<T>&& Coro<T>::operator() (int32_t thread_index, int32_t type, int32_t id) {
-        m_coro.promise().m_thread_index = thread_index;
-        m_coro.promise().m_type = type;
-        m_coro.promise().m_id = id;
+        m_promise->m_thread_index = thread_index;
+        m_promise->m_type = type;
+        m_promise->m_id = id;
         return std::move(*this);
     }
 
@@ -868,9 +878,9 @@ namespace vgjs {
     * \returns a reference to this Coro so that it can be used with co_await.
     */
     inline Coro<void>&& Coro<void>::operator() (int32_t thread_index, int32_t type, int32_t id) {
-        m_coro.promise().m_thread_index = thread_index;
-        m_coro.promise().m_type = type;
-        m_coro.promise().m_id = id;
+        m_promise->m_thread_index = thread_index;
+        m_promise->m_type = type;
+        m_promise->m_id = id;
         return std::move(*this);
     }
 
