@@ -63,7 +63,6 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
-<a href="#typedef-members">Typedefs</a> &#124;
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
@@ -74,7 +73,7 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__coro.html">awaitable_coro</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Awaiter for awaiting a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> of type Coro&lt;T&gt; or std::function&lt;void(void)&gt;, or std::pmr::vector thereof.  <a href="structvgjs_1_1awaitable__coro.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Awaiter for awaiting a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> of type Coro&lt;T&gt; or std::function&lt;void(void)&gt;, or std::pmr::vector thereof.  <a href="structvgjs_1_1awaitable__coro.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__resume__on.html">awaitable_resume_on</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Awaiter for changing the thread that the coro is run on. After suspending the thread number is set to the target thread, then the job is immediately rescheduled into the system.  <a href="structvgjs_1_1awaitable__resume__on.html#details">More...</a><br /></td></tr>
@@ -83,19 +82,34 @@ Classes</h2></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Awaitable for awaiting a tuple of vector of type Coro&lt;T&gt;, <a class="el" href="structvgjs_1_1_function.html" title="Function struct wraps a c++ function of type std::function&lt;void(void)&gt;.">Function</a>{}, std::function&lt;void(void)&gt;.  <a href="structvgjs_1_1awaitable__tuple.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvgjs_1_1_coro.html">Coro</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">The main <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> class. Can be constructed to return any value type.  <a href="classvgjs_1_1_coro.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">The main <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> future class. Can be constructed to return any value type.  <a href="classvgjs_1_1_coro.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvgjs_1_1_coro_3_01void_01_4.html">Coro&lt; void &gt;</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> future for void.  <a href="classvgjs_1_1_coro_3_01void_01_4.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvgjs_1_1_coro__base.html">Coro_base</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Base class of coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a>. Independent of promise return type.  <a href="classvgjs_1_1_coro__base.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Base class of coroutine future <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a>. Independent of promise return type.  <a href="classvgjs_1_1_coro__base.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1coro__deallocator.html">coro_deallocator</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocator is used to destroy coro promises when the system is shut down.  <a href="structvgjs_1_1coro__deallocator.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1coro__deallocator_3_01void_01_4.html">coro_deallocator&lt; void &gt;</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocator spezialization for void.  <a href="structvgjs_1_1coro__deallocator_3_01void_01_4.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvgjs_1_1_coro__promise.html">Coro_promise</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Promise of the <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a>. Depends on the return type.  <a href="classvgjs_1_1_coro__promise.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Promise of the <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a>. Depends on the return type.  <a href="classvgjs_1_1_coro__promise.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvgjs_1_1_coro__promise_3_01void_01_4.html">Coro_promise&lt; void &gt;</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> promise for void.  <a href="classvgjs_1_1_coro__promise_3_01void_01_4.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvgjs_1_1_coro__promise__base.html">Coro_promise_base</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Base class of coroutine <a class="el" href="classvgjs_1_1_coro__promise.html" title="Promise of the Coro. Depends on the return type.">Coro_promise</a>, derived from <a class="el" href="classvgjs_1_1_job__base.html" title="Base class of coro task promises and jobs.">Job_base</a> so it can be scheduled.  <a href="classvgjs_1_1_coro__promise__base.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1final__awaiter.html">final_awaiter</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">When a coroutine reaches its end, it may suspend a last time using such a final awaiter.  <a href="structvgjs_1_1final__awaiter.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1final__awaiter_3_01void_01_4.html">final_awaiter&lt; void &gt;</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">When a coroutine reaches its end, it may suspend a last time using such a final awaiter.  <a href="structvgjs_1_1final__awaiter_3_01void_01_4.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1_function.html">Function</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="structvgjs_1_1_function.html" title="Function struct wraps a c++ function of type std::function&lt;void(void)&gt;.">Function</a> struct wraps a c++ function of type std::function&lt;void(void)&gt;.  <a href="structvgjs_1_1_function.html#details">More...</a><br /></td></tr>
@@ -109,6 +123,9 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvgjs_1_1_job__base.html">Job_base</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Base class of coro task promises and jobs.  <a href="classvgjs_1_1_job__base.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1job__deallocator.html">job_deallocator</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Base class for deallocating jobs and coros.  <a href="structvgjs_1_1job__deallocator.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1_job_log.html">JobLog</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Data structure storing times when jobs where called and ended. Can be saved to a log file and loaded into Google Chrom about:://tracing.  <a href="structvgjs_1_1_job_log.html#details">More...</a><br /></td></tr>
@@ -125,25 +142,19 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1yield__awaiter.html">yield_awaiter</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">When a coroutine calls co_yield this awaiter calls its parent.  <a href="structvgjs_1_1yield__awaiter.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
-Typedefs</h2></td></tr>
-<tr class="memitem:a0b82d793dcdc128c485ab4acc8a68e14"><td class="memItemLeft" align="right" valign="top">typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a0b82d793dcdc128c485ab4acc8a68e14">fptr</a>) (<a class="el" href="classvgjs_1_1_job__base.html">Job_base</a> *job)</td></tr>
-<tr class="separator:a0b82d793dcdc128c485ab4acc8a68e14"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1yield__awaiter_3_01void_01_4.html">yield_awaiter&lt; void &gt;</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">When a coroutine calls co_yield this awaiter calls its parent.  <a href="structvgjs_1_1yield__awaiter_3_01void_01_4.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a71b0222f89995ec70d42971fee95d4cf"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:a71b0222f89995ec70d42971fee95d4cf"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a71b0222f89995ec70d42971fee95d4cf">coro_deallocator</a> (<a class="el" href="classvgjs_1_1_job__base.html">Job_base</a> *job) noexcept</td></tr>
-<tr class="memdesc:a71b0222f89995ec70d42971fee95d4cf"><td class="mdescLeft">&#160;</td><td class="mdescRight">This deallocator is used to destroy coro promises when the system is shut down.  <a href="namespacevgjs.html#a71b0222f89995ec70d42971fee95d4cf">More...</a><br /></td></tr>
-<tr class="separator:a71b0222f89995ec70d42971fee95d4cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae0d46eba3cf5fcb657d9eb017f496039"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:ae0d46eba3cf5fcb657d9eb017f496039"><td class="memTemplItemLeft" align="right" valign="top">requires <a class="el" href="namespacevgjs.html#a3d9148fa597ef4f1526953e29f860e3a">CORO</a>&lt; T &gt; void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#ae0d46eba3cf5fcb657d9eb017f496039">schedule</a> (T &amp;coro, <a class="el" href="classvgjs_1_1_job__base.html">Job_base</a> *parent=<a class="el" href="namespacevgjs.html#a26d37586fbc0d946983c8df2be093ef2">current_job</a>(), int32_t children=1) noexcept</td></tr>
-<tr class="memdesc:ae0d46eba3cf5fcb657d9eb017f496039"><td class="mdescLeft">&#160;</td><td class="mdescRight">Schedule a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> into the job system. Basic function for scheduling a coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> into the job system.  <a href="namespacevgjs.html#ae0d46eba3cf5fcb657d9eb017f496039">More...</a><br /></td></tr>
+<tr class="memdesc:ae0d46eba3cf5fcb657d9eb017f496039"><td class="mdescLeft">&#160;</td><td class="mdescRight">Schedule a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> into the job system. Basic function for scheduling a coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> into the job system.  <a href="namespacevgjs.html#ae0d46eba3cf5fcb657d9eb017f496039">More...</a><br /></td></tr>
 <tr class="separator:ae0d46eba3cf5fcb657d9eb017f496039"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a48c602a94063b370ae40f7814f977c9a"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr class="memitem:a48c602a94063b370ae40f7814f977c9a"><td class="memTemplItemLeft" align="right" valign="top">requires <a class="el" href="namespacevgjs.html#a3d9148fa597ef4f1526953e29f860e3a">CORO</a>&lt; T &gt; void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a48c602a94063b370ae40f7814f977c9a">schedule</a> (T &amp;&amp;coro, <a class="el" href="classvgjs_1_1_job__base.html">Job_base</a> *parent=<a class="el" href="namespacevgjs.html#a26d37586fbc0d946983c8df2be093ef2">current_job</a>(), int32_t children=1) noexcept</td></tr>
-<tr class="memdesc:a48c602a94063b370ae40f7814f977c9a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Schedule a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> into the job system. Basic function for scheduling a coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> into the job system.  <a href="namespacevgjs.html#a48c602a94063b370ae40f7814f977c9a">More...</a><br /></td></tr>
+<tr class="memdesc:a48c602a94063b370ae40f7814f977c9a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Schedule a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> into the job system. Basic function for scheduling a coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> into the job system.  <a href="namespacevgjs.html#a48c602a94063b370ae40f7814f977c9a">More...</a><br /></td></tr>
 <tr class="separator:a48c602a94063b370ae40f7814f977c9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a66e45bcba666b894edd855b7587af243"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a66e45bcba666b894edd855b7587af243">is_logging</a> ()</td></tr>
 <tr class="separator:a66e45bcba666b894edd855b7587af243"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -153,9 +164,6 @@ Functions</h2></td></tr>
 <tr class="memitem:ac94ec8bde4399d9dab82093b2ccd8c00"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#ac94ec8bde4399d9dab82093b2ccd8c00">save_log_file</a> ()</td></tr>
 <tr class="memdesc:ac94ec8bde4399d9dab82093b2ccd8c00"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dump all job data into a json log file.  <a href="namespacevgjs.html#ac94ec8bde4399d9dab82093b2ccd8c00">More...</a><br /></td></tr>
 <tr class="separator:ac94ec8bde4399d9dab82093b2ccd8c00"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a30736cec76f57e9475ea48f752d2903a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a30736cec76f57e9475ea48f752d2903a">job_deallocator</a> (<a class="el" href="classvgjs_1_1_job__base.html">Job_base</a> *job)</td></tr>
-<tr class="memdesc:a30736cec76f57e9475ea48f752d2903a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocate a <a class="el" href="classvgjs_1_1_job.html" title="Job class calls normal C++ functions, is allocated and deallocated, and can be reused.">Job</a> instance.  <a href="namespacevgjs.html#a30736cec76f57e9475ea48f752d2903a">More...</a><br /></td></tr>
-<tr class="separator:a30736cec76f57e9475ea48f752d2903a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a26d37586fbc0d946983c8df2be093ef2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classvgjs_1_1_job__base.html">Job_base</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a26d37586fbc0d946983c8df2be093ef2">current_job</a> ()</td></tr>
 <tr class="memdesc:a26d37586fbc0d946983c8df2be093ef2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the current job that is executed by the system.  <a href="namespacevgjs.html#a26d37586fbc0d946983c8df2be093ef2">More...</a><br /></td></tr>
 <tr class="separator:a26d37586fbc0d946983c8df2be093ef2"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -215,21 +223,6 @@ Variables</h2></td></tr>
 <tr class="memitem:a3d9148fa597ef4f1526953e29f860e3a"><td class="memTemplItemLeft" align="right" valign="top">concept&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a3d9148fa597ef4f1526953e29f860e3a">CORO</a> = std::is_base_of&lt;<a class="el" href="classvgjs_1_1_coro__base.html">Coro_base</a>, T&gt;::value</td></tr>
 <tr class="separator:a3d9148fa597ef4f1526953e29f860e3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Typedef Documentation</h2>
-<a id="a0b82d793dcdc128c485ab4acc8a68e14"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0b82d793dcdc128c485ab4acc8a68e14">&#9670;&nbsp;</a></span>fptr</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">typedef void(* vgjs::fptr) (<a class="el" href="classvgjs_1_1_job__base.html">Job_base</a> *job)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <h2 class="groupheader">Function Documentation</h2>
 <a id="afb9231e06a43cee55803526d7ad182cd"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#afb9231e06a43cee55803526d7ad182cd">&#9670;&nbsp;</a></span>clear_logs()</h2>
@@ -394,36 +387,6 @@ Variables</h2></td></tr>
 
 </div>
 </div>
-<a id="a71b0222f89995ec70d42971fee95d4cf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a71b0222f89995ec70d42971fee95d4cf">&#9670;&nbsp;</a></span>coro_deallocator()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename T &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void vgjs::coro_deallocator </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="classvgjs_1_1_job__base.html">Job_base</a> *&#160;</td>
-          <td class="paramname"><em>job</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">noexcept</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>This deallocator is used to destroy coro promises when the system is shut down. </p>
-
-</div>
-</div>
 <a id="a26d37586fbc0d946983c8df2be093ef2"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a26d37586fbc0d946983c8df2be093ef2">&#9670;&nbsp;</a></span>current_job()</h2>
 
@@ -557,40 +520,6 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>whether logging is turned on </dd></dl>
-
-</div>
-</div>
-<a id="a30736cec76f57e9475ea48f752d2903a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a30736cec76f57e9475ea48f752d2903a">&#9670;&nbsp;</a></span>job_deallocator()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void vgjs::job_deallocator </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="classvgjs_1_1_job__base.html">Job_base</a> *&#160;</td>
-          <td class="paramname"><em>job</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Deallocate a <a class="el" href="classvgjs_1_1_job.html" title="Job class calls normal C++ functions, is allocated and deallocated, and can be reused.">Job</a> instance. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">job</td><td>Pointer to the job. </td></tr>
-  </table>
-  </dd>
-</dl>
 
 </div>
 </div>
@@ -1093,10 +1022,10 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p>Schedule a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> into the job system. Basic function for scheduling a coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> into the job system. </p>
+<p>Schedule a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> into the job system. Basic function for scheduling a coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> into the job system. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">coro</td><td>A coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a>, whose promise is a job that is scheduled into the job system. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">coro</td><td>A coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a>, whose promise is a job that is scheduled into the job system. </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">parent</td><td>The parent of this <a class="el" href="classvgjs_1_1_job.html" title="Job class calls normal C++ functions, is allocated and deallocated, and can be reused.">Job</a>. </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">children</td><td>Number used to increase the number of children of the parent. </td></tr>
   </table>
@@ -1147,10 +1076,10 @@ template&lt;typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p>Schedule a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> into the job system. Basic function for scheduling a coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> into the job system. </p>
+<p>Schedule a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> into the job system. Basic function for scheduling a coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> into the job system. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">coro</td><td>A coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a>, whose promise is a job that is scheduled into the job system </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">coro</td><td>A coroutine <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a>, whose promise is a job that is scheduled into the job system </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">parent</td><td>The parent of this <a class="el" href="classvgjs_1_1_job.html" title="Job class calls normal C++ functions, is allocated and deallocated, and can be reused.">Job</a>. </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">children</td><td>Number used to increase the number of children of the parent. </td></tr>
   </table>
@@ -1233,7 +1162,7 @@ template&lt;typename T &gt; </div>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Sep 30 2020 22:56:28 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
+Generated on Wed Oct 7 2020 00:02:37 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
 </small></address>
 </body>
 </html>

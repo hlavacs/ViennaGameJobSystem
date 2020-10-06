@@ -299,13 +299,8 @@ namespace vgjs {
         static inline thread_local  int32_t		    m_thread_index = -1;    ///<each thread has its own number
         std::atomic<bool>							m_terminate = false;	///<Flag for terminating the pool
         static inline thread_local Job_base*        m_current_job = nullptr;///<Pointer to the current job of this thread0
-
         std::vector<JobQueue<Job_base>>             m_global_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
         std::vector<JobQueue<Job_base>>             m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
-
-        //std::vector<JobQueue<Coro_promise_base>>    m_global_coro_queues;	///<each thread has its own Job queue, multiple produce, single consume
-        //std::vector<JobQueue<Coro_promise_base>>    m_local_coro_queues;	///<each thread has its own Job queue, multiple produce, single consume
-
         JobQueue<Job>                               m_recycle;              ///<save old jobs for recycling
         JobQueue<Job>                               m_delete;               ///<save old jobs for recycling
         std::pmr::vector<std::pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs

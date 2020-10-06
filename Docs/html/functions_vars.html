@@ -90,6 +90,8 @@ $(function() {
 </li>
 <li>m_coro
 : <a class="el" href="classvgjs_1_1_coro.html#a869cefd49b3728fbb9e0fee37b3743aa">vgjs::Coro&lt; T &gt;</a>
+, <a class="el" href="classvgjs_1_1_coro_3_01void_01_4.html#a61fbd2f6b407f0093ea3c91a1463a184">vgjs::Coro&lt; void &gt;</a>
+, <a class="el" href="classvgjs_1_1_coro__promise__base.html#a3244a58d320c313595f279966c48e78b">vgjs::Coro_promise_base</a>
 </li>
 <li>m_current_job
 : <a class="el" href="classvgjs_1_1_job_system.html#ad9721225e74d4dd4265a27b8c538da5d">vgjs::JobSystem</a>
@@ -118,12 +120,12 @@ $(function() {
 , <a class="el" href="classvgjs_1_1_job__base.html#aefb009397beb9fb8b5e9a36095b98107">vgjs::Job_base</a>
 , <a class="el" href="structvgjs_1_1_job_log.html#aa89204443ea9941b0fccb13c9948dea9">vgjs::JobLog</a>
 </li>
-<li>m_instance
-: <a class="el" href="classvgjs_1_1_job_system.html#a073d7518f123c47287eda89cc9005a53">vgjs::JobSystem</a>
+<li>m_is_function
+: <a class="el" href="classvgjs_1_1_job__base.html#a171fc5361326b6bd9816b1527af29f14">vgjs::Job_base</a>
 </li>
 <li>m_is_parent_function
 : <a class="el" href="classvgjs_1_1_coro.html#afeb67a89c3b82b0acc9f6a152176e6e9">vgjs::Coro&lt; T &gt;</a>
-, <a class="el" href="classvgjs_1_1_coro__promise.html#abfa27bdb1dd75934cab2d04e31cc08c4">vgjs::Coro_promise&lt; T &gt;</a>
+, <a class="el" href="classvgjs_1_1_coro__promise__base.html#a73e7601623b7fa483cb81d8c3a931610">vgjs::Coro_promise_base</a>
 </li>
 <li>m_local_queues
 : <a class="el" href="classvgjs_1_1_job_system.html#a96746522e1ed55bfff90afcd4d0a476c">vgjs::JobSystem</a>
@@ -149,6 +151,12 @@ $(function() {
 </li>
 <li>m_parent
 : <a class="el" href="classvgjs_1_1_job__base.html#a5eb2b9aaa142d794a756658af44c9533">vgjs::Job_base</a>
+</li>
+<li>m_promise
+: <a class="el" href="classvgjs_1_1_coro__base.html#ad7064cde979296c1680a912b2011bedc">vgjs::Coro_base</a>
+</li>
+<li>m_ready_ptr
+: <a class="el" href="classvgjs_1_1_coro__promise__base.html#a4b7c61723936d5fcd24167eb7b15fb5b">vgjs::Coro_promise_base</a>
 </li>
 <li>m_recycle
 : <a class="el" href="classvgjs_1_1_job_system.html#a45213cdb3f42327684c2dd49b571cf3f">vgjs::JobSystem</a>
@@ -203,11 +211,11 @@ $(function() {
 : <a class="el" href="classvgjs_1_1_job_system.html#a8bc16fe511aecf2dfa814b1dbec692fe">vgjs::JobSystem</a>
 </li>
 <li>m_value
-: <a class="el" href="classvgjs_1_1_coro__promise.html#af3966dadfd220bd3f541f76be561f384">vgjs::Coro_promise&lt; T &gt;</a>
+: <a class="el" href="classvgjs_1_1_coro__promise.html#ab584c2211c1943eb24e4596ba5ae5355">vgjs::Coro_promise&lt; T &gt;</a>
 </li>
 <li>m_value_ptr
-: <a class="el" href="classvgjs_1_1_coro.html#a7d1d01ad1344e3561860b90a1724cc33">vgjs::Coro&lt; T &gt;</a>
-, <a class="el" href="classvgjs_1_1_coro__promise.html#a2072bc8c91e723e5d9fd235f4f07857c">vgjs::Coro_promise&lt; T &gt;</a>
+: <a class="el" href="classvgjs_1_1_coro.html#abb662ca7ecf058ced39547732f33426b">vgjs::Coro&lt; T &gt;</a>
+, <a class="el" href="classvgjs_1_1_coro__promise.html#ace16087bb5312396e63954d3057d4b4f">vgjs::Coro_promise&lt; T &gt;</a>
 </li>
 </ul>
 
@@ -220,7 +228,7 @@ $(function() {
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Sep 30 2020 22:56:28 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
+Generated on Wed Oct 7 2020 00:02:37 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
 </small></address>
 </body>
 </html>

@@ -83,16 +83,14 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__tuple_1_1awaiter.html">awaiter</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Awaiter for awaiting a tuple of vector of type Coro&lt;T&gt;, <a class="el" href="structvgjs_1_1_function.html" title="Function struct wraps a c++ function of type std::function&lt;void(void)&gt;.">Function</a>{}, std::function&lt;void(void)&gt;.  <a href="structvgjs_1_1awaitable__tuple_1_1awaiter.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a572a818306f27875f9479f0f14bc1f65"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__tuple.html#a572a818306f27875f9479f0f14bc1f65">awaitable_tuple</a> (std::tuple&lt; std::pmr::vector&lt; Ts &gt;... &gt; &amp;children) noexcept</td></tr>
-<tr class="memdesc:a572a818306f27875f9479f0f14bc1f65"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor just passes on data.  <a href="structvgjs_1_1awaitable__tuple.html#a572a818306f27875f9479f0f14bc1f65">More...</a><br /></td></tr>
 <tr class="separator:a572a818306f27875f9479f0f14bc1f65"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aeed32482d2a1adbe300766de329214d1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structvgjs_1_1awaitable__tuple_1_1awaiter.html">awaiter</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__tuple.html#aeed32482d2a1adbe300766de329214d1">operator co_await</a> () noexcept</td></tr>
-<tr class="separator:aeed32482d2a1adbe300766de329214d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7c7487835dd3875377e2838fa30dae0e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structvgjs_1_1awaitable__tuple_1_1awaiter.html">awaiter</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__tuple.html#a7c7487835dd3875377e2838fa30dae0e">operator co_await</a> () noexcept</td></tr>
+<tr class="separator:a7c7487835dd3875377e2838fa30dae0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -132,19 +130,11 @@ template&lt;typename PT , typename... Ts&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p>Constructor just passes on data. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">children</td><td>The new jobs to schedule </td></tr>
-  </table>
-  </dd>
-</dl>
-
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="aeed32482d2a1adbe300766de329214d1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aeed32482d2a1adbe300766de329214d1">&#9670;&nbsp;</a></span>operator co_await()</h2>
+<a id="a7c7487835dd3875377e2838fa30dae0e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7c7487835dd3875377e2838fa30dae0e">&#9670;&nbsp;</a></span>operator co_await()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -155,10 +145,7 @@ template&lt;typename PT , typename... Ts&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structvgjs_1_1awaitable__tuple_1_1awaiter.html">awaiter</a> <a class="el" href="structvgjs_1_1awaitable__tuple.html">vgjs::awaitable_tuple</a>&lt; PT, Ts &gt;::operator co_await </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td class="memname"><a class="el" href="structvgjs_1_1awaitable__tuple.html">awaitable_tuple</a>&lt; PT, Ts... &gt;::<a class="el" href="structvgjs_1_1awaitable__tuple_1_1awaiter.html">awaiter</a> <a class="el" href="structvgjs_1_1awaitable__tuple.html">vgjs::awaitable_tuple</a>&lt; PT, Ts &gt;::operator co_await</td>
         </tr>
       </table>
   </td>
@@ -193,7 +180,7 @@ template&lt;typename PT , typename... Ts&gt; </div>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Sep 30 2020 22:56:28 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
+Generated on Wed Oct 7 2020 00:02:37 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
 </small></address>
 </body>
 </html>

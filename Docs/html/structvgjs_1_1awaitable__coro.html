@@ -75,7 +75,7 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Awaiter for awaiting a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> of type Coro&lt;T&gt; or std::function&lt;void(void)&gt;, or std::pmr::vector thereof.  
+<p>Awaiter for awaiting a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> of type Coro&lt;T&gt; or std::function&lt;void(void)&gt;, or std::pmr::vector thereof.  
  <a href="structvgjs_1_1awaitable__coro.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="_v_e_coro_8h_source.html">VECoro.h</a>&gt;</code></p>
@@ -88,10 +88,9 @@ Classes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a4a606456b53b34405f4bbc3b9bbcfbbb"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__coro.html#a4a606456b53b34405f4bbc3b9bbcfbbb">awaitable_coro</a> (T &amp;child) noexcept</td></tr>
-<tr class="memdesc:a4a606456b53b34405f4bbc3b9bbcfbbb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor just passes on data.  <a href="structvgjs_1_1awaitable__coro.html#a4a606456b53b34405f4bbc3b9bbcfbbb">More...</a><br /></td></tr>
 <tr class="separator:a4a606456b53b34405f4bbc3b9bbcfbbb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a53241e5ddc8a2a3029b267ab53fab79f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structvgjs_1_1awaitable__coro_1_1awaiter.html">awaiter</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__coro.html#a53241e5ddc8a2a3029b267ab53fab79f">operator co_await</a> () noexcept</td></tr>
-<tr class="separator:a53241e5ddc8a2a3029b267ab53fab79f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0a18cbe3021459e3398a32d5f53ccac7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structvgjs_1_1awaitable__coro_1_1awaiter.html">awaiter</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__coro.html#a0a18cbe3021459e3398a32d5f53ccac7">operator co_await</a> () noexcept</td></tr>
+<tr class="separator:a0a18cbe3021459e3398a32d5f53ccac7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -102,7 +101,7 @@ Public Attributes</h2></td></tr>
 <div class="textblock"><h3>template&lt;typename PT, typename T&gt;<br />
 struct vgjs::awaitable_coro&lt; PT, T &gt;</h3>
 
-<p>Awaiter for awaiting a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro class. Can be constructed to return any value type.">Coro</a> of type Coro&lt;T&gt; or std::function&lt;void(void)&gt;, or std::pmr::vector thereof. </p>
+<p>Awaiter for awaiting a <a class="el" href="classvgjs_1_1_coro.html" title="The main Coro future class. Can be constructed to return any value type.">Coro</a> of type Coro&lt;T&gt; or std::function&lt;void(void)&gt;, or std::pmr::vector thereof. </p>
 <p>The caller will await the completion of the Coro(s). Afterwards, the return values can be retrieved by calling get() for Coro&lt;t&gt;. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a4a606456b53b34405f4bbc3b9bbcfbbb"></a>
@@ -131,19 +130,11 @@ template&lt;typename PT , typename T &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p>Constructor just passes on data. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">child</td><td>The new job to schedule </td></tr>
-  </table>
-  </dd>
-</dl>
-
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="a53241e5ddc8a2a3029b267ab53fab79f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a53241e5ddc8a2a3029b267ab53fab79f">&#9670;&nbsp;</a></span>operator co_await()</h2>
+<a id="a0a18cbe3021459e3398a32d5f53ccac7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0a18cbe3021459e3398a32d5f53ccac7">&#9670;&nbsp;</a></span>operator co_await()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -154,10 +145,7 @@ template&lt;typename PT , typename T &gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structvgjs_1_1awaitable__coro_1_1awaiter.html">awaiter</a> <a class="el" href="structvgjs_1_1awaitable__coro.html">vgjs::awaitable_coro</a>&lt; PT, T &gt;::operator co_await </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td class="memname"><a class="el" href="structvgjs_1_1awaitable__coro.html">awaitable_coro</a>&lt; PT, T &gt;::<a class="el" href="structvgjs_1_1awaitable__coro_1_1awaiter.html">awaiter</a> <a class="el" href="structvgjs_1_1awaitable__coro.html">vgjs::awaitable_coro</a>&lt; PT, T &gt;::operator co_await</td>
         </tr>
       </table>
   </td>
@@ -192,7 +180,7 @@ template&lt;typename PT , typename T &gt; </div>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Sep 30 2020 22:56:28 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
+Generated on Wed Oct 7 2020 00:02:37 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
 </small></address>
 </body>
 </html>

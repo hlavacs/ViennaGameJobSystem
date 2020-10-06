@@ -65,7 +65,6 @@ $(function() {
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#namespaces">Namespaces</a> &#124;
 <a href="#define-members">Macros</a> &#124;
-<a href="#typedef-members">Typedefs</a> &#124;
 <a href="#func-members">Functions</a>  </div>
   <div class="headertitle">
 <div class="title">VEGameJobSystem.h File Reference</div>  </div>
@@ -103,6 +102,9 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1_function.html">vgjs::Function</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="structvgjs_1_1_function.html" title="Function struct wraps a c++ function of type std::function&lt;void(void)&gt;.">Function</a> struct wraps a c++ function of type std::function&lt;void(void)&gt;.  <a href="structvgjs_1_1_function.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1job__deallocator.html">vgjs::job_deallocator</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Base class for deallocating jobs and coros.  <a href="structvgjs_1_1job__deallocator.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvgjs_1_1_queuable.html">vgjs::Queuable</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Base class of things you can put into a queue.  <a href="classvgjs_1_1_queuable.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -134,11 +136,6 @@ Macros</h2></td></tr>
 <tr class="memitem:ab25baccb41e3b67ef0bfdaa1336c9649"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="_v_e_game_job_system_8h.html#ab25baccb41e3b67ef0bfdaa1336c9649">F</a>(f)&#160;&#160;&#160;[=](){f;}</td></tr>
 <tr class="separator:ab25baccb41e3b67ef0bfdaa1336c9649"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
-Typedefs</h2></td></tr>
-<tr class="memitem:a0b82d793dcdc128c485ab4acc8a68e14"><td class="memItemLeft" align="right" valign="top">typedef void(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a0b82d793dcdc128c485ab4acc8a68e14">vgjs::fptr</a>) (Job_base *job)</td></tr>
-<tr class="separator:a0b82d793dcdc128c485ab4acc8a68e14"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a66e45bcba666b894edd855b7587af243"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a66e45bcba666b894edd855b7587af243">vgjs::is_logging</a> ()</td></tr>
@@ -149,9 +146,6 @@ Functions</h2></td></tr>
 <tr class="memitem:ac94ec8bde4399d9dab82093b2ccd8c00"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#ac94ec8bde4399d9dab82093b2ccd8c00">vgjs::save_log_file</a> ()</td></tr>
 <tr class="memdesc:ac94ec8bde4399d9dab82093b2ccd8c00"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dump all job data into a json log file.  <a href="namespacevgjs.html#ac94ec8bde4399d9dab82093b2ccd8c00">More...</a><br /></td></tr>
 <tr class="separator:ac94ec8bde4399d9dab82093b2ccd8c00"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a30736cec76f57e9475ea48f752d2903a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a30736cec76f57e9475ea48f752d2903a">vgjs::job_deallocator</a> (Job_base *job)</td></tr>
-<tr class="memdesc:a30736cec76f57e9475ea48f752d2903a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocate a <a class="el" href="classvgjs_1_1_job.html" title="Job class calls normal C++ functions, is allocated and deallocated, and can be reused.">Job</a> instance.  <a href="namespacevgjs.html#a30736cec76f57e9475ea48f752d2903a">More...</a><br /></td></tr>
-<tr class="separator:a30736cec76f57e9475ea48f752d2903a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a26d37586fbc0d946983c8df2be093ef2"><td class="memItemLeft" align="right" valign="top">Job_base *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacevgjs.html#a26d37586fbc0d946983c8df2be093ef2">vgjs::current_job</a> ()</td></tr>
 <tr class="memdesc:a26d37586fbc0d946983c8df2be093ef2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the current job that is executed by the system.  <a href="namespacevgjs.html#a26d37586fbc0d946983c8df2be093ef2">More...</a><br /></td></tr>
 <tr class="separator:a26d37586fbc0d946983c8df2be093ef2"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -248,7 +242,7 @@ Functions</h2></td></tr>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Sep 30 2020 22:56:28 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
+Generated on Wed Oct 7 2020 00:02:37 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
 </small></address>
 </body>
 </html>

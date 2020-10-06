@@ -74,9 +74,6 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Awaiter for awaiting a tuple of vector of type Coro&lt;T&gt;, <a class="el" href="structvgjs_1_1_function.html" title="Function struct wraps a c++ function of type std::function&lt;void(void)&gt;.">Function</a>{}, std::function&lt;void(void)&gt;.  
- <a href="structvgjs_1_1awaitable__tuple_1_1awaiter.html#details">More...</a></p>
-
 <p><code>#include &lt;<a class="el" href="_v_e_coro_8h_source.html">VECoro.h</a>&gt;</code></p>
 <div class="dynheader">
 Inheritance diagram for vgjs::awaitable_tuple&lt; PT, Ts &gt;::awaiter:</div>
@@ -94,7 +91,6 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:ad7221799c8c2aff66b49744ae3166325"><td class="mdescLeft">&#160;</td><td class="mdescRight">Go through all tuple elements and schedule them. Presets number of new children to avoid a race.  <a href="structvgjs_1_1awaitable__tuple_1_1awaiter.html#ad7221799c8c2aff66b49744ae3166325">More...</a><br /></td></tr>
 <tr class="separator:ad7221799c8c2aff66b49744ae3166325"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afe868b8e20c31c1ddda11f4c13bb6b62"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__tuple_1_1awaiter.html#afe868b8e20c31c1ddda11f4c13bb6b62">awaiter</a> (std::tuple&lt; std::pmr::vector&lt; Ts &gt;... &gt; &amp;children) noexcept</td></tr>
-<tr class="memdesc:afe868b8e20c31c1ddda11f4c13bb6b62"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor just passes on data.  <a href="structvgjs_1_1awaitable__tuple_1_1awaiter.html#afe868b8e20c31c1ddda11f4c13bb6b62">More...</a><br /></td></tr>
 <tr class="separator:afe868b8e20c31c1ddda11f4c13bb6b62"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
@@ -104,12 +100,7 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:aff80bd81799c3a75216a5ac3a216e033"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structvgjs_1_1awaitable__tuple_1_1awaiter.html#aff80bd81799c3a75216a5ac3a216e033">m_number</a> = 0</td></tr>
 <tr class="separator:aff80bd81799c3a75216a5ac3a216e033"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><h3>template&lt;typename PT, typename... Ts&gt;<br />
-struct vgjs::awaitable_tuple&lt; PT, Ts &gt;::awaiter</h3>
-
-<p>Awaiter for awaiting a tuple of vector of type Coro&lt;T&gt;, <a class="el" href="structvgjs_1_1_function.html" title="Function struct wraps a c++ function of type std::function&lt;void(void)&gt;.">Function</a>{}, std::function&lt;void(void)&gt;. </p>
-</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="afe868b8e20c31c1ddda11f4c13bb6b62"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#afe868b8e20c31c1ddda11f4c13bb6b62">&#9670;&nbsp;</a></span>awaiter()</h2>
 
@@ -136,14 +127,6 @@ template&lt;typename PT , typename... Ts&gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p>Constructor just passes on data. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">children</td><td>The new jobs to schedule </td></tr>
-  </table>
-  </dd>
-</dl>
-
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
@@ -159,10 +142,7 @@ template&lt;typename PT , typename... Ts&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">bool <a class="el" href="structvgjs_1_1awaitable__tuple.html">vgjs::awaitable_tuple</a>&lt; PT, Ts &gt;::awaiter::await_ready </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td class="memname">bool <a class="el" href="structvgjs_1_1awaitable__tuple.html">vgjs::awaitable_tuple</a>&lt; PT, Ts &gt;::awaiter::await_ready</td>
         </tr>
       </table>
   </td>
@@ -251,7 +231,7 @@ template&lt;typename PT , typename... Ts&gt; </div>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Sep 30 2020 22:56:28 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
+Generated on Wed Oct 7 2020 00:02:37 for Vienna Game Engine Job System by&#160;<a href="http://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.8.20
 </small></address>
 </body>
 </html>
