@@ -88,6 +88,9 @@ namespace vgjs {
 
     //-----------------------------------------------------------------------------------------
 
+    /**
+    * \brief Base class for deallocating jobs and coros
+    */
     struct job_deallocator {
         virtual void deallocate(Job_base* job) noexcept;
     };
@@ -145,9 +148,9 @@ namespace vgjs {
             m_id = -1;
         }
 
-        virtual bool resume() noexcept {    //work is to call the function
-            m_children = 1;                 //job is its own child, so set to 1
-            m_function();                   //run the function, can schedule more children here
+        bool resume() noexcept {    //work is to call the function
+            m_children = 1;         //job is its own child, so set to 1
+            m_function();           //run the function, can schedule more children here
             return true;
         }
 
@@ -193,10 +196,10 @@ namespace vgjs {
     template<typename JOB = Queuable>
     class JobQueue {
         friend JobSystem;
-        std::atomic_flag            m_lock = ATOMIC_FLAG_INIT;  //for locking the queue
-        JOB*                        m_head = nullptr;	        //points to first entry
-        JOB*                        m_tail = nullptr;	        //points to last entry
-        int32_t                     m_size = 0;                 //number of entries in the queue
+        std::atomic_flag m_lock = ATOMIC_FLAG_INIT;  //for locking the queue
+        JOB*             m_head = nullptr;	        //points to first entry
+        JOB*             m_tail = nullptr;	        //points to last entry
+        int32_t          m_size = 0;                 //number of entries in the queue
 
     public:
 
