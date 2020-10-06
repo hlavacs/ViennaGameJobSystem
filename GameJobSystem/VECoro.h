@@ -24,24 +24,23 @@
 
 namespace vgjs {
 
+    //---------------------------------------------------------------------------------------------------
+    //coroutine promise classes
     class Coro_promise_base;
     template<typename T> class Coro_promise;
     template<> class Coro_promise<void>;
 
+    //coroutine future classes
     class Coro_base;
     template<typename T> class Coro;
+    template<> class Coro<void>;
 
+    //test whether a template parameter T is a std::pmr::vector
     template<typename>
     struct is_pmr_vector : std::false_type {};
 
     template<typename T>
     struct is_pmr_vector<std::pmr::vector<T>> : std::true_type {};
-
-    template<typename T>
-    struct coro_deallocator;
-
-    template<>
-    struct coro_deallocator<void>;
 
 
     //---------------------------------------------------------------------------------------------------
@@ -82,6 +81,26 @@ namespace vgjs {
 
 
     //---------------------------------------------------------------------------------------------------
+    //Deallocators
+
+    /**
+    * \brief Deallocator is used to destroy coro promises when the system is shut down.
+    */
+    template<typename T>
+    struct coro_deallocator : public job_deallocator {
+        inline void deallocate(Job_base* job) noexcept;
+    };
+
+    /**
+    * \brief Deallocator spezialization for void
+    */
+    template<>
+    struct coro_deallocator<void> : public job_deallocator {
+        inline void deallocate(Job_base* job) noexcept;
+    };
+
+
+    //---------------------------------------------------------------------------------------------------
     //Awaitables
 
 
@@ -104,6 +123,7 @@ namespace vgjs {
         };
 
         std::tuple<std::pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
+
         awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
         awaiter operator co_await() noexcept;
     };
@@ -126,6 +146,7 @@ namespace vgjs {
         };
 
         T& m_child;                     //child/children
+
         awaitable_coro(T& child) noexcept : m_child(child) {};
         awaiter operator co_await() noexcept;
     };
@@ -147,6 +168,7 @@ namespace vgjs {
         };
 
         int32_t m_thread_index; //the thread index to use
+
         awaitable_resume_on(int32_t thread_index) noexcept : m_thread_index(thread_index) {};
         awaiter operator co_await() noexcept;
     };
@@ -160,7 +182,6 @@ namespace vgjs {
     */
     template<typename U>
     struct yield_awaiter : public std::experimental::suspend_always {
-        yield_awaiter() noexcept {};
         void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
     };
 
@@ -177,7 +198,6 @@ namespace vgjs {
     */
     template<typename U>
     struct final_awaiter : public std::experimental::suspend_always {
-        final_awaiter() noexcept {};
         bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
     };
 
@@ -242,19 +262,20 @@ namespace vgjs {
     public:
 
         Coro_promise() noexcept;
-        job_deallocator get_deallocator() noexcept;    //called for deallocation
+        job_deallocator get_deallocator() noexcept { return coro_deallocator<T>{}; };    //called for deallocation
         Coro<T>         get_return_object() noexcept;
         void            return_value(T t) noexcept;
         yield_awaiter<T> yield_value(T t) noexcept;
 
         template<typename... Ts>
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept;
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
 
         template<typename U>
-        awaitable_coro<T, U> await_transform(U& coro) noexcept;
+        awaitable_coro<T, U>      await_transform(U& coro) noexcept { return { coro }; };
 
-        awaitable_resume_on<T> await_transform(int thread_index) noexcept;
-        final_awaiter<T> final_suspend() noexcept;
+        awaitable_resume_on<T>    await_transform(int thread_index) noexcept { return { (int32_t)thread_index}; };
+
+        final_awaiter<T>          final_suspend() noexcept { return {}; };
     };
 
 
@@ -263,7 +284,7 @@ namespace vgjs {
 
 
     /**
-    * \brief Base class of coroutine Coro. Independent of promise return type.
+    * \brief Base class of coroutine future Coro. Independent of promise return type.
     */
     class Coro_base : public Queuable {
     public:
@@ -274,7 +295,7 @@ namespace vgjs {
 
 
     /**
-    * \brief The main Coro class. Can be constructed to return any value type
+    * \brief The main Coro future class. Can be constructed to return any value type
     *
     * The Coro is an accessor class much like a std::future that is used to
     * access the promised value once it is awailable.
@@ -306,10 +327,9 @@ namespace vgjs {
         ~Coro() noexcept;
 
         std::pair<bool, T>  get() noexcept;
-        Coro_promise_base* promise() noexcept;
-        Coro<T>&& operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
+        Coro_promise_base*  promise() noexcept;
+        Coro<T>&&           operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
         bool                resume() noexcept;
-
     };
 
 
@@ -322,7 +342,6 @@ namespace vgjs {
     */
     template<>
     struct yield_awaiter<void> : public std::experimental::suspend_always {
-        yield_awaiter() noexcept {};
         void await_suspend(std::experimental::coroutine_handle<> h) noexcept;
     };
 
@@ -332,30 +351,13 @@ namespace vgjs {
     */
     template<>
     struct final_awaiter<void> : public std::experimental::suspend_always {
-        final_awaiter() noexcept {};
         bool await_suspend(std::experimental::coroutine_handle<> h) noexcept;
     };
 
 
-    template<>
-    class Coro<void> : public Coro_base {
-    };
-
-
     /**
-    * \brief This deallocator is used to destroy coro promises when the system is shut down.
+    * \brief Coro promise for void
     */
-    template<typename T>
-    struct coro_deallocator : public job_deallocator {
-        inline void deallocate(Job_base* job) noexcept;
-    };
-
-    template<>
-    struct coro_deallocator<void> : public job_deallocator {
-        inline void deallocate(Job_base* job) noexcept;
-    };
-
-
     template<>
     class Coro_promise<void> : public Coro_promise_base {
         friend struct yield_awaiter<void>;
@@ -364,26 +366,50 @@ namespace vgjs {
 
     public:
         Coro_promise() noexcept;
-        job_deallocator get_deallocator() noexcept;    //called for deallocation
+        job_deallocator get_deallocator() noexcept { return coro_deallocator<void>{}; };    //called for deallocation
         Coro<void>      get_return_object() noexcept;
         void            return_void() noexcept;
-        yield_awaiter<void> yield_void() noexcept;
+        yield_awaiter<void> yield_value() noexcept;
 
         template<typename... Ts>
-        awaitable_tuple<void, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept;
+        awaitable_tuple<void, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
 
         template<typename U>
-        awaitable_coro<void, U> await_transform(U& coro) noexcept;
+        awaitable_coro<void, U>      await_transform(U& coro) noexcept { return { coro }; };
 
-        awaitable_resume_on<void> await_transform(int thread_index) noexcept;
-        final_awaiter<void> final_suspend() noexcept;
+        awaitable_resume_on<void>    await_transform(int thread_index) noexcept { return (int32_t)thread_index; };
 
+        final_awaiter<void>          final_suspend() noexcept { return {}; };
+    };
+
+
+    /**
+    * \brief Coro future for void
+    */
+    template<>
+    class Coro<void> : public Coro_base {
+    public:
+        using promise_type = Coro_promise<void>;
+
+    private:
+        std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
+
+    public:
+        explicit Coro(std::experimental::coroutine_handle<promise_type> h) noexcept {};
+        Coro(Coro<void>&& t)  noexcept : Coro_base(), m_coro(std::exchange(t.m_coro, {})) {};
+
+        void operator= (Coro<void>&& t);
+        ~Coro() noexcept;
+        Coro_promise_base*  promise() noexcept;
+        Coro<void>&&        operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
+        bool                resume() noexcept;
     };
 
 
 
     //---------------------------------------------------------------------------------------------------
     //Implementations
+
 
 
     //---------------------------------------------------------------------------------------------------
@@ -667,9 +693,6 @@ namespace vgjs {
        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
     };
 
-    template<typename T>
-    inline job_deallocator Coro_promise<T>::get_deallocator() noexcept { return coro_deallocator<T>{}; };    //called for deallocation
-
     /**
     * \brief Get Coro<T> from the Coro_promise<T>. Creates a shared value to trade the result.
     * \returns the Coro<T> from the promise.
@@ -716,44 +739,6 @@ namespace vgjs {
         return {};  //return a yield_awaiter
     }
 
-    /**
-    * \brief Return an awaitable from a tuple of vectors.
-    * \returns the correct awaitable.
-    */
-    template<typename T>
-    template<typename... Ts>    //called by co_await for std::pmr::vector<Ts>& Coros or functions
-    inline awaitable_tuple<T, Ts...> Coro_promise<T>::await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept {
-        return { tuple };
-    }
-
-    /**
-    * \brief Return an awaitable from basic types like functions, Coros, or vectors thereof
-    * \returns the correct awaitable.
-    */
-    template<typename T>
-    template<typename U>        //called by co_await for Coros or functions, or std::pmr::vector thereof
-    inline awaitable_coro<T, U> Coro_promise<T>::await_transform(U& coro) noexcept {
-        return { coro };
-    }
-
-    /**
-    * \brief Return an awaitable for an integer number.
-    * This is used when the coro should change the current thread.
-    * \returns the correct awaitable.
-    */
-    template<typename T>
-    inline awaitable_resume_on<T> Coro_promise<T>::await_transform(int thread_index) noexcept { //called by co_await for INT, for changing the thread
-        return { (int32_t)thread_index };
-    }
-
-    /**
-    * \brief Return the final awaiter after the final suspension point.
-    * \returns the final awaiter.
-    */
-    template<typename T>
-    inline final_awaiter<T> Coro_promise<T>::final_suspend() noexcept { //create the final awaiter at the final suspension point
-        return {};
-    }
 
     //---------------------------------------------------------------------------------------------------
     //coro futures
@@ -832,11 +817,6 @@ namespace vgjs {
         }
         return true;
     };
-
-
-    //--------------------------------------------------------------------------------------------------
-    //specializations for void
-
 
 
 }
