@@ -301,13 +301,11 @@ namespace vgjs {
     */
     class Coro_base : public Queuable {
     protected:
-        std::experimental::coroutine_handle<>& m_coro_ref;
         Coro_promise_base* m_promise = nullptr;
 
     public:
-        Coro_base(std::experimental::coroutine_handle<>& cr, Coro_promise_base* promise) noexcept
-            : Queuable(), m_coro_ref(cr), m_promise(promise) {};                //constructor
-        bool resume() noexcept;                                                 //resume the Coro
+        Coro_base(Coro_promise_base* promise) noexcept : Queuable(), m_promise(promise) {}         //constructor
+        bool resume() noexcept { return m_promise->resume(); };         //resume the Coro
         Coro_promise_base* promise() noexcept { return m_promise; };   //get the promise to use it as Job 
     };
 
@@ -334,7 +332,7 @@ namespace vgjs {
                         std::shared_ptr<std::pair<bool, T>>& value_ptr,
                         bool is_parent_function) noexcept;
 
-        Coro(Coro<T>&& t)  noexcept : Coro_base(m_coro, t.m_promise), m_coro(std::exchange(t.m_coro, {})),
+        Coro(Coro<T>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})),
                                         m_value_ptr(std::exchange(t.m_value_ptr, {})),
                                         m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {};
 
@@ -405,8 +403,8 @@ namespace vgjs {
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
-        explicit Coro(std::experimental::coroutine_handle<promise_type> coro) noexcept : Coro_base(coro, &coro.promise()), m_coro(coro) {};
-        Coro(Coro<void>&& t)  noexcept : Coro_base(m_coro, t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+        explicit Coro(std::experimental::coroutine_handle<promise_type> coro) noexcept : Coro_base(&coro.promise()), m_coro(coro) {};
+        Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
 
         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
         ~Coro() noexcept {};
@@ -797,15 +795,6 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
     //coro futures
 
-    /**
-    * \brief Resume the coro at its suspension point
-    */
-    inline bool Coro_base::resume() noexcept {    //resume the Coro by calling resume() on the handle
-        if (m_coro_ref && !m_coro_ref.done()) {
-            m_coro_ref.resume();
-        }
-        return true;
-    };
 
     /**
     * \brief Coro future constructor
@@ -814,7 +803,7 @@ namespace vgjs {
     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
                             std::shared_ptr<std::pair<bool, T>>& value_ptr, 
                             bool is_parent_function) noexcept
-                                : Coro_base(h, &h.promise()), m_coro(h), m_is_parent_function(is_parent_function)  {
+                                : Coro_base(&h.promise()), m_coro(h), m_is_parent_function(is_parent_function)  {
         if (m_is_parent_function) {
             m_value_ptr = value_ptr;
         }
