@@ -88,8 +88,9 @@ namespace vgjs {
 
     //-----------------------------------------------------------------------------------------
 
-    typedef void (*fptr)(Job_base* job);
-    void job_deallocator(Job_base* job);
+    struct job_deallocator {
+        virtual void deallocate(Job_base* job) noexcept;
+    };
 
     /**
     * \brief Base class of things you can put into a queue
@@ -116,7 +117,7 @@ namespace vgjs {
             resume();
         }
         bool is_function() noexcept { return m_is_function; }         //test whether this is a function or e.g. a coro
-        virtual fptr get_deallocator() noexcept { return job_deallocator; };    //called for deallocation
+        virtual job_deallocator get_deallocator() noexcept { return job_deallocator{}; };    //called for deallocation
     };
 
 
@@ -158,7 +159,7 @@ namespace vgjs {
     * \brief Deallocate a Job instance.
     * \param[in] job Pointer to the job.
     */
-    inline void job_deallocator(Job_base* job) {
+    inline void job_deallocator::deallocate(Job_base* job) noexcept {
         std::pmr::polymorphic_allocator<Job> allocator(((Job*)job)->m_mr); //construct a polymorphic allocator
         ((Job*)job)->~Job();                                          //call destructor
         allocator.deallocate(((Job*)job), 1);                         //use pma to deallocate the memory
@@ -212,8 +213,8 @@ namespace vgjs {
             uint32_t res = m_size;
             JOB* job = pop();                   //deallocate jobs that run a function
             while (job != nullptr) {            //because they were allocated by the JobSystem
-                auto deallocate = job->get_deallocator(); //get deallocator
-                deallocate(job);                //deallocate the memory
+                auto da = job->get_deallocator(); //get deallocator
+                da.deallocate(job);             //deallocate the memory
                 job = pop();                    //get next entry
             }
             return res;
