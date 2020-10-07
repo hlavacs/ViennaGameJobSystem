@@ -160,6 +160,7 @@
     <ClCompile Include="func.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mixed.cpp" />
+    <ClCompile Include="docu.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VECoro.h" />

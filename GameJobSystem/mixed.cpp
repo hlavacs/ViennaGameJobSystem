@@ -38,9 +38,9 @@ namespace mixed {
         //std::cout << "Print Data Coro " << i << " id " << ++pdc << std::endl;
         if (i >0 ) {
             //co_await compute(i)(-1, 5, 0);
-            co_await Function(F( printData( i - 1, i+1 ) ), -1, i, ++pdc);
+            co_await Function([=]() { printData(i - 1, i + 1); }, -1, i, ++pdc);
             //std::cout << "After Print Data A " << i-1 << std::endl;
-            co_await Function(F(printData(i - 1, i + 1)), -1, i, ++pdc);
+            co_await Function([=]() {printData(i - 1, i + 1); }, -1, i, ++pdc);
             //std::cout << "After Print Data B " << i - 1 << std::endl;
         }
         co_return i;
@@ -77,7 +77,7 @@ namespace mixed {
         schedule( f );
         //std::this_thread::sleep_for(std::chrono::microseconds(1));
 
-        continuation(Function(F(loop(i-1)), i-1, 4, 0));
+        continuation(Function([=](){ loop(i - 1); }, i - 1, 4, 0));
 
     }
 
@@ -92,7 +92,7 @@ namespace mixed {
 
         //schedule( F(printData(i, -1)));
 
-        schedule( Function( F(loop(i)), i, 4, 0 ));
+        schedule(Function([=]() { loop(i); }, i, 4, 0));
 
         //continuation( Function( F( vgjs::terminate() ), -1, 3, 0 ) );
     }
@@ -111,7 +111,7 @@ namespace mixed {
 
         //JobSystem::instance().enable_logging();
 
-        schedule( Function( F(driver( 5 , "Driver")), -1, 0, 0 ) );
+        schedule(Function( [=]() { driver(5, "Driver"); }, -1, 0, 0));
         //schedule( F( driver(4, "Driver") ) );
 
         std::cout << "Ending mixed test()\n";

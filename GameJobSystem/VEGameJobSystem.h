@@ -37,9 +37,6 @@
 
 namespace vgjs {
 
-    #define FUNCTION(f) [=](){f;}    //wrapper over a lambda function holding function f and parameters
-    #define F(f) [=](){f;}          //wrapper over a lambda function holding function f and parameters
-
     class Job;
     class Job_base;
     class JobSystem;
@@ -367,6 +364,9 @@ namespace vgjs {
             m_thread_count = threadCount;
             if (m_thread_count == 0) {
                 m_thread_count = std::thread::hardware_concurrency();		///< main thread is also running
+            }
+            if (m_thread_count == 0) {
+                m_thread_count = 1;
             }
 
             for (uint32_t i = 0; i < m_thread_count; i++) {

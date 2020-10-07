@@ -34,10 +34,10 @@ namespace func {
     auto compute( int i ) {
         volatile auto x = 2 * i;
         
-        schedule(F(printData(i - 1); ));
-        schedule(F(printData(i - 1); ));
+        schedule([=](){ printData(i - 1); });
+        schedule([=](){ printData(i - 1); });
 
-        continuation(F(computeF(i)));
+        continuation([=](){ computeF(i); });
 
         return x;
     }
@@ -46,7 +46,7 @@ namespace func {
         //std::cout << "Print Data " << i << std::endl;
         if (i > 0) {
             cnt++;
-            Function r{ F(compute(i)) };
+            Function r{ [=]() { compute(i); } };
             schedule( r );
             //schedule( F( printData(i-1); ) );
             //schedule( F( printData(i-1); ));
@@ -55,16 +55,16 @@ namespace func {
 
     void loop(int N) {
         for (int i = 0; i < N; ++i) {
-            schedule(F(compute(i)));
+            schedule([=](){ compute(i); } );
         }
     }
 
     void driver(int i) {
         std::cout << "Driver " << i << std::endl;
 
-        schedule(Function{ F(printData(i)) } );
+        schedule(Function{ [=]() { printData(i); } });
 
-        //schedule(FUNCTION(loop(100000)));
+        //schedule(F(loop(100000)));
     }
 
 
@@ -72,9 +72,9 @@ namespace func {
         cnt = 0;
         std::cout << "Starting func test()\n";
 
-        schedule( F(driver(13)) );
+        schedule([=]() { driver(13); });
 
-        continuation( F( std::cout << "Ending func test() " << cnt << "\n" ) );
+        continuation([=]() { std::cout << "Ending func test() " << cnt << "\n"; });
     }
 
 

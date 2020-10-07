@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['vgjs_200',['vgjs',['../namespacevgjs.html',1,'']]]
+  ['mixed_200',['mixed',['../namespacemixed.html',1,'']]],
+  ['mycppcoro_201',['mycppcoro',['../namespacemycppcoro.html',1,'']]]
 ];

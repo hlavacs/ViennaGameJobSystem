@@ -6,7 +6,6 @@
 #include <string>
 #include <algorithm>
 #include <chrono>
-//#include <glm.hpp>
 
 #include "VEGameJobSystem.h"
 
@@ -22,18 +21,22 @@ namespace mixed {
 	void test();
 }
 
+namespace docu {
+	void test(int);
+}
+
 
 void driver( int i ) {
 
-	vgjs::schedule( F(coro::test()) );
-	vgjs::schedule ( F(func::test()) );
-	vgjs::schedule( F(mixed::test()) );
+	vgjs::schedule( std::bind(coro::test) );
+	vgjs::schedule (std::bind(func::test) );
+	vgjs::schedule(std::bind(mixed::test) );
 
 	if (i <= 1) {
-		vgjs::continuation(F(std::cout << "terminate()\n";  vgjs::terminate(); ));
+		vgjs::continuation([]() { std::cout << "terminate()\n";  vgjs::terminate(); } );
 	}
 	else {
-		vgjs::continuation(F(std::cout << "driver(" << i << ")\n";  driver( i-1 ); ));
+		vgjs::continuation([=]() { std::cout << "driver(" << i << ")\n";  driver(i - 1); } );
 	}
 }
 
@@ -43,13 +46,13 @@ int main()
 
 	JobSystem::instance();
 
-	schedule( F(driver(1000)) );
+	//schedule( [](){ driver(1000); });
 
+	schedule([=]() {docu::test(5); });
 	wait_for_termination();
-	std::cout << "Exit\n";
-
-	std::string str;
-	std::cin >> str;
+	//std::cout << "Exit\n";
+	//std::string str;
+	//std::cin >> str;
 }
 
 

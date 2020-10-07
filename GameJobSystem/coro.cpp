@@ -115,12 +115,12 @@ namespace coro {
             get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
             get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
 
-            fv.emplace_back( F( FCompute(i) ) );
+            fv.emplace_back([=]() { FCompute(i); });
 
-            Function f( F(FuncCompute(i)), -1, 0, 0 );
+            Function f([=]() { FuncCompute(i); }, -1, 0, 0);
             jv.push_back( f );
 
-            jv.push_back( Function( F(FuncCompute(i)), -1, 0, 0) );
+            jv.push_back(Function([=](){ FuncCompute(i); }, -1, 0, 0));
         }
         
         if (printb) std::cout << "Before loop " << std::endl;
@@ -139,11 +139,11 @@ namespace coro {
 
         if (printb) std::cout << "Before First FCompute 999\n";
 
-        co_await F( FCompute(999) );
+        co_await[=]() { FCompute(999); };
 
         if (printb) std::cout << "After First FCompute 999\n";
 
-        co_await Function( F(FCompute(999)) );
+        co_await Function([=]() { FCompute(999); });
 
         if (printb) std::cout << "After Second FCompute 999\n";
 

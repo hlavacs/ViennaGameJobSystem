@@ -23,6 +23,9 @@
     <ClCompile Include="mixed.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="docu.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VECoro.h">

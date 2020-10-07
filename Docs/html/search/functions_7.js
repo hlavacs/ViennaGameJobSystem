@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['job_252',['Job',['../classvgjs_1_1_job.html#a8ac31aea98d8f4782d415ae56f908767',1,'vgjs::Job']]],
-  ['joblog_253',['JobLog',['../structvgjs_1_1_job_log.html#a29bad53678256cb0d49d11404dc47e1a',1,'vgjs::JobLog']]],
-  ['jobqueue_254',['JobQueue',['../classvgjs_1_1_job_queue.html#ac90b136766c3728ea3975525da2974f5',1,'vgjs::JobQueue::JobQueue() noexcept'],['../classvgjs_1_1_job_queue.html#ab5016d2579d27d1dacb194086a18c280',1,'vgjs::JobQueue::JobQueue(const JobQueue&lt; JOB &gt; &amp;queue) noexcept']]],
-  ['jobsystem_255',['JobSystem',['../classvgjs_1_1_job_system.html#a06e08682e13d5022b749f366779c07d9',1,'vgjs::JobSystem::JobSystem(uint32_t threadCount=0, uint32_t start_idx=0, std::pmr::memory_resource *mr=std::pmr::new_delete_resource()) noexcept'],['../classvgjs_1_1_job_system.html#afec451c50f55cb3bffef2664a5c08eb4',1,'vgjs::JobSystem::JobSystem(const JobSystem &amp;)=delete'],['../classvgjs_1_1_job_system.html#a407aad0c04f25c1748c5bc69a37e2243',1,'vgjs::JobSystem::JobSystem(JobSystem &amp;&amp;)=default']]]
+  ['job_255',['Job',['../classvgjs_1_1_job.html#a8ac31aea98d8f4782d415ae56f908767',1,'vgjs::Job']]],
+  ['joblog_256',['JobLog',['../structvgjs_1_1_job_log.html#a29bad53678256cb0d49d11404dc47e1a',1,'vgjs::JobLog']]],
+  ['jobqueue_257',['JobQueue',['../classvgjs_1_1_job_queue.html#ac90b136766c3728ea3975525da2974f5',1,'vgjs::JobQueue::JobQueue() noexcept'],['../classvgjs_1_1_job_queue.html#ab5016d2579d27d1dacb194086a18c280',1,'vgjs::JobQueue::JobQueue(const JobQueue&lt; JOB &gt; &amp;queue) noexcept']]],
+  ['jobsystem_258',['JobSystem',['../classvgjs_1_1_job_system.html#a06e08682e13d5022b749f366779c07d9',1,'vgjs::JobSystem::JobSystem(uint32_t threadCount=0, uint32_t start_idx=0, std::pmr::memory_resource *mr=std::pmr::new_delete_resource()) noexcept'],['../classvgjs_1_1_job_system.html#afec451c50f55cb3bffef2664a5c08eb4',1,'vgjs::JobSystem::JobSystem(const JobSystem &amp;)=delete'],['../classvgjs_1_1_job_system.html#a407aad0c04f25c1748c5bc69a37e2243',1,'vgjs::JobSystem::JobSystem(JobSystem &amp;&amp;)=default']]]
 ];
