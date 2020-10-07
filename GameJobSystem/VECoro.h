@@ -396,6 +396,9 @@ namespace vgjs {
     */
     template<>
     class Coro<void> : public Coro_base {
+    protected:
+        bool m_is_parent_function;
+
     public:
         using promise_type = Coro_promise<void>;
 
@@ -403,11 +406,12 @@ namespace vgjs {
         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
-        explicit Coro(std::experimental::coroutine_handle<promise_type> coro) noexcept : Coro_base(&coro.promise()), m_coro(coro) {};
+        explicit Coro(std::experimental::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept 
+            : Coro_base(&coro.promise()), m_is_parent_function(is_parent_function), m_coro(coro) {};
         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
 
         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
-        ~Coro() noexcept {};
+        ~Coro() noexcept;
         Coro<void>&&       operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
     };
 
@@ -599,7 +603,7 @@ namespace vgjs {
                 }
             }
         }
-        return !promise.m_is_parent_function;
+        return !promise.m_is_parent_function; //if parent is coro, then you are in sync -> the future will destroy the promise
     }
 
 
@@ -621,7 +625,7 @@ namespace vgjs {
                 }
             }
         }
-        return false; //always destroy yourself
+        return !promise.m_is_parent_function; //if parent is coro, then you are in sync -> the future will destroy the promise
     }
 
 
@@ -759,7 +763,7 @@ namespace vgjs {
     * \returns the Coro<void> from the promise.
     */
     inline Coro<void> Coro_promise<void>::get_return_object() noexcept {
-        return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) };
+        return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
     }
 
     /**
@@ -824,6 +828,12 @@ namespace vgjs {
     */
     template<typename T>
     inline Coro<T>::~Coro() noexcept {
+        if (!m_is_parent_function && m_coro) {
+            m_coro.destroy();
+        }
+    }
+
+    inline Coro<void>::~Coro() noexcept {
         if (!m_is_parent_function && m_coro) {
             m_coro.destroy();
         }
