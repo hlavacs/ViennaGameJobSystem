@@ -49,10 +49,11 @@ int main()
 	//schedule( [](){ driver(1000); });
 
 	schedule([=]() {docu::test(5); });
+	
 	wait_for_termination();
-	//std::cout << "Exit\n";
-	//std::string str;
-	//std::cin >> str;
+	std::cout << "Exit\n";
+	std::string str;
+	std::cin >> str;
 }
 
 
