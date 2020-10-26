@@ -412,7 +412,7 @@ namespace vgjs {
 
         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
         ~Coro() noexcept;
-        Coro<void>&&       operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
+        Coro<void>&& operator() (int32_t thread_index = -1, int32_t type = -1, int32_t id = -1);
     };
 
 

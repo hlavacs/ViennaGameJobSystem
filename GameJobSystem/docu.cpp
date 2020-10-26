@@ -17,7 +17,7 @@ namespace docu {
 
     using namespace vgjs;
 
-    auto g_global_mem5 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
+    auto g_global_mem = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 10 }, std::pmr::new_delete_resource());
 
     namespace docu1 {
         void printData(int i) {
@@ -52,91 +52,49 @@ namespace docu {
             vgjs::terminate();
             co_return;
         }
-
-        auto g_global_mem =      //my own memory pool
-            std::pmr::synchronized_pool_resource(
-                { .max_blocks_per_chunk = 1000, .largest_required_pool_block = 1 << 10 }, std::pmr::new_delete_resource());
-
     }
 
 
     namespace docu3 {
-        auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
-
-        //A recursive coro
-        Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
-
-            std::pmr::vector<Coro<int>> vec{ mr }; //a vector holding Coro<int> instances
-            int res = 0;
-
-            if (i < N) {
-
-                vec.emplace_back(recursive(std::allocator_arg, mr, i + 1, N)); //insert 2 instances
-                vec.emplace_back(recursive(std::allocator_arg, mr, i + 1, N));
-
-                co_await vec;  //await all of them at once
-
-                res = std::get<1>(vec[0].get());
-            }
-            co_return res; //use the result of one of them
-        }
 
         //A coro returning a float
-        Coro<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
-            float f = i + 0.5f;
-            co_return 10.0f * i;
+        Coro<float> coro_float(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+            float f = (float)i;
+            std::cout << "coro_float " << f << std::endl;
+            co_return f;
         }
 
         //A coro returning an int
-        Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
-            co_return 2 * i;
+        Coro<int> coro_int(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+            std::cout << "coro_int " << i << std::endl;
+            co_return i;
         }
 
-        //A coro awaiting an lvalue and using the return value
-        Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
-            auto tk1 = compute(std::allocator_arg, mr, 1);
-            co_await tk1;
-            co_return std::get<1>(tk1.get());
+        //a function
+        void func(int i) {
+            std::cout << "func " << i << std::endl;
         }
 
-        void FCompute(int i) {
-            std::cout << "FCompute " << i << std::endl;
-        }
-
-        void FuncCompute(int i) {
-            std::cout << "FuncCompute " << i << std::endl;
-        }
-
-        Coro<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
-            std::cout << "Loop " << count << std::endl;
+        Coro<int> test(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
 
             auto tv = std::pmr::vector<Coro<int>>{ mr };  //vector of Coro<int>
-            auto tk = std::make_tuple(                  //tuple holding two vectors - Coro<int> and Coro<float>
+            tv.emplace_back(coro_int(std::allocator_arg, &g_global_mem, 1));
+
+            auto tk = std::make_tuple(                     //tuple holding two vectors - Coro<int> and Coro<float>
                 std::pmr::vector<Coro<int>>{mr},
                 std::pmr::vector<Coro<float>>{mr});
+            get<0>(tk).emplace_back(coro_int(std::allocator_arg, &g_global_mem, 2));
+            get<1>(tk).emplace_back(coro_float(std::allocator_arg, &g_global_mem, 3));
+
             auto fv = std::pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
-            std::pmr::vector<Function> jv{ mr };        //vector of Function{} instances
+            fv.emplace_back([=]() {func(4); });
 
-            //loop adds elements to these vectors
-            for (int i = 0; i < count; ++i) {
-                tv.emplace_back(do_compute(std::allocator_arg, &g_global_mem4));
-
-                get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
-                get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
-
-                fv.emplace_back([=]() {FCompute(i); });
-
-                Function f = Function([=]() {FuncCompute(i); }, -1, 0, 0); //schedule to random thread, use type 0 and id 0
-                jv.push_back(f);
-
-                jv.push_back(Function([=]() {FuncCompute(i); }, -1, 0, 0));
-            }
+            std::pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
+            Function f = Function([=]() {func(5); }, -1, 0, 0); //schedule to random thread, use type 0 and id 0
+            jv.push_back(f);
 
             co_await tv; //await all elements of the Coro<int> vector
             co_await tk; //await all elements of the vectors in the tuples
-            co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10); //await the recursive calls for a Coro<int>
-            co_await []() { FCompute(999); };            //await the function using std::function<void(void)>
-            co_await Function([]() {FCompute(999); });  //await the function using Function{}
             co_await fv; //await all elements of the std::function<void(void)> vector
             co_await jv; //await all elements of the Function{} vector
 
@@ -144,13 +102,41 @@ namespace docu {
 
             co_return 0;
         }
+    }
 
+
+    namespace docu4 {
+        Coro<int> yield_test(int& input_parameter) {
+            int value = 0;          //initialize the fiber here
+            while (true) {          //a fiber never returns
+                int res = value * input_parameter; //use internal and input parameters
+                co_yield res;       //set std::pair<bool,T> value to indicate that this fiber is ready, and suspend
+                //here its std::pair<bool,T> value is set to (false, T{}) to indicate thet the fiber is working
+                //co_await other(value, input_parameter);  //call any child
+                ++value;            //do something useful
+            }
+            co_return value; //have this only to satisfy the compiler
+        }
+
+        int g_yt_in = 0;                //parameter that can be set from the outside
+        auto yt = yield_test(g_yt_in);  //create a fiber using an input parameter
+
+        Coro<int> loop(int N) {
+            for (int i = 0; i < N; ++i) {
+                g_yt_in = i; //set input parameter
+                co_await yt; //call the fiber and wait for it to complete
+                std::cout << "Yielding " << yt.get().second << "\n";
+            }
+            vgjs::terminate();
+            co_return 0;
+        }
     }
 
     void test(int N) {
-        //schedule(std::bind(docu1::loop, N));
-        //schedule( docu2::loop(std::allocator_arg, &docu2::g_global_mem, 5));
-        schedule( docu::docu3::loop(std::allocator_arg, &docu::docu3::g_global_mem4, 1));
+        //schedule([]() { docu1::loop(N);});
+        //schedule( docu2::loop(std::allocator_arg, &docu::g_global_mem, N) );
+        //schedule( docu::docu3::test(std::allocator_arg, &docu::g_global_mem, 1));
+        schedule( docu::docu4::loop(N));
     }
 
 

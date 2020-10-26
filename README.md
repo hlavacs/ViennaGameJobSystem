@@ -166,7 +166,7 @@ If the parent is a coroutine then the Coro_promise\<T\> only suspends at its end
         JobSystem::instance();
 
         //pass on the memory resource to be used to allocate the promise, precede it with std::allocator_arg
-        schedule( loop(std::allocator_arg, &g_global_mem, 10) ); //schedule coro loop() from a function
+        schedule( loop(std::allocator_arg, &g_global_mem, 5) ); //schedule coro loop() from a function
 
         wait_for_termination();
         return 0;
@@ -184,87 +184,73 @@ Coros should NOT call schedule() themselves! Instead they MUST use co_await and 
 Coros can coawait a number of different types. Single types include
 * C++ function packed into lambdas \[=\](){} or std::bind()
 * Function{} class
-* Coro\<T\> for any type T
+* Coro\<T\> for any return type T, or empty Coro<>
 
 Since the coro suspends and awaits the finishing of all of its children, this would allow only one child to await. Thus, coros can additionally await std::pmr::vectors, or even std::tuples containing K std::pmr::vectors of the above types. This allows to start and await any number of children of arbitrary types. The following code shows how to start multiple children from a coro.
 
-    //A recursive coro
-    Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
-        if (i < N) {
-            std::pmr::vector<Coro<int>> vec{ mr }; //a vector holding Coro<int> instances
-
-            vec.emplace_back( recursive(std::allocator_arg, mr, i + 1, N)); //insert 2 instances
-            vec.emplace_back( recursive(std::allocator_arg, mr, i + 1, N));
-
-	        co_await vec;  //await all of them at once
-        }
-        co_return vec[0].get().value(); //use the result of one of them
-    }
+    auto g_global_mem4 =
+      std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
 
     //A coro returning a float
-    Coro<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
-        float f = i + 0.5f;
-        co_return 10.0f * i;
+    Coro<float> coro_float(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+      float f = (float)i;
+      std::cout << "coro_float " << f << std::endl;
+      co_return f;
     }
 
     //A coro returning an int
-    Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
-        co_return 2 * i;
+    Coro<int> coro_int(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+      std::cout << "coro_int " << i << std::endl;
+      co_return i;
     }
 
-    //A coro awaiting an lvalue and using the return value
-    Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
-        auto tk1 = compute(std::allocator_arg, mr, 1);
-        co_await tk1;
-        co_return tk1.get().value();
+    //a function
+    void func(int i) {
+      std::cout << "func " << i << std::endl;
     }
 
-    void FCompute( int i ) {
-        std::cout << "FCompute " << i << std::endl;
+    Coro<int> test(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
+
+      auto tv = std::pmr::vector<Coro<int>>{ mr };  //vector of Coro<int>
+      tv.emplace_back(coro_int(std::allocator_arg, &g_global_mem4, 1));
+
+      auto tk = std::make_tuple( //tuple w. two vectors w. types Coro<int> and Coro<float>
+        std::pmr::vector<Coro<int>>{mr},
+        std::pmr::vector<Coro<float>>{mr});
+
+      get<0>(tk).emplace_back(coro_int(std::allocator_arg, &g_global_mem4, 2));
+      get<1>(tk).emplace_back(coro_float(std::allocator_arg, &g_global_mem4, 3));
+
+      auto fv = std::pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
+      fv.emplace_back([=]() {func(4); });
+
+      std::pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
+      Function f = Function([=]() {func(5); }, -1, 0, 0); //schedule to random thread, use type 0 and id 0
+      jv.push_back(f);
+
+      co_await tv; //await all elements of the Coro<int> vector
+      co_await tk; //await all elements of the vectors in the tuples
+      co_await fv; //await all elements of the std::function<void(void)> vector
+      co_await jv; //await all elements of the Function{} vector
+
+      vgjs::terminate();
+
+      co_return 0;
     }
 
-    void FuncCompute(int i) {
-        std::cout << "FuncCompute " << i << std::endl;
+    void test(int N) {
+      schedule( docu::docu3::test(std::allocator_arg, &docu::docu3::g_global_mem4, 1));
     }
 
-    Coro<int> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
+The output of the above code is
 
-        auto tv = std::pmr::vector<Coro<int>>{mr};  //vector of Coro<int>
-        auto tk = std::make_tuple(                  //tuple holding two vectors - Coro<int> and Coro<float>
-            std::pmr::vector<Coro<int>>{mr},
-            std::pmr::vector<Coro<float>>{mr});
-        auto fv = std::pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
-        std::pmr::vector<Function> jv{ mr };        //vector of Function{} instances
+    coro_int 1
+    coro_int coro_float 2
+    3
+    func 4
+    func 5
 
-        //loop adds elements to these vectors
-        for (int i = 0; i < count; ++i) {
-            tv.emplace_back( do_compute(std::allocator_arg, &g_global_mem4 ) );
-
-            get<0>(tk).emplace_back(compute(std::allocator_arg, &g_global_mem4, i));
-            get<1>(tk).emplace_back(computeF(std::allocator_arg, &g_global_mem4, i));
-
-            fv.emplace_back( F( FCompute(i) ) );
-
-            Function f( F(FuncCompute(i)), -1, 0, 0 ); //schedule to random thread, use type 0 and id 0
-            jv.push_back( f );
-
-            jv.push_back( Function( F(FuncCompute(i)), -1, 0, 0) );
-        }
-
-        co_await tv; //await all elements of the Coro<int> vector
-        co_await tk; //await all elements of the vectors in the tuples
-        co_await recursive(std::allocator_arg, &g_global_mem4, 1, 10); //await the recursive calls for a Coro<int>
-        co_await F( FCompute(999) );            //await the function using std::function<void(void)>
-        co_await Function( F(FCompute(999)) );  //await the function using Function{}
-        co_await fv; //await all elements of the std::function<void(void)> vector
-        co_await jv; //await all elements of the Function{} vector
-
-        co_return 0;
-    }
-
-    void test() {
-        schedule( loop(std::allocator_arg, &g_global_mem4, 90) );
-    }
+It can be seen that the co_awaits are carried out sequentially, but the functions on the tuple are carried out in parallel, with mixed up output.
 
 Coroutine futures Coro\<T\> are also "callable", and you can pass in parameters similar to the Function{} class, setting thread index, type and id:
 
@@ -285,29 +271,46 @@ Coroutines can also change their thread by awaiting a thread index number:
 
 ## Generators and Fibers
 A coroutine can be used as a generator or fiber (https://en.wikipedia.org/wiki/Fiber_(computer_science)). Essentially, this is a coroutine that never coreturns but suspends and waits to be called, compute a value, return the value, and suspend again. The coro can call any other child with co_await, but return its result using co_yield.
+In the below example, there is a fiber yt of type Coro<int>, which takes itselfinput parameter from g_yt_in. Calling co_await on the fiber invokes the fiber, which
+eventually calls co_yield. Here the fiber exits and returns to the invoking coro, which
+accesses the result with calling get().
 
-    Coro<int> yield_test(int &input_parameter) {
-        int value = 0;          //initialize the fiber here
-        while (true) {          //a fiber never returns
-            int res = value * input_parameter; //use internal and input parameters
-            co_yield res;       //set std::pair<bool,T> value to indicate that this fiber is ready, and suspend
-            //here its std::pair<bool,T> value is set to (false, T{}) to indicate thet the fiber is working
-            co_await other(value, input_parameter);  //call any child
-            ++value;            //do something useful
-        }
-        co_return value; //have this only to satisfy the compiler
+    Coro<int> yield_test(int& input_parameter) {
+      int value = 0;          //initialize the fiber here
+      while (true) {          //a fiber never returns
+        int res = value * input_parameter; //use internal and input parameters
+        co_yield res;       //set std::pair<bool,T> value to indicate that this fiber is ready, and suspend
+        //here its std::pair<bool,T> value is set to (false, T{}) to indicate thet the fiber is working
+        //co_await other(value, input_parameter);  //call any child
+        ++value;            //do something useful
+      }
+      co_return value; //have this only to satisfy the compiler
     }
 
     int g_yt_in = 0;                //parameter that can be set from the outside
     auto yt = yield_test(g_yt_in);  //create a fiber using an input parameter
 
-    Coro<int> driver( int i) {
-
+    Coro<int> loop(int N) {
+      for (int i = 0; i < N; ++i) {
         g_yt_in = i; //set input parameter
         co_await yt; //call the fiber and wait for it to complete
-
-        std::cout << "Yielding " << yt.get().value() << "\n";
+        std::cout << "Yielding " << yt.get().second << "\n";
+      }
+      vgjs::terminate();
+      co_return 0;
     }
+
+    void test(int N) {
+      schedule( docu::docu4::loop(N));
+    }
+
+The output of this code is
+
+    Yielding 0
+    Yielding 1
+    Yielding 4
+    Yielding 9
+    Yielding 16
 
 The advantage of generators/fibers is that they are created only once, but can be called any number of times, hence the overhead is similar to that of C++ functions - or even better. The downside is that passing in parameters is more tricky. Also you need an arbitration mechanism to prevent two jobs calling the fiber in parallel. E.g., you can put fibers in a JobQueue\<Coro\<int\>\> queue and retrieve them from there.
 
@@ -330,11 +333,12 @@ Jobs having a parent will trigger a continuation of this parent after they have 
 
 
 ## Never use Pointers and References to Local Variables in Functions - only in Coroutines!
-It is important to notice that running Functions is completely decoupled from each other. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parent Functions should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in the dependency tree, everything that is shared amongst functions and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL/PERMANENT data structures or heaps.
+It is important to notice that running C++ functions is completely decoupled from each other. When running a parent, its children do not have the guarantee that the parent will continue running during their life time. Instead it is likely that a parent stops running and all its local variables go out of context, while its children are still running. Thus, parent functions should NEVER pass pointers or references to variables that are LOCAL to them. Instead, in the dependency tree, everything that is shared amongst functions and especially passed to children as parameter must be either passed by value, or points or refers to GLOBAL/PERMANENT data structures or heaps.
 
-When sharing global variables in Functions that might be changed by several jobs in parallel, e.g. counters counting something up or down, you should consider using std::atomic<T> in order to avoid unpredictable runtime behavior. In a job, never wait for anything for long, use polling instead and finally return. Waiting will block the thread that runs the job and take away overall processing efficiency.
+This does NOT apply to coroutines, since coroutines do not go out of context when running children. So coroutines CAN pass references or pointers to local variables!
 
-This does NOT apply to coroutines, since coroutines do not go out of context when running children. So coroutines CAN pass references or pointers to local varaiables!
+When sharing global variables in functions that might be changed by several jobs in parallel, e.g. counters counting something up or down, you should consider using std::atomic<T> in order to avoid unpredictable runtime behavior. In a job, never wait for anything for long, use polling instead and finally return. Waiting will block the thread that runs the job and take away overall processing efficiency.
+
 
 ## Data Parallelism and Performance
 VGJS enables data parallel thinking since it enables focusing on data structures rather than tasks. The system assumes the use of many data structures that might or might not need computation. Data structures can be either global, or are organized as data streams that flow from one system to another system and get transformed in the process.
