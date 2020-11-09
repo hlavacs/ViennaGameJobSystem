@@ -19,7 +19,7 @@ namespace coro {
 
     using namespace vgjs;
 
-    auto g_global_mem4 = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
+    auto g_global_mem4 = n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, n_pmr::new_delete_resource());
 
     class CoroClass {
         int number = 1;
@@ -33,9 +33,9 @@ namespace coro {
 
     };
 
-    Coro<int> recursive2(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
+    Coro<int> recursive2(std::allocator_arg_t, n_pmr::memory_resource* mr, int i, int N) {
         if (i < N ) {
-            std::pmr::vector<Coro<int>> vec{ mr };
+            n_pmr::vector<Coro<int>> vec{ mr };
             vec.emplace_back( recursive2(std::allocator_arg, mr, i + 1, N));
             vec.emplace_back(recursive2(std::allocator_arg, mr, i + 1, N));
 
@@ -44,7 +44,7 @@ namespace coro {
         co_return 0;
     }
 
-    Coro<int> recursive(std::allocator_arg_t, std::pmr::memory_resource* mr, int i, int N) {
+    Coro<int> recursive(std::allocator_arg_t, n_pmr::memory_resource* mr, int i, int N) {
         //std::cout << "Recursive " << i << " of " << N << std::endl;
 
         if (i < N) {
@@ -54,7 +54,7 @@ namespace coro {
         co_return 0;
     }
 
-    Coro<float> computeF(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+    Coro<float> computeF(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
 
         co_await 0;
 
@@ -65,7 +65,7 @@ namespace coro {
     }
 
 
-    Coro<int> compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+    Coro<int> compute(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
 
         //co_await 1;
 
@@ -74,7 +74,7 @@ namespace coro {
         co_return 2 * i;
     }
 
-    Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr) {
+    Coro<int> do_compute(std::allocator_arg_t, n_pmr::memory_resource* mr) {
         //std::cout << "DO Compute " << std::endl;
 
         auto tk1 = compute(std::allocator_arg, mr, 1);
@@ -92,7 +92,7 @@ namespace coro {
         //std::cout << "FuncCompute " << i << std::endl;
     }
 
-    Coro<> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
+    Coro<> loop(std::allocator_arg_t, n_pmr::memory_resource* mr, int count) {
         int sum = 0;
 
         bool printb = false;
@@ -101,13 +101,13 @@ namespace coro {
 
         CoroClass cc(99);
 
-        auto tv = std::pmr::vector<Coro<int>>{mr};
+        auto tv = n_pmr::vector<Coro<int>>{mr};
 
-        auto tk = std::make_tuple(std::pmr::vector<Coro<int>>{mr}, std::pmr::vector<Coro<float>>{mr});
+        auto tk = std::make_tuple(n_pmr::vector<Coro<int>>{mr}, n_pmr::vector<Coro<float>>{mr});
         
-        auto fv = std::pmr::vector<std::function<void(void)>>{ mr };
+        auto fv = n_pmr::vector<std::function<void(void)>>{ mr };
 
-        std::pmr::vector<Function> jv{ mr };
+        n_pmr::vector<Function> jv{ mr };
 
         for (int i = 0; i < count; ++i) {
             tv.emplace_back( do_compute(std::allocator_arg, &g_global_mem4 ) );
@@ -164,7 +164,7 @@ namespace coro {
 
     Coro<bool> coroTest2(int i) {
         if (i > 0) {
-            std::pmr::vector<Coro<int>> ch;
+            n_pmr::vector<Coro<int>> ch;
 
             ch.push_back(coroTest(i));
             ch.push_back(coroTest(i));
@@ -221,13 +221,13 @@ namespace coro {
         //co_await *pyt;
         //std::cout << "Yielding " << yt.get().value() << "\n";
 
-       co_await coroTest(i);
+        co_await coroTest(i);
 
         //auto ct = coroTest(i);  //this starts a new tree
         //ct.resume();
 
 
-        co_await loop(std::allocator_arg, &g_global_mem4, i);
+        //co_await loop(std::allocator_arg, &g_global_mem4, i);
 
 
         std::cout << "End coroTest() " << cnt << std::endl;

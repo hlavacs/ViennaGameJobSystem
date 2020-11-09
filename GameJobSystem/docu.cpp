@@ -17,7 +17,7 @@ namespace docu {
 
     using namespace vgjs;
 
-    auto g_global_mem = std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 10 }, std::pmr::new_delete_resource());
+    auto g_global_mem = n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 10 }, n_pmr::new_delete_resource());
 
     namespace docu1 {
         void printData(int i) {
@@ -37,13 +37,13 @@ namespace docu {
 
     namespace docu2 {
         //the coro do_compute() uses g_global_mem to allocate its promise!
-        Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+        Coro<int> do_compute(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
             co_await 0;     //move this job to the thread with number 0
             co_return i;    //return the promised value;
         }
 
         //the coro loop() uses g_global_mem to allocate its promise!
-        Coro<> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int N) {
+        Coro<> loop(std::allocator_arg_t, n_pmr::memory_resource* mr, int N) {
             for (int i = 0; i < N; ++i) {
                 auto f = do_compute(std::allocator_arg, mr, i);
                 co_await f;     //call do_compute() to create result
@@ -58,14 +58,14 @@ namespace docu {
     namespace docu3 {
 
         //A coro returning a float
-        Coro<float> coro_float(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+        Coro<float> coro_float(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
             float f = (float)i;
             std::cout << "coro_float " << f << std::endl;
             co_return f;
         }
 
         //A coro returning an int
-        Coro<int> coro_int(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+        Coro<int> coro_int(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
             std::cout << "coro_int " << i << std::endl;
             co_return i;
         }
@@ -75,21 +75,21 @@ namespace docu {
             std::cout << "func " << i << std::endl;
         }
 
-        Coro<int> test(std::allocator_arg_t, std::pmr::memory_resource* mr, int count) {
+        Coro<int> test(std::allocator_arg_t, n_pmr::memory_resource* mr, int count) {
 
-            auto tv = std::pmr::vector<Coro<int>>{ mr };  //vector of Coro<int>
+            auto tv = n_pmr::vector<Coro<int>>{ mr };  //vector of Coro<int>
             tv.emplace_back(coro_int(std::allocator_arg, &g_global_mem, 1));
 
             auto tk = std::make_tuple(                     //tuple holding two vectors - Coro<int> and Coro<float>
-                std::pmr::vector<Coro<int>>{mr},
-                std::pmr::vector<Coro<float>>{mr});
+                n_pmr::vector<Coro<int>>{mr},
+                n_pmr::vector<Coro<float>>{mr});
             get<0>(tk).emplace_back(coro_int(std::allocator_arg, &g_global_mem, 2));
             get<1>(tk).emplace_back(coro_float(std::allocator_arg, &g_global_mem, 3));
 
-            auto fv = std::pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
+            auto fv = n_pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
             fv.emplace_back([=]() {func(4); });
 
-            std::pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
+            n_pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
             Function f = Function([=]() {func(5); }, -1, 0, 0); //schedule to random thread, use type 0 and id 0
             jv.push_back(f);
 
