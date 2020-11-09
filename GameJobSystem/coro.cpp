@@ -166,8 +166,8 @@ namespace coro {
         if (i > 0) {
             n_pmr::vector<Coro<int>> ch;
 
-            ch.push_back(coroTest(i));
-            ch.push_back(coroTest(i));
+            //ch.push_back(coroTest(i));
+            //ch.push_back(coroTest(i));
             co_await ch;
         }
         co_return true;

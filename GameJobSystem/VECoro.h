@@ -52,11 +52,11 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
 
     //test whether a template parameter T is a std::pmr::vector
-    template<typename>
+    template<typename T>
     struct is_pmr_vector : std::false_type {};
 
     template<typename T>
-    struct is_pmr_vector<n_pmr::vector<T>> : std::true_type {};
+    struct is_pmr_vector<std::pmr::vector<T>> : std::true_type {};
 
     //---------------------------------------------------------------------------------------------------
     //schedule functions for coroutines
@@ -508,8 +508,8 @@ namespace vgjs {
     * \brief If m_child is a vector this makes sure that there are children in the vector
     */
     template<typename PT, typename T>
-    inline bool awaitable_coro<PT, T>::awaiter::await_ready() noexcept {                   //suspend only if there are children to create
-        if constexpr (is_pmr_vector<T>::value) {
+    inline bool awaitable_coro<PT, T>::awaiter::await_ready() noexcept {    //suspend only if there are children to create
+        if constexpr (is_pmr_vector<typename std::decay<T>::type>::value) {
             return m_child.empty();
         }
         return false;
@@ -782,7 +782,7 @@ namespace vgjs {
 
         return Coro<T>{
             n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this),
-                m_value_ptr, m_is_parent_function };
+            m_value_ptr, m_is_parent_function };
     }
 
     /**
