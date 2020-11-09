@@ -1,1 +1,2 @@
-g++ *.cpp -lpthreads -std=gnu++20 -fconcepts -fcoroutines 2>g.txt
+g++ *.cpp -pthread -std=c++20 -fconcepts -fcoroutines 2>g.txt
+
