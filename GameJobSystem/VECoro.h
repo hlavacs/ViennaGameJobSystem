@@ -52,7 +52,7 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
 
     //test whether a template parameter T is a std::pmr::vector
-    template<typename T>
+    template<typename>
     struct is_pmr_vector : std::false_type {};
 
     template<typename T>
@@ -132,23 +132,23 @@ namespace vgjs {
     template<typename PT, typename... Ts>
     struct awaitable_tuple {
         struct awaiter : suspend_always {
-            std::tuple<n_pmr::vector<Ts>...>& m_tuple;       //vector with all children to start
+            std::tuple<std::pmr::vector<Ts>...>& m_tuple;       //vector with all children to start
             std::size_t                          m_number = 0;   //total number of all new children to schedule
 
             bool await_ready() noexcept;
             void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept;
-            awaiter(std::tuple<n_pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
+            awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
         };
 
-        std::tuple<n_pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
+        std::tuple<std::pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
 
-        awaitable_tuple(std::tuple<n_pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
+        awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
         awaiter operator co_await() noexcept;
     };
 
 
     /**
-    * \brief Awaiter for awaiting a Coro of type Coro<T> or std::function<void(void)>, or n_pmr::vector thereof
+    * \brief Awaiter for awaiting a Coro of type Coro<T> or std::function<void(void)>, or std::pmr::vector thereof
     *
     * The caller will await the completion of the Coro(s). Afterwards,
     * the return values can be retrieved by calling get() for Coro<t>.
@@ -246,10 +246,10 @@ namespace vgjs {
         bool             resume() noexcept;
 
         template<typename... Args>
-        void* operator new(std::size_t sz, std::allocator_arg_t, n_pmr::memory_resource* mr, Args&&... args) noexcept;
+        void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
 
         template<typename Class, typename... Args>
-        void* operator new(std::size_t sz, Class, std::allocator_arg_t, n_pmr::memory_resource* mr, Args&&... args) noexcept;
+        void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
 
         template<typename Class, typename... Args>
         void* operator new(std::size_t sz, Class, Args&&... args) noexcept;
@@ -274,12 +274,11 @@ namespace vgjs {
         template<typename F> friend class Coro;
 
     protected:
-        std::shared_ptr<std::pair<bool, T>> m_value_ptr = nullptr;  //a shared view of the return value
+        std::shared_ptr<std::pair<bool, T>> m_value_ptr;  //a shared view of the return value
         std::pair<bool, T>                  m_value;
 
     public:
         Coro_promise() noexcept;
-        ~Coro_promise() noexcept {};
         static Coro<T>  get_return_object_on_allocation_failure();
         job_deallocator get_deallocator() noexcept { return coro_deallocator<T>{}; };    //called for deallocation
         Coro<T>         get_return_object() noexcept;
@@ -287,7 +286,7 @@ namespace vgjs {
         yield_awaiter<T> yield_value(T t) noexcept;
 
         template<typename... Ts>
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<n_pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
 
         template<typename U>
         awaitable_coro<T, U>      await_transform(U&& coro) noexcept { return { coro }; };
@@ -329,7 +328,7 @@ namespace vgjs {
     public:
         using promise_type = Coro_promise<T>;
         bool m_is_parent_function;
-        std::shared_ptr<std::pair<bool, T>> m_value_ptr = nullptr;
+        std::shared_ptr<std::pair<bool, T>> m_value_ptr;
 
     private:
         n_exp::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
@@ -341,8 +340,7 @@ namespace vgjs {
                         std::shared_ptr<std::pair<bool, T>>& value_ptr,
                         bool is_parent_function) noexcept;
 
-        Coro(Coro<T>&& t) noexcept : Coro_base(t.m_promise), 
-                                        m_coro(std::exchange(t.m_coro, {})),
+        Coro(Coro<T>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})),
                                         m_value_ptr(std::exchange(t.m_value_ptr, {})),
                                         m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {};
 
@@ -384,7 +382,6 @@ namespace vgjs {
 
     public:
         Coro_promise() noexcept;
-        ~Coro_promise() noexcept {};
         static Coro<>   get_return_object_on_allocation_failure();
         job_deallocator get_deallocator() noexcept { return coro_deallocator<void>{}; };    //called for deallocation
         Coro<void>      get_return_object() noexcept;
@@ -392,7 +389,7 @@ namespace vgjs {
         yield_awaiter<void> yield_value() noexcept { return {}; };
 
         template<typename... Ts>
-        awaitable_tuple<void, Ts...> await_transform(std::tuple<n_pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
+        awaitable_tuple<void, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
 
         template<typename U>
         awaitable_coro<void, U>      await_transform(U&& coro) noexcept { return { coro }; };
@@ -423,7 +420,7 @@ namespace vgjs {
         Coro(n_exp::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept 
             : Coro_base(&coro.promise()), m_is_parent_function(is_parent_function), m_coro(coro) {};
 
-        Coro(Coro<void>&& t) noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+        Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
 
         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
         ~Coro() noexcept;
@@ -486,7 +483,7 @@ namespace vgjs {
     */
     template<typename PT, typename... Ts>
     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-        auto g = [&, this]<typename T>(n_pmr::vector<T> & vec) {
+        auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
             schedule(vec, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
             m_number = 0;                               //after this always 0
         };
@@ -508,8 +505,8 @@ namespace vgjs {
     * \brief If m_child is a vector this makes sure that there are children in the vector
     */
     template<typename PT, typename T>
-    inline bool awaitable_coro<PT, T>::awaiter::await_ready() noexcept {    //suspend only if there are children to create
-        if constexpr (is_pmr_vector<typename std::decay<T>::type>::value) {
+    inline bool awaitable_coro<PT, T>::awaiter::await_ready() noexcept {                   //suspend only if there are children to create
+        if constexpr (is_pmr_vector<T>::value) {
             return m_child.empty();
         }
         return false;
@@ -675,14 +672,14 @@ namespace vgjs {
     * \returns a pointer to the newly allocated promise.
     */
     template<typename... Args>
-    inline void* Coro_promise_base::operator new(std::size_t sz, std::allocator_arg_t, n_pmr::memory_resource* mr, Args&&... args) noexcept {
+    inline void* Coro_promise_base::operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
         //std::cout << "Coro new " << sz << "\n";
-        auto allocatorOffset = (sz + alignof(n_pmr::memory_resource*) - 1) & ~(alignof(n_pmr::memory_resource*) - 1);
+        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
         char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
         if (ptr == nullptr) {
             std::terminate();
         }
-        *reinterpret_cast<n_pmr::memory_resource**>(ptr + allocatorOffset) = mr;
+        *reinterpret_cast<std::pmr::memory_resource**>(ptr + allocatorOffset) = mr;
         return ptr;
     }
 
@@ -700,7 +697,7 @@ namespace vgjs {
     * \returns a pointer to the newly allocated promise.
     */
     template<typename Class, typename... Args>
-    inline void* Coro_promise_base::operator new(std::size_t sz, Class, std::allocator_arg_t, n_pmr::memory_resource* mr, Args&&... args) noexcept {
+    inline void* Coro_promise_base::operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
         return operator new(sz, std::allocator_arg, mr, args...);
     }
 
@@ -713,7 +710,7 @@ namespace vgjs {
     */
     template<typename Class, typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Class, Args&&... args) noexcept {
-        return operator new(sz, std::allocator_arg, n_pmr::new_delete_resource(), args...);
+        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
     }
 
     /**
@@ -724,7 +721,7 @@ namespace vgjs {
     */
     template<typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Args&&... args) noexcept {
-        return operator new(sz, std::allocator_arg, n_pmr::new_delete_resource(), args...);
+        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
     }
 
     /**
@@ -734,9 +731,9 @@ namespace vgjs {
     */
     inline void Coro_promise_base::operator delete(void* ptr, std::size_t sz) noexcept {
         //std::cout << "Coro delete " << sz << "\n";
-        auto allocatorOffset = (sz + alignof(n_pmr::memory_resource*) - 1) & ~(alignof(n_pmr::memory_resource*) - 1);
-        auto allocator = (n_pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
-        (*allocator)->deallocate(ptr, allocatorOffset + sizeof(n_pmr::memory_resource*));
+        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
+        auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
+        (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
     }
 
     //---------------------------------------------------------------------------------------------------
@@ -751,7 +748,6 @@ namespace vgjs {
 
     template<typename T>
     inline Coro<T> Coro_promise<T>::get_return_object_on_allocation_failure() {
-        std::terminate();
         return Coro<T>();
     }
 
@@ -763,7 +759,6 @@ namespace vgjs {
     };
 
     inline Coro<void> Coro_promise<void>::get_return_object_on_allocation_failure() {
-        std::terminate();
         return Coro<void>();
     }
 
@@ -782,7 +777,7 @@ namespace vgjs {
 
         return Coro<T>{
             n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this),
-            m_value_ptr, m_is_parent_function };
+                m_value_ptr, m_is_parent_function };
     }
 
     /**
