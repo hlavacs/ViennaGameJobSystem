@@ -13,6 +13,7 @@
 *
 */
 
+
 #include <iostream>
 #include <fstream>
 #include <cstdint>
@@ -29,11 +30,29 @@
 #include <iterator>
 #include <algorithm>
 #include <assert.h>
-#include <memory_resource>
 #include <type_traits>
 #include <chrono>
 #include <string>
 #include <sstream>
+
+#if(defined(_MSC_VER))
+    #include <memory_resource>
+    namespace n_exp = std::experimental;
+    namespace n_pmr = std::pmr;
+#elif(defined(__clang__))
+    #include <experimental/coroutine>
+    #include <experimental/memory_resource>
+    #include <experimental/vector>
+    namespace n_exp = std::experimental;
+    namespace n_pmr = std::experimental::pmr;
+#elif(defined(__GNUC__))
+    #include <coroutine>
+    #include <memory_resource>
+    namespace n_exp = std;
+    namespace n_pmr = std::pmr;
+#else
+#endif
+
 
 namespace vgjs {
 
@@ -128,7 +147,7 @@ namespace vgjs {
     */
     class Job : public Job_base {
     public:
-        std::pmr::memory_resource*  m_mr = nullptr;  //memory resource that was used to allocate this Job
+        n_pmr::memory_resource*  m_mr = nullptr;  //memory resource that was used to allocate this Job
         Job_base*                   m_continuation = nullptr;   //continuation follows this job (a coro is its own continuation)
         std::function<void(void)>   m_function;      //function to compute
 
@@ -162,7 +181,7 @@ namespace vgjs {
     * \param[in] job Pointer to the job.
     */
     inline void job_deallocator::deallocate(Job_base* job) noexcept {
-        std::pmr::polymorphic_allocator<Job> allocator(((Job*)job)->m_mr); //construct a polymorphic allocator
+        n_pmr::polymorphic_allocator<Job> allocator(((Job*)job)->m_mr); //construct a polymorphic allocator
         ((Job*)job)->~Job();                                          //call destructor
         allocator.deallocate(((Job*)job), 1);                         //use pma to deallocate the memory
     }
@@ -290,7 +309,7 @@ namespace vgjs {
         const uint32_t                              c_queue_capacity = 100; ///<save at most N Jobs for recycling
 
     private:
-        std::pmr::memory_resource*                  m_mr;                   ///<use to allocate/deallocate Jobs
+        n_pmr::memory_resource*                  m_mr;                   ///<use to allocate/deallocate Jobs
         std::vector<std::thread>	                m_threads;	            ///<array of thread structures
         std::atomic<uint32_t>   		            m_thread_count = 0;     ///<number of threads in the pool
         std::atomic<bool>                           m_terminated = false;   ///<flag set true when the last thread has exited
@@ -302,7 +321,7 @@ namespace vgjs {
         std::vector<JobQueue<Job_base>>             m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
         JobQueue<Job>                               m_recycle;              ///<save old jobs for recycling
         JobQueue<Job>                               m_delete;               ///<save old jobs for recycling
-        std::pmr::vector<std::pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
+        n_pmr::vector<n_pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
         bool                                        m_logging = false;      ///< if true then jobs will be logged
         std::map<int32_t, std::string>              m_types;                ///<map types to a string for logging
         std::chrono::time_point<std::chrono::high_resolution_clock> m_start_time = std::chrono::high_resolution_clock::now();	//time when program started
@@ -318,7 +337,7 @@ namespace vgjs {
         Job* allocate_job() {
             Job* job = m_recycle.pop();                                //try recycle queue
             if (job == nullptr ) {                                     //none found
-                std::pmr::polymorphic_allocator<Job> allocator(m_mr);  //use this allocator
+                n_pmr::polymorphic_allocator<Job> allocator(m_mr);  //use this allocator
                 job = allocator.allocate(1);                           //allocate the object
                 if (job == nullptr) {
                     std::cout << "No job available\n";
@@ -359,7 +378,7 @@ namespace vgjs {
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0.
         * \param[in] mr The memory resource to use for allocating Jobs.
         */
-        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource *mr = std::pmr::new_delete_resource() ) noexcept
+        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0, n_pmr::memory_resource *mr = n_pmr::new_delete_resource() ) noexcept
             : m_mr(mr) { 
 
             m_start_idx = start_idx;
@@ -382,7 +401,7 @@ namespace vgjs {
                 m_threads[i].detach();
             }
 
-            m_logs.resize(m_thread_count, std::pmr::vector<JobLog>{mr});    //make room for the log files
+            m_logs.resize(m_thread_count, n_pmr::vector<JobLog>{mr});    //make room for the log files
         };
 
         /**
@@ -392,7 +411,7 @@ namespace vgjs {
         * \param[in] mr The memory resource to use for allocating Jobs.
         * \returns a pointer to the JobSystem instance.
         */
-        static JobSystem& instance(uint32_t threadCount = 0, uint32_t start_idx = 0, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) noexcept {
+        static JobSystem& instance(uint32_t threadCount = 0, uint32_t start_idx = 0, n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept {
             static JobSystem instance(threadCount, start_idx, mr); //thread safe init guaranteed - Meyer's Singleton
             return instance;
         };
@@ -796,7 +815,7 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     template<typename T>
-    inline void schedule( std::pmr::vector<T>& functions, Job_base* parent = current_job(), int32_t children = -1) noexcept {
+    inline void schedule( n_pmr::vector<T>& functions, Job_base* parent = current_job(), int32_t children = -1) noexcept {
         
         if (children < 0) {                     //default? use vector size.
             children = (int)functions.size(); 
