@@ -236,7 +236,7 @@ namespace vgjs {
 
     protected:
         n_exp::coroutine_handle<> m_coro;
-        bool m_is_parent_function = current_job() == nullptr ? true : current_job()->is_function();
+        bool m_is_parent_function = true; // current_job() == nullptr ? true : current_job()->is_function();
         bool* m_ready_ptr = nullptr; //points to flag which is true if value is ready, else false
 
     public:

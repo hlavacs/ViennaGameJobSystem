@@ -166,14 +166,14 @@ namespace coro {
         if (i > 0) {
             n_pmr::vector<Coro<int>> ch;
 
-            //ch.push_back(coroTest(i));
-            //ch.push_back(coroTest(i));
+            ch.push_back(coroTest(i));
+            ch.push_back(coroTest(i));
             co_await ch;
         }
         co_return true;
     }
 
-    Coro<int> coroTest1(int i) {
+    Coro<float> coroTest1(int i) {
         //std::cout << "Before coroTest1() " << std::endl;
         //co_await 1;
 
