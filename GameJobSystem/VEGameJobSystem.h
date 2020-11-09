@@ -75,10 +75,12 @@ namespace vgjs {
 
         Function& operator= (const Function& f) {
             m_function = f.m_function; m_thread_index = f.m_thread_index; m_type = f.m_type;  m_id = f.m_id;
+            return *this;
         };
 
         Function& operator= (Function&& f) {
             m_function = std::move(f.m_function); m_thread_index = f.m_thread_index; m_type = f.m_type;  m_id = f.m_id;
+            return *this;
         };
     };
 

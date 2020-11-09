@@ -1,0 +1,1150 @@
+In file included from coro.cpp:13:
+VECoro.h:130:42: error: ‘suspend_always’ in namespace ‘std’ does not name a type
+  130 |     using suspend_always = typename std::suspend_always;
+      |                                          ^~~~~~~~~~~~~~
+VECoro.h:134:41: error: expected class-name before ‘{’ token
+  134 |         struct awaiter : suspend_always {
+      |                                         ^
+VECoro.h:139:37: error: ‘std::experimental’ has not been declared
+  139 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                     ^~~~~~~~~~~~
+VECoro.h:139:67: error: expected ‘,’ or ‘...’ before ‘<’ token
+  139 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                                                   ^
+VECoro.h:158:41: error: expected class-name before ‘{’ token
+  158 |         struct awaiter : suspend_always {
+      |                                         ^
+VECoro.h:162:37: error: ‘std::experimental’ has not been declared
+  162 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                     ^~~~~~~~~~~~
+VECoro.h:162:67: error: expected ‘,’ or ‘...’ before ‘<’ token
+  162 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                                                   ^
+VECoro.h:180:41: error: expected class-name before ‘{’ token
+  180 |         struct awaiter : suspend_always {
+      |                                         ^
+VECoro.h:184:37: error: ‘std::experimental’ has not been declared
+  184 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                     ^~~~~~~~~~~~
+VECoro.h:184:67: error: expected ‘,’ or ‘...’ before ‘<’ token
+  184 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                                                   ^
+VECoro.h:202:50: error: expected class-name before ‘{’ token
+  202 |     struct yield_awaiter : public suspend_always {
+      |                                                  ^
+VECoro.h:203:33: error: ‘std::experimental’ has not been declared
+  203 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                 ^~~~~~~~~~~~
+VECoro.h:203:63: error: expected ‘,’ or ‘...’ before ‘<’ token
+  203 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                                               ^
+VECoro.h:218:50: error: expected class-name before ‘{’ token
+  218 |     struct final_awaiter : public suspend_always {
+      |                                                  ^
+VECoro.h:219:33: error: ‘std::experimental’ has not been declared
+  219 |         bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                 ^~~~~~~~~~~~
+VECoro.h:219:63: error: expected ‘,’ or ‘...’ before ‘<’ token
+  219 |         bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                                               ^
+VECoro.h:238:14: error: ‘experimental’ in namespace ‘std’ does not name a type
+  238 |         std::experimental::coroutine_handle<> m_coro;
+      |              ^~~~~~~~~~~~
+VECoro.h:243:32: error: ‘std::experimental’ has not been declared
+  243 |         Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+      |                                ^~~~~~~~~~~~
+VECoro.h:243:62: error: expected ‘)’ before ‘<’ token
+  243 |         Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+      |                          ~                                   ^
+      |                                                              )
+VECoro.h:245:9: error: ‘suspend_always’ does not name a type
+  245 |         suspend_always   initial_suspend() noexcept { return {}; };
+      |         ^~~~~~~~~~~~~~
+In file included from coro.cpp:13:
+VECoro.h:272:18: error: declaration of template parameter ‘T’ shadows template parameter
+  272 |         template<typename T> friend struct yield_awaiter;
+      |                  ^~~~~~~~
+VECoro.h:270:14: note: template parameter ‘T’ declared here
+  270 |     template<typename T = void>
+      |              ^~~~~~~~
+VECoro.h:273:18: error: declaration of template parameter ‘T’ shadows template parameter
+  273 |         template<typename T> friend struct final_awaiter;
+      |                  ^~~~~~~~
+VECoro.h:270:14: note: template parameter ‘T’ declared here
+  270 |     template<typename T = void>
+      |              ^~~~~~~~
+VECoro.h:274:18: error: declaration of template parameter ‘T’ shadows template parameter
+  274 |         template<typename T> friend class Coro;
+      |                  ^~~~~~~~
+VECoro.h:270:14: note: template parameter ‘T’ declared here
+  270 |     template<typename T = void>
+      |              ^~~~~~~~
+VECoro.h:332:14: error: ‘experimental’ in namespace ‘std’ does not name a type
+  332 |         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
+      |              ^~~~~~~~~~~~
+VECoro.h:335:30: error: ‘std::experimental’ has not been declared
+  335 |         explicit Coro(  std::experimental::coroutine_handle<promise_type> h,
+      |                              ^~~~~~~~~~~~
+VECoro.h:335:60: error: expected ‘)’ before ‘<’ token
+  335 |         explicit Coro(  std::experimental::coroutine_handle<promise_type> h,
+      |                      ~                                     ^
+      |                                                            )
+VECoro.h: In constructor ‘vgjs::Coro<T>::Coro(vgjs::Coro<T>&&)’:
+VECoro.h:339:63: error: class ‘vgjs::Coro<T>’ does not have any field named ‘m_coro’
+  339 |         Coro(Coro<T>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})),
+      |                                                               ^~~~~~
+VECoro.h: At global scope:
+VECoro.h:358:56: error: expected class-name before ‘{’ token
+  358 |     struct yield_awaiter<void> : public suspend_always {
+      |                                                        ^
+VECoro.h:359:33: error: ‘std::experimental’ has not been declared
+  359 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept;
+      |                                 ^~~~~~~~~~~~
+VECoro.h:359:63: error: expected ‘,’ or ‘...’ before ‘<’ token
+  359 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept;
+      |                                                               ^
+VECoro.h:366:46: error: ‘std::experimental’ has not been declared
+  366 |     struct final_awaiter<void> : public std::experimental::suspend_always {
+      |                                              ^~~~~~~~~~~~
+VECoro.h:366:60: error: expected ‘{’ before ‘suspend_always’
+  366 |     struct final_awaiter<void> : public std::experimental::suspend_always {
+      |                                                            ^~~~~~~~~~~~~~
+VECoro.h:394:63: error: return type ‘struct vgjs::final_awaiter<void>’ is incomplete
+  394 |         final_awaiter<void>          final_suspend() noexcept { return {}; };
+      |                                                               ^
+VECoro.h:410:14: error: ‘experimental’ in namespace ‘std’ does not name a type
+  410 |         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
+      |              ^~~~~~~~~~~~
+VECoro.h:413:28: error: ‘std::experimental’ has not been declared
+  413 |         explicit Coro(std::experimental::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept
+      |                            ^~~~~~~~~~~~
+VECoro.h:413:58: error: expected ‘)’ before ‘<’ token
+  413 |         explicit Coro(std::experimental::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept
+      |                      ~                                   ^
+      |                                                          )
+VECoro.h: In constructor ‘vgjs::Coro<void>::Coro(vgjs::Coro<void>&&)’:
+VECoro.h:415:66: error: class ‘vgjs::Coro<void>’ does not have any field named ‘m_coro’
+  415 |         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+      |                                                                  ^~~~~~
+VECoro.h:415:89: error: ‘class vgjs::Coro<void>’ has no member named ‘m_coro’
+  415 |         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+      |                                                                                         ^~~~~~
+VECoro.h: In member function ‘void vgjs::Coro<void>::operator=(vgjs::Coro<void>&&)’:
+VECoro.h:417:62: error: ‘m_coro’ was not declared in this scope
+  417 |         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
+      |                                                              ^~~~~~
+VECoro.h:417:72: error: ‘class vgjs::Coro<void>’ has no member named ‘m_coro’
+  417 |         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
+      |                                                                        ^~~~~~
+VECoro.h: In member function ‘void vgjs::coro_deallocator<T>::deallocate(vgjs::Job_base*)’:
+VECoro.h:439:26: error: ‘std::experimental’ has not been declared
+  439 |         auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+      |                          ^~~~~~~~~~~~
+VECoro.h:439:71: error: expected primary-expression before ‘>’ token
+  439 |         auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+      |                                                                       ^~
+VECoro.h:439:75: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  439 |         auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+      |                                                                           ^~~~~~~~~~~~
+      |                                                                           Coro_promise
+VECoro.h: In member function ‘virtual void vgjs::coro_deallocator<void>::deallocate(vgjs::Job_base*)’:
+VECoro.h:450:27: error: ‘class vgjs::Coro_promise<void>’ has no member named ‘m_coro’
+  450 |         if (coro_promise->m_coro) {
+      |                           ^~~~~~
+VECoro.h:451:27: error: ‘class vgjs::Coro_promise<void>’ has no member named ‘m_coro’
+  451 |             coro_promise->m_coro.destroy();
+      |                           ^~~~~~
+VECoro.h: At global scope:
+VECoro.h:477:17: error: variable or field ‘await_suspend’ declared void
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~
+VECoro.h:477:73: error: ‘std::experimental’ has not been declared
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                         ^~~~~~~~~~~~
+VECoro.h:477:119: error: expected primary-expression before ‘>’ token
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                       ^~
+VECoro.h:477:122: error: ‘h’ was not declared in this scope
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                          ^
+VECoro.h:512:17: error: variable or field ‘await_suspend’ declared void
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                 ^~~~~~~~~~~~~~~~~~~~~
+VECoro.h:512:68: error: ‘std::experimental’ has not been declared
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                    ^~~~~~~~~~~~
+VECoro.h:512:114: error: expected primary-expression before ‘>’ token
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                  ^~
+VECoro.h:512:117: error: ‘h’ was not declared in this scope
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                     ^
+VECoro.h:535:17: error: variable or field ‘await_suspend’ declared void
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~
+VECoro.h:535:70: error: ‘std::experimental’ has not been declared
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                      ^~~~~~~~~~~~
+VECoro.h:535:116: error: expected primary-expression before ‘>’ token
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                    ^~
+VECoro.h:535:119: error: ‘h’ was not declared in this scope
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                       ^
+VECoro.h:550:17: error: variable or field ‘await_suspend’ declared void
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                 ^~~~~~~~~~~~~~~~
+VECoro.h:550:54: error: ‘std::experimental’ has not been declared
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                      ^~~~~~~~~~~~
+VECoro.h:550:99: error: expected primary-expression before ‘>’ token
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                   ^~
+VECoro.h:550:102: error: ‘h’ was not declared in this scope
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                      ^
+VECoro.h:572:17: error: variable or field ‘await_suspend’ declared void
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                 ^~~~~~~~~~~~~~~~~~~
+VECoro.h:572:57: error: ‘std::experimental’ has not been declared
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                         ^~~~~~~~~~~~
+VECoro.h:572:105: error: expected primary-expression before ‘>’ token
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                         ^~
+VECoro.h:572:108: error: ‘h’ was not declared in this scope
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                            ^
+VECoro.h:596:17: error: ‘bool vgjs::final_awaiter<U>::await_suspend’ is not a static data member of ‘struct vgjs::final_awaiter<U>’
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                 ^~~~~~~~~~~~~~~~
+VECoro.h:596:54: error: template definition of non-template ‘bool vgjs::final_awaiter<U>::await_suspend’
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                      ^~~~~~~~~~~~
+VECoro.h:596:54: error: ‘std::experimental’ has not been declared
+VECoro.h:596:99: error: expected primary-expression before ‘>’ token
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                   ^~
+VECoro.h:596:102: error: ‘h’ was not declared in this scope
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                      ^
+VECoro.h:618:57: error: invalid use of incomplete type ‘struct vgjs::final_awaiter<void>’
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                         ^~~~~~~~~~~~
+VECoro.h:366:12: note: declaration of ‘struct vgjs::final_awaiter<void>’
+  366 |     struct final_awaiter<void> : public std::experimental::suspend_always {
+      |            ^~~~~~~~~~~~~~~~~~~
+VECoro.h:618:57: error: ‘std::experimental’ has not been declared
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                         ^~~~~~~~~~~~
+VECoro.h:618:105: error: expected primary-expression before ‘>’ token
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                         ^~
+VECoro.h:618:108: error: ‘h’ was not declared in this scope
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                            ^
+VECoro.h: In member function ‘virtual bool vgjs::Coro_promise_base::resume()’:
+VECoro.h:648:13: error: ‘m_coro’ was not declared in this scope
+  648 |         if (m_coro && !m_coro.done()) {
+      |             ^~~~~~
+VECoro.h: In constructor ‘vgjs::Coro_promise<T>::Coro_promise()’:
+VECoro.h:738:34: error: ‘std::experimental’ has not been declared
+  738 |        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+      |                                  ^~~~~~~~~~~~
+VECoro.h:738:79: error: expected primary-expression before ‘>’ token
+  738 |        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+      |                                                                               ^~
+VECoro.h:738:83: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  738 |        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+      |                                                                                   ^~~~~~~~~~~~
+      |                                                                                   Coro_promise
+VECoro.h: In constructor ‘vgjs::Coro_promise<void>::Coro_promise()’:
+VECoro.h:745:35: error: ‘std::experimental’ has not been declared
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                   ^~~~~~~~~~~~
+VECoro.h:745:83: error: expected primary-expression before ‘>’ token
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                                                                   ^~
+VECoro.h:745:87: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                                                                       ^~~~~~~~~~~~
+      |                                                                                       Coro_promise
+VECoro.h:745:107: error: no matching function for call to ‘vgjs::Coro_promise_base::Coro_promise_base(<brace-enclosed initializer list>)’
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                                                                                           ^
+In file included from coro.cpp:13:
+VECoro.h:234:11: note: candidate: ‘constexpr vgjs::Coro_promise_base::Coro_promise_base()’
+  234 |     class Coro_promise_base : public Job_base {
+      |           ^~~~~~~~~~~~~~~~~
+VECoro.h:234:11: note:   candidate expects 0 arguments, 1 provided
+In file included from coro.cpp:13:
+VECoro.h: In member function ‘vgjs::Coro<T> vgjs::Coro_promise<T>::get_return_object()’:
+VECoro.h:761:18: error: ‘experimental’ is not a member of ‘std’
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                  ^~~~~~~~~~~~
+VECoro.h:760:23: error: expected primary-expression before ‘{’ token
+  760 |         return Coro<T>{
+      |                       ^
+VECoro.h:760:23: error: expected ‘;’ before ‘{’ token
+  760 |         return Coro<T>{
+      |                       ^
+      |                       ;
+VECoro.h:761:18: error: ‘std::experimental’ has not been declared
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                  ^~~~~~~~~~~~
+VECoro.h:761:63: error: expected primary-expression before ‘>’ token
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                                                               ^~
+VECoro.h:761:67: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                                                                   ^~~~~~~~~~~~
+      |                                                                   Coro_promise
+VECoro.h:762:50: error: expected ‘;’ before ‘}’ token
+  762 |                 m_value_ptr, m_is_parent_function };
+      |                                                  ^~
+      |                                                  ;
+VECoro.h: In member function ‘vgjs::Coro<void> vgjs::Coro_promise<void>::get_return_object()’:
+VECoro.h:770:32: error: ‘experimental’ is not a member of ‘std’
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                ^~~~~~~~~~~~
+VECoro.h:770:32: error: no matching function for call to ‘vgjs::Coro<void>::Coro(<brace-enclosed initializer list>)’
+VECoro.h:415:9: note: candidate: ‘vgjs::Coro<void>::Coro(vgjs::Coro<void>&&)’
+  415 |         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+      |         ^~~~
+VECoro.h:415:9: note:   conversion of argument 1 would be ill-formed:
+VECoro.h:770:26: error: expected primary-expression before ‘{’ token
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                          ^
+VECoro.h:770:26: error: expected ‘;’ before ‘{’ token
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                          ^
+      |                          ;
+VECoro.h:770:32: error: ‘std::experimental’ has not been declared
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                ^~~~~~~~~~~~
+VECoro.h:770:80: error: expected primary-expression before ‘>’ token
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                                                                ^~
+VECoro.h:770:84: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                                                                    ^~~~~~~~~~~~
+      |                                                                                    Coro_promise
+VECoro.h: At global scope:
+VECoro.h:811:12: error: ISO C++ forbids declaration of ‘Coro’ with no type [-fpermissive]
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |            ^~~~~~~
+VECoro.h:811:12: error: ‘int vgjs::Coro<T>::Coro’ is not a static data member of ‘class vgjs::Coro<T>’
+VECoro.h:811:34: error: template definition of non-template ‘int vgjs::Coro<T>::Coro’
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |                                  ^~~~~~~~~~~~
+VECoro.h:811:34: error: ‘std::experimental’ has not been declared
+VECoro.h:811:95: error: expected ‘(’ before ‘>’ token
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |                                                                                               ^
+      |                                                                                               (
+VECoro.h:811:97: error: ‘h’ was not declared in this scope
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |                                                                                                 ^
+VECoro.h:812:64: error: expected primary-expression before ‘&’ token
+  812 |                             std::shared_ptr<std::pair<bool, T>>& value_ptr,
+      |                                                                ^
+VECoro.h:812:66: error: ‘value_ptr’ was not declared in this scope; did you mean ‘m_value_ptr’?
+  812 |                             std::shared_ptr<std::pair<bool, T>>& value_ptr,
+      |                                                                  ^~~~~~~~~
+      |                                                                  m_value_ptr
+VECoro.h:813:29: error: expected primary-expression before ‘bool’
+  813 |                             bool is_parent_function) noexcept
+      |                             ^~~~
+VECoro.h: In member function ‘void vgjs::Coro<T>::operator=(vgjs::Coro<T>&&)’:
+VECoro.h:825:19: error: ‘m_coro’ was not declared in this scope
+  825 |         std::swap(m_coro, t.m_coro);
+      |                   ^~~~~~
+VECoro.h:827:19: error: ‘m_value’ was not declared in this scope; did you mean ‘m_value_ptr’?
+  827 |         std::swap(m_value, t.m_value);
+      |                   ^~~~~~~
+      |                   m_value_ptr
+VECoro.h: In destructor ‘vgjs::Coro<T>::~Coro()’:
+VECoro.h:835:38: error: ‘m_coro’ was not declared in this scope
+  835 |         if (!m_is_parent_function && m_coro) {
+      |                                      ^~~~~~
+VECoro.h: In destructor ‘vgjs::Coro<void>::~Coro()’:
+VECoro.h:841:38: error: ‘m_coro’ was not declared in this scope
+  841 |         if (!m_is_parent_function && m_coro) {
+      |                                      ^~~~~~
+VECoro.h: In member function ‘std::pair<bool, T> vgjs::Coro<T>::get()’:
+VECoro.h:856:16: error: ‘m_coro’ was not declared in this scope
+  856 |         return m_coro.promise().m_value;
+      |                ^~~~~~
+coro.cpp: In member function ‘vgjs::Coro<int> coro::CoroClass::Number10()’:
+coro.cpp:31:13: error: coroutines require a traits template; cannot find ‘std::coroutine_traits’
+   31 |             co_return number * 10;
+      |             ^~~~~~~~~
+coro.cpp:31:13: note: perhaps ‘#include <coroutine>’ is missing
+cppcoro.cpp:12:10: fatal error: cppcoro/sync_wait.hpp: No such file or directory
+   12 | #include <cppcoro/sync_wait.hpp>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+In file included from docu.cpp:11:
+VECoro.h:130:42: error: ‘suspend_always’ in namespace ‘std’ does not name a type
+  130 |     using suspend_always = typename std::suspend_always;
+      |                                          ^~~~~~~~~~~~~~
+VECoro.h:134:41: error: expected class-name before ‘{’ token
+  134 |         struct awaiter : suspend_always {
+      |                                         ^
+VECoro.h:139:37: error: ‘std::experimental’ has not been declared
+  139 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                     ^~~~~~~~~~~~
+VECoro.h:139:67: error: expected ‘,’ or ‘...’ before ‘<’ token
+  139 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                                                   ^
+VECoro.h:158:41: error: expected class-name before ‘{’ token
+  158 |         struct awaiter : suspend_always {
+      |                                         ^
+VECoro.h:162:37: error: ‘std::experimental’ has not been declared
+  162 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                     ^~~~~~~~~~~~
+VECoro.h:162:67: error: expected ‘,’ or ‘...’ before ‘<’ token
+  162 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                                                   ^
+VECoro.h:180:41: error: expected class-name before ‘{’ token
+  180 |         struct awaiter : suspend_always {
+      |                                         ^
+VECoro.h:184:37: error: ‘std::experimental’ has not been declared
+  184 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                     ^~~~~~~~~~~~
+VECoro.h:184:67: error: expected ‘,’ or ‘...’ before ‘<’ token
+  184 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                                                   ^
+VECoro.h:202:50: error: expected class-name before ‘{’ token
+  202 |     struct yield_awaiter : public suspend_always {
+      |                                                  ^
+VECoro.h:203:33: error: ‘std::experimental’ has not been declared
+  203 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                 ^~~~~~~~~~~~
+VECoro.h:203:63: error: expected ‘,’ or ‘...’ before ‘<’ token
+  203 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                                               ^
+VECoro.h:218:50: error: expected class-name before ‘{’ token
+  218 |     struct final_awaiter : public suspend_always {
+      |                                                  ^
+VECoro.h:219:33: error: ‘std::experimental’ has not been declared
+  219 |         bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                 ^~~~~~~~~~~~
+VECoro.h:219:63: error: expected ‘,’ or ‘...’ before ‘<’ token
+  219 |         bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                                               ^
+VECoro.h:238:14: error: ‘experimental’ in namespace ‘std’ does not name a type
+  238 |         std::experimental::coroutine_handle<> m_coro;
+      |              ^~~~~~~~~~~~
+VECoro.h:243:32: error: ‘std::experimental’ has not been declared
+  243 |         Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+      |                                ^~~~~~~~~~~~
+VECoro.h:243:62: error: expected ‘)’ before ‘<’ token
+  243 |         Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+      |                          ~                                   ^
+      |                                                              )
+VECoro.h:245:9: error: ‘suspend_always’ does not name a type
+  245 |         suspend_always   initial_suspend() noexcept { return {}; };
+      |         ^~~~~~~~~~~~~~
+In file included from docu.cpp:11:
+VECoro.h:272:18: error: declaration of template parameter ‘T’ shadows template parameter
+  272 |         template<typename T> friend struct yield_awaiter;
+      |                  ^~~~~~~~
+VECoro.h:270:14: note: template parameter ‘T’ declared here
+  270 |     template<typename T = void>
+      |              ^~~~~~~~
+VECoro.h:273:18: error: declaration of template parameter ‘T’ shadows template parameter
+  273 |         template<typename T> friend struct final_awaiter;
+      |                  ^~~~~~~~
+VECoro.h:270:14: note: template parameter ‘T’ declared here
+  270 |     template<typename T = void>
+      |              ^~~~~~~~
+VECoro.h:274:18: error: declaration of template parameter ‘T’ shadows template parameter
+  274 |         template<typename T> friend class Coro;
+      |                  ^~~~~~~~
+VECoro.h:270:14: note: template parameter ‘T’ declared here
+  270 |     template<typename T = void>
+      |              ^~~~~~~~
+VECoro.h:332:14: error: ‘experimental’ in namespace ‘std’ does not name a type
+  332 |         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
+      |              ^~~~~~~~~~~~
+VECoro.h:335:30: error: ‘std::experimental’ has not been declared
+  335 |         explicit Coro(  std::experimental::coroutine_handle<promise_type> h,
+      |                              ^~~~~~~~~~~~
+VECoro.h:335:60: error: expected ‘)’ before ‘<’ token
+  335 |         explicit Coro(  std::experimental::coroutine_handle<promise_type> h,
+      |                      ~                                     ^
+      |                                                            )
+VECoro.h: In constructor ‘vgjs::Coro<T>::Coro(vgjs::Coro<T>&&)’:
+VECoro.h:339:63: error: class ‘vgjs::Coro<T>’ does not have any field named ‘m_coro’
+  339 |         Coro(Coro<T>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})),
+      |                                                               ^~~~~~
+VECoro.h: At global scope:
+VECoro.h:358:56: error: expected class-name before ‘{’ token
+  358 |     struct yield_awaiter<void> : public suspend_always {
+      |                                                        ^
+VECoro.h:359:33: error: ‘std::experimental’ has not been declared
+  359 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept;
+      |                                 ^~~~~~~~~~~~
+VECoro.h:359:63: error: expected ‘,’ or ‘...’ before ‘<’ token
+  359 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept;
+      |                                                               ^
+VECoro.h:366:46: error: ‘std::experimental’ has not been declared
+  366 |     struct final_awaiter<void> : public std::experimental::suspend_always {
+      |                                              ^~~~~~~~~~~~
+VECoro.h:366:60: error: expected ‘{’ before ‘suspend_always’
+  366 |     struct final_awaiter<void> : public std::experimental::suspend_always {
+      |                                                            ^~~~~~~~~~~~~~
+VECoro.h:394:63: error: return type ‘struct vgjs::final_awaiter<void>’ is incomplete
+  394 |         final_awaiter<void>          final_suspend() noexcept { return {}; };
+      |                                                               ^
+VECoro.h:410:14: error: ‘experimental’ in namespace ‘std’ does not name a type
+  410 |         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
+      |              ^~~~~~~~~~~~
+VECoro.h:413:28: error: ‘std::experimental’ has not been declared
+  413 |         explicit Coro(std::experimental::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept
+      |                            ^~~~~~~~~~~~
+VECoro.h:413:58: error: expected ‘)’ before ‘<’ token
+  413 |         explicit Coro(std::experimental::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept
+      |                      ~                                   ^
+      |                                                          )
+VECoro.h: In constructor ‘vgjs::Coro<void>::Coro(vgjs::Coro<void>&&)’:
+VECoro.h:415:66: error: class ‘vgjs::Coro<void>’ does not have any field named ‘m_coro’
+  415 |         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+      |                                                                  ^~~~~~
+VECoro.h:415:89: error: ‘class vgjs::Coro<void>’ has no member named ‘m_coro’
+  415 |         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+      |                                                                                         ^~~~~~
+VECoro.h: In member function ‘void vgjs::Coro<void>::operator=(vgjs::Coro<void>&&)’:
+VECoro.h:417:62: error: ‘m_coro’ was not declared in this scope
+  417 |         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
+      |                                                              ^~~~~~
+VECoro.h:417:72: error: ‘class vgjs::Coro<void>’ has no member named ‘m_coro’
+  417 |         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
+      |                                                                        ^~~~~~
+VECoro.h: In member function ‘void vgjs::coro_deallocator<T>::deallocate(vgjs::Job_base*)’:
+VECoro.h:439:26: error: ‘std::experimental’ has not been declared
+  439 |         auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+      |                          ^~~~~~~~~~~~
+VECoro.h:439:71: error: expected primary-expression before ‘>’ token
+  439 |         auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+      |                                                                       ^~
+VECoro.h:439:75: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  439 |         auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+      |                                                                           ^~~~~~~~~~~~
+      |                                                                           Coro_promise
+VECoro.h: In member function ‘virtual void vgjs::coro_deallocator<void>::deallocate(vgjs::Job_base*)’:
+VECoro.h:450:27: error: ‘class vgjs::Coro_promise<void>’ has no member named ‘m_coro’
+  450 |         if (coro_promise->m_coro) {
+      |                           ^~~~~~
+VECoro.h:451:27: error: ‘class vgjs::Coro_promise<void>’ has no member named ‘m_coro’
+  451 |             coro_promise->m_coro.destroy();
+      |                           ^~~~~~
+VECoro.h: At global scope:
+VECoro.h:477:17: error: variable or field ‘await_suspend’ declared void
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~
+VECoro.h:477:73: error: ‘std::experimental’ has not been declared
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                         ^~~~~~~~~~~~
+VECoro.h:477:119: error: expected primary-expression before ‘>’ token
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                       ^~
+VECoro.h:477:122: error: ‘h’ was not declared in this scope
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                          ^
+VECoro.h:512:17: error: variable or field ‘await_suspend’ declared void
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                 ^~~~~~~~~~~~~~~~~~~~~
+VECoro.h:512:68: error: ‘std::experimental’ has not been declared
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                    ^~~~~~~~~~~~
+VECoro.h:512:114: error: expected primary-expression before ‘>’ token
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                  ^~
+VECoro.h:512:117: error: ‘h’ was not declared in this scope
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                     ^
+VECoro.h:535:17: error: variable or field ‘await_suspend’ declared void
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~
+VECoro.h:535:70: error: ‘std::experimental’ has not been declared
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                      ^~~~~~~~~~~~
+VECoro.h:535:116: error: expected primary-expression before ‘>’ token
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                    ^~
+VECoro.h:535:119: error: ‘h’ was not declared in this scope
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                       ^
+VECoro.h:550:17: error: variable or field ‘await_suspend’ declared void
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                 ^~~~~~~~~~~~~~~~
+VECoro.h:550:54: error: ‘std::experimental’ has not been declared
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                      ^~~~~~~~~~~~
+VECoro.h:550:99: error: expected primary-expression before ‘>’ token
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                   ^~
+VECoro.h:550:102: error: ‘h’ was not declared in this scope
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                      ^
+VECoro.h:572:17: error: variable or field ‘await_suspend’ declared void
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                 ^~~~~~~~~~~~~~~~~~~
+VECoro.h:572:57: error: ‘std::experimental’ has not been declared
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                         ^~~~~~~~~~~~
+VECoro.h:572:105: error: expected primary-expression before ‘>’ token
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                         ^~
+VECoro.h:572:108: error: ‘h’ was not declared in this scope
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                            ^
+VECoro.h:596:17: error: ‘bool vgjs::final_awaiter<U>::await_suspend’ is not a static data member of ‘struct vgjs::final_awaiter<U>’
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                 ^~~~~~~~~~~~~~~~
+VECoro.h:596:54: error: template definition of non-template ‘bool vgjs::final_awaiter<U>::await_suspend’
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                      ^~~~~~~~~~~~
+VECoro.h:596:54: error: ‘std::experimental’ has not been declared
+VECoro.h:596:99: error: expected primary-expression before ‘>’ token
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                   ^~
+VECoro.h:596:102: error: ‘h’ was not declared in this scope
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                      ^
+VECoro.h:618:57: error: invalid use of incomplete type ‘struct vgjs::final_awaiter<void>’
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                         ^~~~~~~~~~~~
+VECoro.h:366:12: note: declaration of ‘struct vgjs::final_awaiter<void>’
+  366 |     struct final_awaiter<void> : public std::experimental::suspend_always {
+      |            ^~~~~~~~~~~~~~~~~~~
+VECoro.h:618:57: error: ‘std::experimental’ has not been declared
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                         ^~~~~~~~~~~~
+VECoro.h:618:105: error: expected primary-expression before ‘>’ token
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                         ^~
+VECoro.h:618:108: error: ‘h’ was not declared in this scope
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                            ^
+VECoro.h: In member function ‘virtual bool vgjs::Coro_promise_base::resume()’:
+VECoro.h:648:13: error: ‘m_coro’ was not declared in this scope
+  648 |         if (m_coro && !m_coro.done()) {
+      |             ^~~~~~
+VECoro.h: In constructor ‘vgjs::Coro_promise<T>::Coro_promise()’:
+VECoro.h:738:34: error: ‘std::experimental’ has not been declared
+  738 |        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+      |                                  ^~~~~~~~~~~~
+VECoro.h:738:79: error: expected primary-expression before ‘>’ token
+  738 |        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+      |                                                                               ^~
+VECoro.h:738:83: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  738 |        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+      |                                                                                   ^~~~~~~~~~~~
+      |                                                                                   Coro_promise
+VECoro.h: In constructor ‘vgjs::Coro_promise<void>::Coro_promise()’:
+VECoro.h:745:35: error: ‘std::experimental’ has not been declared
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                   ^~~~~~~~~~~~
+VECoro.h:745:83: error: expected primary-expression before ‘>’ token
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                                                                   ^~
+VECoro.h:745:87: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                                                                       ^~~~~~~~~~~~
+      |                                                                                       Coro_promise
+VECoro.h:745:107: error: no matching function for call to ‘vgjs::Coro_promise_base::Coro_promise_base(<brace-enclosed initializer list>)’
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                                                                                           ^
+In file included from docu.cpp:11:
+VECoro.h:234:11: note: candidate: ‘constexpr vgjs::Coro_promise_base::Coro_promise_base()’
+  234 |     class Coro_promise_base : public Job_base {
+      |           ^~~~~~~~~~~~~~~~~
+VECoro.h:234:11: note:   candidate expects 0 arguments, 1 provided
+In file included from docu.cpp:11:
+VECoro.h: In member function ‘vgjs::Coro<T> vgjs::Coro_promise<T>::get_return_object()’:
+VECoro.h:761:18: error: ‘experimental’ is not a member of ‘std’
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                  ^~~~~~~~~~~~
+VECoro.h:760:23: error: expected primary-expression before ‘{’ token
+  760 |         return Coro<T>{
+      |                       ^
+VECoro.h:760:23: error: expected ‘;’ before ‘{’ token
+  760 |         return Coro<T>{
+      |                       ^
+      |                       ;
+VECoro.h:761:18: error: ‘std::experimental’ has not been declared
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                  ^~~~~~~~~~~~
+VECoro.h:761:63: error: expected primary-expression before ‘>’ token
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                                                               ^~
+VECoro.h:761:67: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                                                                   ^~~~~~~~~~~~
+      |                                                                   Coro_promise
+VECoro.h:762:50: error: expected ‘;’ before ‘}’ token
+  762 |                 m_value_ptr, m_is_parent_function };
+      |                                                  ^~
+      |                                                  ;
+VECoro.h: In member function ‘vgjs::Coro<void> vgjs::Coro_promise<void>::get_return_object()’:
+VECoro.h:770:32: error: ‘experimental’ is not a member of ‘std’
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                ^~~~~~~~~~~~
+VECoro.h:770:32: error: no matching function for call to ‘vgjs::Coro<void>::Coro(<brace-enclosed initializer list>)’
+VECoro.h:415:9: note: candidate: ‘vgjs::Coro<void>::Coro(vgjs::Coro<void>&&)’
+  415 |         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+      |         ^~~~
+VECoro.h:415:9: note:   conversion of argument 1 would be ill-formed:
+VECoro.h:770:26: error: expected primary-expression before ‘{’ token
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                          ^
+VECoro.h:770:26: error: expected ‘;’ before ‘{’ token
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                          ^
+      |                          ;
+VECoro.h:770:32: error: ‘std::experimental’ has not been declared
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                ^~~~~~~~~~~~
+VECoro.h:770:80: error: expected primary-expression before ‘>’ token
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                                                                ^~
+VECoro.h:770:84: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                                                                    ^~~~~~~~~~~~
+      |                                                                                    Coro_promise
+VECoro.h: At global scope:
+VECoro.h:811:12: error: ISO C++ forbids declaration of ‘Coro’ with no type [-fpermissive]
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |            ^~~~~~~
+VECoro.h:811:12: error: ‘int vgjs::Coro<T>::Coro’ is not a static data member of ‘class vgjs::Coro<T>’
+VECoro.h:811:34: error: template definition of non-template ‘int vgjs::Coro<T>::Coro’
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |                                  ^~~~~~~~~~~~
+VECoro.h:811:34: error: ‘std::experimental’ has not been declared
+VECoro.h:811:95: error: expected ‘(’ before ‘>’ token
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |                                                                                               ^
+      |                                                                                               (
+VECoro.h:811:97: error: ‘h’ was not declared in this scope
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |                                                                                                 ^
+VECoro.h:812:64: error: expected primary-expression before ‘&’ token
+  812 |                             std::shared_ptr<std::pair<bool, T>>& value_ptr,
+      |                                                                ^
+VECoro.h:812:66: error: ‘value_ptr’ was not declared in this scope; did you mean ‘m_value_ptr’?
+  812 |                             std::shared_ptr<std::pair<bool, T>>& value_ptr,
+      |                                                                  ^~~~~~~~~
+      |                                                                  m_value_ptr
+VECoro.h:813:29: error: expected primary-expression before ‘bool’
+  813 |                             bool is_parent_function) noexcept
+      |                             ^~~~
+VECoro.h: In member function ‘void vgjs::Coro<T>::operator=(vgjs::Coro<T>&&)’:
+VECoro.h:825:19: error: ‘m_coro’ was not declared in this scope
+  825 |         std::swap(m_coro, t.m_coro);
+      |                   ^~~~~~
+VECoro.h:827:19: error: ‘m_value’ was not declared in this scope; did you mean ‘m_value_ptr’?
+  827 |         std::swap(m_value, t.m_value);
+      |                   ^~~~~~~
+      |                   m_value_ptr
+VECoro.h: In destructor ‘vgjs::Coro<T>::~Coro()’:
+VECoro.h:835:38: error: ‘m_coro’ was not declared in this scope
+  835 |         if (!m_is_parent_function && m_coro) {
+      |                                      ^~~~~~
+VECoro.h: In destructor ‘vgjs::Coro<void>::~Coro()’:
+VECoro.h:841:38: error: ‘m_coro’ was not declared in this scope
+  841 |         if (!m_is_parent_function && m_coro) {
+      |                                      ^~~~~~
+VECoro.h: In member function ‘std::pair<bool, T> vgjs::Coro<T>::get()’:
+VECoro.h:856:16: error: ‘m_coro’ was not declared in this scope
+  856 |         return m_coro.promise().m_value;
+      |                ^~~~~~
+docu.cpp: In function ‘vgjs::Coro<int> docu::docu2::do_compute(std::allocator_arg_t, std::pmr::memory_resource*, int)’:
+docu.cpp:41:13: error: coroutines require a traits template; cannot find ‘std::coroutine_traits’
+   41 |             co_await 0;     //move this job to the thread with number 0
+      |             ^~~~~~~~
+docu.cpp:41:13: note: perhaps ‘#include <coroutine>’ is missing
+In file included from mixed.cpp:10:
+VECoro.h:130:42: error: ‘suspend_always’ in namespace ‘std’ does not name a type
+  130 |     using suspend_always = typename std::suspend_always;
+      |                                          ^~~~~~~~~~~~~~
+VECoro.h:134:41: error: expected class-name before ‘{’ token
+  134 |         struct awaiter : suspend_always {
+      |                                         ^
+VECoro.h:139:37: error: ‘std::experimental’ has not been declared
+  139 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                     ^~~~~~~~~~~~
+VECoro.h:139:67: error: expected ‘,’ or ‘...’ before ‘<’ token
+  139 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                                                   ^
+VECoro.h:158:41: error: expected class-name before ‘{’ token
+  158 |         struct awaiter : suspend_always {
+      |                                         ^
+VECoro.h:162:37: error: ‘std::experimental’ has not been declared
+  162 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                     ^~~~~~~~~~~~
+VECoro.h:162:67: error: expected ‘,’ or ‘...’ before ‘<’ token
+  162 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                                                   ^
+VECoro.h:180:41: error: expected class-name before ‘{’ token
+  180 |         struct awaiter : suspend_always {
+      |                                         ^
+VECoro.h:184:37: error: ‘std::experimental’ has not been declared
+  184 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                     ^~~~~~~~~~~~
+VECoro.h:184:67: error: expected ‘,’ or ‘...’ before ‘<’ token
+  184 |             void await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept;
+      |                                                                   ^
+VECoro.h:202:50: error: expected class-name before ‘{’ token
+  202 |     struct yield_awaiter : public suspend_always {
+      |                                                  ^
+VECoro.h:203:33: error: ‘std::experimental’ has not been declared
+  203 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                 ^~~~~~~~~~~~
+VECoro.h:203:63: error: expected ‘,’ or ‘...’ before ‘<’ token
+  203 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                                               ^
+VECoro.h:218:50: error: expected class-name before ‘{’ token
+  218 |     struct final_awaiter : public suspend_always {
+      |                                                  ^
+VECoro.h:219:33: error: ‘std::experimental’ has not been declared
+  219 |         bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                 ^~~~~~~~~~~~
+VECoro.h:219:63: error: expected ‘,’ or ‘...’ before ‘<’ token
+  219 |         bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
+      |                                                               ^
+VECoro.h:238:14: error: ‘experimental’ in namespace ‘std’ does not name a type
+  238 |         std::experimental::coroutine_handle<> m_coro;
+      |              ^~~~~~~~~~~~
+VECoro.h:243:32: error: ‘std::experimental’ has not been declared
+  243 |         Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+      |                                ^~~~~~~~~~~~
+VECoro.h:243:62: error: expected ‘)’ before ‘<’ token
+  243 |         Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+      |                          ~                                   ^
+      |                                                              )
+VECoro.h:245:9: error: ‘suspend_always’ does not name a type
+  245 |         suspend_always   initial_suspend() noexcept { return {}; };
+      |         ^~~~~~~~~~~~~~
+In file included from mixed.cpp:10:
+VECoro.h:272:18: error: declaration of template parameter ‘T’ shadows template parameter
+  272 |         template<typename T> friend struct yield_awaiter;
+      |                  ^~~~~~~~
+VECoro.h:270:14: note: template parameter ‘T’ declared here
+  270 |     template<typename T = void>
+      |              ^~~~~~~~
+VECoro.h:273:18: error: declaration of template parameter ‘T’ shadows template parameter
+  273 |         template<typename T> friend struct final_awaiter;
+      |                  ^~~~~~~~
+VECoro.h:270:14: note: template parameter ‘T’ declared here
+  270 |     template<typename T = void>
+      |              ^~~~~~~~
+VECoro.h:274:18: error: declaration of template parameter ‘T’ shadows template parameter
+  274 |         template<typename T> friend class Coro;
+      |                  ^~~~~~~~
+VECoro.h:270:14: note: template parameter ‘T’ declared here
+  270 |     template<typename T = void>
+      |              ^~~~~~~~
+VECoro.h:332:14: error: ‘experimental’ in namespace ‘std’ does not name a type
+  332 |         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
+      |              ^~~~~~~~~~~~
+VECoro.h:335:30: error: ‘std::experimental’ has not been declared
+  335 |         explicit Coro(  std::experimental::coroutine_handle<promise_type> h,
+      |                              ^~~~~~~~~~~~
+VECoro.h:335:60: error: expected ‘)’ before ‘<’ token
+  335 |         explicit Coro(  std::experimental::coroutine_handle<promise_type> h,
+      |                      ~                                     ^
+      |                                                            )
+VECoro.h: In constructor ‘vgjs::Coro<T>::Coro(vgjs::Coro<T>&&)’:
+VECoro.h:339:63: error: class ‘vgjs::Coro<T>’ does not have any field named ‘m_coro’
+  339 |         Coro(Coro<T>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})),
+      |                                                               ^~~~~~
+VECoro.h: At global scope:
+VECoro.h:358:56: error: expected class-name before ‘{’ token
+  358 |     struct yield_awaiter<void> : public suspend_always {
+      |                                                        ^
+VECoro.h:359:33: error: ‘std::experimental’ has not been declared
+  359 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept;
+      |                                 ^~~~~~~~~~~~
+VECoro.h:359:63: error: expected ‘,’ or ‘...’ before ‘<’ token
+  359 |         void await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept;
+      |                                                               ^
+VECoro.h:366:46: error: ‘std::experimental’ has not been declared
+  366 |     struct final_awaiter<void> : public std::experimental::suspend_always {
+      |                                              ^~~~~~~~~~~~
+VECoro.h:366:60: error: expected ‘{’ before ‘suspend_always’
+  366 |     struct final_awaiter<void> : public std::experimental::suspend_always {
+      |                                                            ^~~~~~~~~~~~~~
+VECoro.h:394:63: error: return type ‘struct vgjs::final_awaiter<void>’ is incomplete
+  394 |         final_awaiter<void>          final_suspend() noexcept { return {}; };
+      |                                                               ^
+VECoro.h:410:14: error: ‘experimental’ in namespace ‘std’ does not name a type
+  410 |         std::experimental::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
+      |              ^~~~~~~~~~~~
+VECoro.h:413:28: error: ‘std::experimental’ has not been declared
+  413 |         explicit Coro(std::experimental::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept
+      |                            ^~~~~~~~~~~~
+VECoro.h:413:58: error: expected ‘)’ before ‘<’ token
+  413 |         explicit Coro(std::experimental::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept
+      |                      ~                                   ^
+      |                                                          )
+VECoro.h: In constructor ‘vgjs::Coro<void>::Coro(vgjs::Coro<void>&&)’:
+VECoro.h:415:66: error: class ‘vgjs::Coro<void>’ does not have any field named ‘m_coro’
+  415 |         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+      |                                                                  ^~~~~~
+VECoro.h:415:89: error: ‘class vgjs::Coro<void>’ has no member named ‘m_coro’
+  415 |         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+      |                                                                                         ^~~~~~
+VECoro.h: In member function ‘void vgjs::Coro<void>::operator=(vgjs::Coro<void>&&)’:
+VECoro.h:417:62: error: ‘m_coro’ was not declared in this scope
+  417 |         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
+      |                                                              ^~~~~~
+VECoro.h:417:72: error: ‘class vgjs::Coro<void>’ has no member named ‘m_coro’
+  417 |         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
+      |                                                                        ^~~~~~
+VECoro.h: In member function ‘void vgjs::coro_deallocator<T>::deallocate(vgjs::Job_base*)’:
+VECoro.h:439:26: error: ‘std::experimental’ has not been declared
+  439 |         auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+      |                          ^~~~~~~~~~~~
+VECoro.h:439:71: error: expected primary-expression before ‘>’ token
+  439 |         auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+      |                                                                       ^~
+VECoro.h:439:75: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  439 |         auto coro = std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*coro_promise);
+      |                                                                           ^~~~~~~~~~~~
+      |                                                                           Coro_promise
+VECoro.h: In member function ‘virtual void vgjs::coro_deallocator<void>::deallocate(vgjs::Job_base*)’:
+VECoro.h:450:27: error: ‘class vgjs::Coro_promise<void>’ has no member named ‘m_coro’
+  450 |         if (coro_promise->m_coro) {
+      |                           ^~~~~~
+VECoro.h:451:27: error: ‘class vgjs::Coro_promise<void>’ has no member named ‘m_coro’
+  451 |             coro_promise->m_coro.destroy();
+      |                           ^~~~~~
+VECoro.h: At global scope:
+VECoro.h:477:17: error: variable or field ‘await_suspend’ declared void
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~
+VECoro.h:477:73: error: ‘std::experimental’ has not been declared
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                         ^~~~~~~~~~~~
+VECoro.h:477:119: error: expected primary-expression before ‘>’ token
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                       ^~
+VECoro.h:477:122: error: ‘h’ was not declared in this scope
+  477 |     inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                          ^
+VECoro.h:512:17: error: variable or field ‘await_suspend’ declared void
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                 ^~~~~~~~~~~~~~~~~~~~~
+VECoro.h:512:68: error: ‘std::experimental’ has not been declared
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                    ^~~~~~~~~~~~
+VECoro.h:512:114: error: expected primary-expression before ‘>’ token
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                  ^~
+VECoro.h:512:117: error: ‘h’ was not declared in this scope
+  512 |     inline void awaitable_coro<PT, T>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                     ^
+VECoro.h:535:17: error: variable or field ‘await_suspend’ declared void
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~
+VECoro.h:535:70: error: ‘std::experimental’ has not been declared
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                      ^~~~~~~~~~~~
+VECoro.h:535:116: error: expected primary-expression before ‘>’ token
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                    ^~
+VECoro.h:535:119: error: ‘h’ was not declared in this scope
+  535 |     inline void awaitable_resume_on<PT>::awaiter::await_suspend(std::experimental::coroutine_handle<Coro_promise<PT>> h) noexcept {
+      |                                                                                                                       ^
+VECoro.h:550:17: error: variable or field ‘await_suspend’ declared void
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                 ^~~~~~~~~~~~~~~~
+VECoro.h:550:54: error: ‘std::experimental’ has not been declared
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                      ^~~~~~~~~~~~
+VECoro.h:550:99: error: expected primary-expression before ‘>’ token
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                   ^~
+VECoro.h:550:102: error: ‘h’ was not declared in this scope
+  550 |     inline void yield_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                      ^
+VECoro.h:572:17: error: variable or field ‘await_suspend’ declared void
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                 ^~~~~~~~~~~~~~~~~~~
+VECoro.h:572:57: error: ‘std::experimental’ has not been declared
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                         ^~~~~~~~~~~~
+VECoro.h:572:105: error: expected primary-expression before ‘>’ token
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                         ^~
+VECoro.h:572:108: error: ‘h’ was not declared in this scope
+  572 |     inline void yield_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                            ^
+VECoro.h:596:17: error: ‘bool vgjs::final_awaiter<U>::await_suspend’ is not a static data member of ‘struct vgjs::final_awaiter<U>’
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                 ^~~~~~~~~~~~~~~~
+VECoro.h:596:54: error: template definition of non-template ‘bool vgjs::final_awaiter<U>::await_suspend’
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                      ^~~~~~~~~~~~
+VECoro.h:596:54: error: ‘std::experimental’ has not been declared
+VECoro.h:596:99: error: expected primary-expression before ‘>’ token
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                   ^~
+VECoro.h:596:102: error: ‘h’ was not declared in this scope
+  596 |     inline bool final_awaiter<U>::await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+      |                                                                                                      ^
+VECoro.h:618:57: error: invalid use of incomplete type ‘struct vgjs::final_awaiter<void>’
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                         ^~~~~~~~~~~~
+VECoro.h:366:12: note: declaration of ‘struct vgjs::final_awaiter<void>’
+  366 |     struct final_awaiter<void> : public std::experimental::suspend_always {
+      |            ^~~~~~~~~~~~~~~~~~~
+VECoro.h:618:57: error: ‘std::experimental’ has not been declared
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                         ^~~~~~~~~~~~
+VECoro.h:618:105: error: expected primary-expression before ‘>’ token
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                         ^~
+VECoro.h:618:108: error: ‘h’ was not declared in this scope
+  618 |     inline bool final_awaiter<void>::await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
+      |                                                                                                            ^
+VECoro.h: In member function ‘virtual bool vgjs::Coro_promise_base::resume()’:
+VECoro.h:648:13: error: ‘m_coro’ was not declared in this scope
+  648 |         if (m_coro && !m_coro.done()) {
+      |             ^~~~~~
+VECoro.h: In constructor ‘vgjs::Coro_promise<T>::Coro_promise()’:
+VECoro.h:738:34: error: ‘std::experimental’ has not been declared
+  738 |        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+      |                                  ^~~~~~~~~~~~
+VECoro.h:738:79: error: expected primary-expression before ‘>’ token
+  738 |        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+      |                                                                               ^~
+VECoro.h:738:83: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  738 |        : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+      |                                                                                   ^~~~~~~~~~~~
+      |                                                                                   Coro_promise
+VECoro.h: In constructor ‘vgjs::Coro_promise<void>::Coro_promise()’:
+VECoro.h:745:35: error: ‘std::experimental’ has not been declared
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                   ^~~~~~~~~~~~
+VECoro.h:745:83: error: expected primary-expression before ‘>’ token
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                                                                   ^~
+VECoro.h:745:87: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                                                                       ^~~~~~~~~~~~
+      |                                                                                       Coro_promise
+VECoro.h:745:107: error: no matching function for call to ‘vgjs::Coro_promise_base::Coro_promise_base(<brace-enclosed initializer list>)’
+  745 |         : Coro_promise_base{ std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this) } {
+      |                                                                                                           ^
+In file included from mixed.cpp:10:
+VECoro.h:234:11: note: candidate: ‘constexpr vgjs::Coro_promise_base::Coro_promise_base()’
+  234 |     class Coro_promise_base : public Job_base {
+      |           ^~~~~~~~~~~~~~~~~
+VECoro.h:234:11: note:   candidate expects 0 arguments, 1 provided
+In file included from mixed.cpp:10:
+VECoro.h: In member function ‘vgjs::Coro<T> vgjs::Coro_promise<T>::get_return_object()’:
+VECoro.h:761:18: error: ‘experimental’ is not a member of ‘std’
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                  ^~~~~~~~~~~~
+VECoro.h:760:23: error: expected primary-expression before ‘{’ token
+  760 |         return Coro<T>{
+      |                       ^
+VECoro.h:760:23: error: expected ‘;’ before ‘{’ token
+  760 |         return Coro<T>{
+      |                       ^
+      |                       ;
+VECoro.h:761:18: error: ‘std::experimental’ has not been declared
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                  ^~~~~~~~~~~~
+VECoro.h:761:63: error: expected primary-expression before ‘>’ token
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                                                               ^~
+VECoro.h:761:67: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  761 |             std::experimental::coroutine_handle<Coro_promise<T>>::from_promise(*this),
+      |                                                                   ^~~~~~~~~~~~
+      |                                                                   Coro_promise
+VECoro.h:762:50: error: expected ‘;’ before ‘}’ token
+  762 |                 m_value_ptr, m_is_parent_function };
+      |                                                  ^~
+      |                                                  ;
+VECoro.h: In member function ‘vgjs::Coro<void> vgjs::Coro_promise<void>::get_return_object()’:
+VECoro.h:770:32: error: ‘experimental’ is not a member of ‘std’
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                ^~~~~~~~~~~~
+VECoro.h:770:32: error: no matching function for call to ‘vgjs::Coro<void>::Coro(<brace-enclosed initializer list>)’
+VECoro.h:415:9: note: candidate: ‘vgjs::Coro<void>::Coro(vgjs::Coro<void>&&)’
+  415 |         Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+      |         ^~~~
+VECoro.h:415:9: note:   conversion of argument 1 would be ill-formed:
+VECoro.h:770:26: error: expected primary-expression before ‘{’ token
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                          ^
+VECoro.h:770:26: error: expected ‘;’ before ‘{’ token
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                          ^
+      |                          ;
+VECoro.h:770:32: error: ‘std::experimental’ has not been declared
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                ^~~~~~~~~~~~
+VECoro.h:770:80: error: expected primary-expression before ‘>’ token
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                                                                ^~
+VECoro.h:770:84: error: ‘::from_promise’ has not been declared; did you mean ‘Coro_promise’?
+  770 |         return Coro<void>{std::experimental::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
+      |                                                                                    ^~~~~~~~~~~~
+      |                                                                                    Coro_promise
+VECoro.h: At global scope:
+VECoro.h:811:12: error: ISO C++ forbids declaration of ‘Coro’ with no type [-fpermissive]
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |            ^~~~~~~
+VECoro.h:811:12: error: ‘int vgjs::Coro<T>::Coro’ is not a static data member of ‘class vgjs::Coro<T>’
+VECoro.h:811:34: error: template definition of non-template ‘int vgjs::Coro<T>::Coro’
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |                                  ^~~~~~~~~~~~
+VECoro.h:811:34: error: ‘std::experimental’ has not been declared
+VECoro.h:811:95: error: expected ‘(’ before ‘>’ token
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |                                                                                               ^
+      |                                                                                               (
+VECoro.h:811:97: error: ‘h’ was not declared in this scope
+  811 |     inline Coro<T>::Coro(   std::experimental::coroutine_handle<typename Coro<T>::promise_type> h,
+      |                                                                                                 ^
+VECoro.h:812:64: error: expected primary-expression before ‘&’ token
+  812 |                             std::shared_ptr<std::pair<bool, T>>& value_ptr,
+      |                                                                ^
+VECoro.h:812:66: error: ‘value_ptr’ was not declared in this scope; did you mean ‘m_value_ptr’?
+  812 |                             std::shared_ptr<std::pair<bool, T>>& value_ptr,
+      |                                                                  ^~~~~~~~~
+      |                                                                  m_value_ptr
+VECoro.h:813:29: error: expected primary-expression before ‘bool’
+  813 |                             bool is_parent_function) noexcept
+      |                             ^~~~
+VECoro.h: In member function ‘void vgjs::Coro<T>::operator=(vgjs::Coro<T>&&)’:
+VECoro.h:825:19: error: ‘m_coro’ was not declared in this scope
+  825 |         std::swap(m_coro, t.m_coro);
+      |                   ^~~~~~
+VECoro.h:827:19: error: ‘m_value’ was not declared in this scope; did you mean ‘m_value_ptr’?
+  827 |         std::swap(m_value, t.m_value);
+      |                   ^~~~~~~
+      |                   m_value_ptr
+VECoro.h: In destructor ‘vgjs::Coro<T>::~Coro()’:
+VECoro.h:835:38: error: ‘m_coro’ was not declared in this scope
+  835 |         if (!m_is_parent_function && m_coro) {
+      |                                      ^~~~~~
+VECoro.h: In destructor ‘vgjs::Coro<void>::~Coro()’:
+VECoro.h:841:38: error: ‘m_coro’ was not declared in this scope
+  841 |         if (!m_is_parent_function && m_coro) {
+      |                                      ^~~~~~
+VECoro.h: In member function ‘std::pair<bool, T> vgjs::Coro<T>::get()’:
+VECoro.h:856:16: error: ‘m_coro’ was not declared in this scope
+  856 |         return m_coro.promise().m_value;
+      |                ^~~~~~
+mixed.cpp: In function ‘vgjs::Coro<int> mixed::compute(int)’:
+mixed.cpp:31:9: error: coroutines require a traits template; cannot find ‘std::coroutine_traits’
+   31 |         co_return 2 * i;
+      |         ^~~~~~~~~
+mixed.cpp:31:9: note: perhaps ‘#include <coroutine>’ is missing

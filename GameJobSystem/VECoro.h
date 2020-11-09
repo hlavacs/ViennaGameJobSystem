@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <memory_resource>
+#include <utility>
 
 
 namespace vgjs {
@@ -125,9 +126,12 @@ namespace vgjs {
     * The caller will then await the completion of the Coros. Afterwards,
     * the return values can be retrieved by calling get().
     */
+
+    using suspend_always = std::experimental::suspend_always;
+
     template<typename PT, typename... Ts>
     struct awaitable_tuple {
-        struct awaiter : std::experimental::suspend_always {
+        struct awaiter : suspend_always {
             std::tuple<std::pmr::vector<Ts>...>& m_tuple;       //vector with all children to start
             std::size_t                          m_number = 0;   //total number of all new children to schedule
 
@@ -151,7 +155,7 @@ namespace vgjs {
     */
     template<typename PT, typename T>
     struct awaitable_coro {
-        struct awaiter : std::experimental::suspend_always {
+        struct awaiter : suspend_always {
             T& m_child;                      //child/children
 
             bool await_ready() noexcept;
@@ -173,7 +177,7 @@ namespace vgjs {
     */
     template<typename PT>
     struct awaitable_resume_on {
-        struct awaiter : std::experimental::suspend_always {
+        struct awaiter : suspend_always {
             int32_t m_thread_index; //the thread index to use
 
             bool await_ready() noexcept;
@@ -195,7 +199,7 @@ namespace vgjs {
     * to the final awaiter, but always suspends.
     */
     template<typename U>
-    struct yield_awaiter : public std::experimental::suspend_always {
+    struct yield_awaiter : public suspend_always {
         void await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
     };
 
@@ -211,7 +215,7 @@ namespace vgjs {
     * then the coro must destroy the promise itself by resuming the final awaiter.
     */
     template<typename U>
-    struct final_awaiter : public std::experimental::suspend_always {
+    struct final_awaiter : public suspend_always {
         bool await_suspend(std::experimental::coroutine_handle<Coro_promise<U>> h) noexcept;
     };
 
@@ -237,9 +241,9 @@ namespace vgjs {
 
     public:
         Coro_promise_base(std::experimental::coroutine_handle<> coro) noexcept : m_coro(coro) {};
-        void                                unhandled_exception() noexcept { std::terminate(); };
-        std::experimental::suspend_always   initial_suspend() noexcept { return {}; };
-        bool                                resume() noexcept;
+        void             unhandled_exception() noexcept { std::terminate(); };
+        suspend_always   initial_suspend() noexcept { return {}; };
+        bool             resume() noexcept;
 
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
@@ -351,7 +355,7 @@ namespace vgjs {
     * \brief When a coroutine calls co_yield this awaiter calls its parent.
     */
     template<>
-    struct yield_awaiter<void> : public std::experimental::suspend_always {
+    struct yield_awaiter<void> : public suspend_always {
         void await_suspend(std::experimental::coroutine_handle<Coro_promise<void>> h) noexcept;
     };
 
