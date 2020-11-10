@@ -603,19 +603,21 @@ namespace vgjs {
     template<typename U>
     inline bool final_awaiter<U>::await_suspend(n_exp::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
         auto& promise = h.promise();
+        bool is_parent_function = promise.m_is_parent_function;
+        auto parent = promise.m_parent;
 
-        if (promise.m_parent != nullptr) {          //if there is a parent
-            if (promise.m_is_parent_function) {       //if it is a Job
-                JobSystem::instance().child_finished((Job*)promise.m_parent);//indicate that this child has finished
+        if (parent != nullptr) {          //if there is a parent
+            if (is_parent_function) {       //if it is a Job
+                JobSystem::instance().child_finished((Job*)parent);//indicate that this child has finished
             }
             else {
-                uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
+                uint32_t num = parent->m_children.fetch_sub(1);        //one less child
                 if (num == 1) {                                             //was it the last child?
-                    JobSystem::instance().schedule(promise.m_parent);      //if last reschedule the parent coro
+                    JobSystem::instance().schedule(parent);      //if last reschedule the parent coro
                 }
             }
         }
-        return !promise.m_is_parent_function; //if parent is coro, then you are in sync -> the future will destroy the promise
+        return !is_parent_function; //if parent is coro, then you are in sync -> the future will destroy the promise
     }
 
 
@@ -625,19 +627,21 @@ namespace vgjs {
     */
     inline bool final_awaiter<void>::await_suspend(n_exp::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
         Coro_promise<void>& promise = h.promise();
+        bool is_parent_function = promise.m_is_parent_function;
+        auto parent = promise.m_parent;
 
-        if (promise.m_parent != nullptr) {          //if there is a parent
-            if (promise.m_is_parent_function) {       //if it is a Job
+        if (parent != nullptr) {          //if there is a parent
+            if (is_parent_function) {       //if it is a Job
                 JobSystem::instance().child_finished((Job*)promise.m_parent);//indicate that this child has finished
             }
             else {
-                uint32_t num = promise.m_parent->m_children.fetch_sub(1);        //one less child
+                uint32_t num = parent->m_children.fetch_sub(1);        //one less child
                 if (num == 1) {                                             //was it the last child?
-                    JobSystem::instance().schedule(promise.m_parent);      //if last reschedule the parent coro
+                    JobSystem::instance().schedule(parent);      //if last reschedule the parent coro
                 }
             }
         }
-        return !promise.m_is_parent_function; //if parent is coro, then you are in sync -> the future will destroy the promise
+        return !is_parent_function; //if parent is coro, then you are in sync -> the future will destroy the promise
     }
 
 
@@ -796,6 +800,7 @@ namespace vgjs {
     inline void Coro_promise<T>::return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
         if (m_is_parent_function) {
             *m_value_ptr = std::make_pair(true, t);
+            //m_value_ptr = {};
             return;
         }
         m_value = std::make_pair(true, t);
