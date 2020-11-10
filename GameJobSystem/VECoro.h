@@ -236,7 +236,7 @@ namespace vgjs {
 
     protected:
         n_exp::coroutine_handle<> m_coro;
-        bool m_is_parent_function = true; // current_job() == nullptr ? true : current_job()->is_function();
+        bool m_is_parent_function = current_job() == nullptr ? true : current_job()->is_function();
         bool* m_ready_ptr = nullptr; //points to flag which is true if value is ready, else false
 
     public:
@@ -800,7 +800,6 @@ namespace vgjs {
     inline void Coro_promise<T>::return_value(T t) noexcept {   //is called by co_return <VAL>, saves <VAL> in m_value
         if (m_is_parent_function) {
             *m_value_ptr = std::make_pair(true, t);
-            //m_value_ptr = {};
             return;
         }
         m_value = std::make_pair(true, t);
