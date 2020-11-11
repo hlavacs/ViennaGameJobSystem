@@ -569,6 +569,7 @@ namespace vgjs {
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<void>> h) noexcept;
     };
 
+
     /**
     * \brief Coro promise for void
     */
@@ -653,7 +654,7 @@ namespace vgjs {
 
 
     //---------------------------------------------------------------------------------------------------
-    //Implementations
+    //Implementations that need definition of other classes
 
 
 
@@ -709,9 +710,6 @@ namespace vgjs {
         return;
     }
 
-    //---------------------------------------------------------------------------------------------------
-
-
 
     /**
     * \brief After suspension, call parent to run it as continuation
@@ -738,8 +736,7 @@ namespace vgjs {
 
 
     //---------------------------------------------------------------------------------------------------
-    //coro promises
-
+    //Coro_promise_base
 
 
     /**
@@ -820,7 +817,7 @@ namespace vgjs {
     }
 
     //---------------------------------------------------------------------------------------------------
-
+    //Coro_promise<T>
 
     /**
     * \brief Define what happens if memory allocation fails
@@ -829,14 +826,6 @@ namespace vgjs {
     template<typename T>
     inline Coro<T> Coro_promise<T>::get_return_object_on_allocation_failure() {
         return Coro<T>();
-    }
-
-    /**
-    * \brief Define what happens if memory allocation fails
-    * \returns the Coro<T> from the promise.
-    */
-    inline Coro<void> Coro_promise<void>::get_return_object_on_allocation_failure() {
-        return Coro<void>();
     }
 
     /**
@@ -856,6 +845,17 @@ namespace vgjs {
                 m_value_ptr, m_is_parent_function };
     }
 
+    //---------------------------------------------------------------------------------------------------
+    //Coro_promise<void>
+
+    /**
+    * \brief Define what happens if memory allocation fails
+    * \returns the Coro<T> from the promise.
+    */
+    inline Coro<void> Coro_promise<void>::get_return_object_on_allocation_failure() {
+        return Coro<void>();
+    }
+
     /**
     * \brief Get Coro<void> from the Coro_promise<T>. Creates a shared value to trade the result.
     * \returns the Coro<void> from the promise.
@@ -863,14 +863,6 @@ namespace vgjs {
     inline Coro<void> Coro_promise<void>::get_return_object() noexcept {
         return Coro<void>{n_exp::coroutine_handle<Coro_promise<void>>::from_promise(*this), m_is_parent_function };
     }
-
-
-    //---------------------------------------------------------------------------------------------------
-    //coro futures
-
-
-
-
 
 }
 
