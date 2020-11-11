@@ -170,6 +170,8 @@ namespace vgjs {
         std::tuple<std::pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
 
         awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
+
+        //co_await operator is defined for this awaitable, and results in the awaiter
         awaiter operator co_await() noexcept { return { m_tuple }; };
     };
 
@@ -225,15 +227,30 @@ namespace vgjs {
         struct awaiter : suspend_always {
             int32_t m_thread_index; //the thread index to use
 
-            bool await_ready() noexcept;
-            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept;
+            /**
+            * \brief Test whether the job is already on the right thread.
+            */
+            bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
+                return (m_thread_index == JobSystem::instance().thread_index());
+            }
+
+            /**
+            * \brief Set the thread index and reschedule the coro
+            * \param[in] h The coro handle, can be used to get the promise.
+            */
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                h.promise().m_thread_index = m_thread_index;
+                JobSystem::instance().schedule(&h.promise());
+            }
             awaiter(int32_t thread_index) noexcept : m_thread_index(thread_index) {};
         };
 
         int32_t m_thread_index; //the thread index to use
 
         awaitable_resume_on(int32_t thread_index) noexcept : m_thread_index(thread_index) {};
-        awaiter operator co_await() noexcept;
+
+        //co_await operator is defined for this awaitable, and results in the awaiter
+        awaiter operator co_await() noexcept { return { m_thread_index }; };
     };
 
 
@@ -515,26 +532,6 @@ namespace vgjs {
 
     //--------------------------------------------------------------------------------------------------
 
-    /**
-    * \brief Test whether the job is already on the right thread.
-    */
-    template<typename PT>
-    inline bool awaitable_resume_on<PT>::awaiter::await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
-        return (m_thread_index == JobSystem::instance().thread_index());
-    }
-
-    /**
-    * \brief Set the thread index and reschedule the coro
-    * \param[in] h The coro handle, can be used to get the promise.
-    */
-    template<typename PT>
-    inline void awaitable_resume_on<PT>::awaiter::await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-        h.promise().m_thread_index = m_thread_index;
-        JobSystem::instance().schedule(&h.promise());
-    }
-
-    template<typename PT>
-    inline typename awaitable_resume_on<PT>::awaiter awaitable_resume_on<PT>::operator co_await() noexcept { return { m_thread_index }; };
 
     //---------------------------------------------------------------------------------------------------
 
