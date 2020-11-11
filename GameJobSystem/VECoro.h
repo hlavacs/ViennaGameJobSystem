@@ -9,7 +9,6 @@
 #include <mutex>
 #include <thread>
 #include <future>
-#include <vector>
 #include <functional>
 #include <optional>
 #include <condition_variable>

@@ -21,7 +21,6 @@
 #include <mutex>
 #include <thread>
 #include <future>
-#include <vector>
 #include <functional>
 #include <condition_variable>
 #include <queue>
