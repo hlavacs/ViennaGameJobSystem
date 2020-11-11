@@ -135,15 +135,42 @@ namespace vgjs {
             std::tuple<std::pmr::vector<Ts>...>& m_tuple;       //vector with all children to start
             std::size_t                          m_number = 0;   //total number of all new children to schedule
 
-            bool await_ready() noexcept;
-            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept;
+            /**
+            * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
+            */
+            bool await_ready() noexcept {                                 //suspend only if there are no Coros
+                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
+                    std::initializer_list<int>{ (m_number += std::get<Idx>(m_tuple).size(), 0) ...}; //called for every tuple element
+                    return (m_number == 0);
+                };
+                return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
+            }
+
+            /**
+            * \brief Go through all tuple elements and schedule them.
+            * Presets number of new children to avoid a race.
+            * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
+            */
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
+                    schedule(vec, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
+                    m_number = 0;                               //after this always 0
+                };
+
+                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
+                    std::initializer_list<int>{ (g(std::get<Idx>(m_tuple)), 0) ...}; //called for every tuple element
+                };
+
+                f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
+            }
+
             awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
         };
 
         std::tuple<std::pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
 
         awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-        awaiter operator co_await() noexcept;
+        awaiter operator co_await() noexcept { return { m_tuple }; };
     };
 
 
@@ -464,40 +491,6 @@ namespace vgjs {
     //--------------------------------------------------------------------------------------------------
     //awaitables
 
-    /**
-    * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
-    */
-    template<typename PT, typename... Ts>
-    inline bool awaitable_tuple<PT, Ts...>::awaiter::await_ready() noexcept {                                 //suspend only if there are no Coros
-        auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-            std::initializer_list<int>{ (m_number += std::get<Idx>(m_tuple).size(), 0) ...}; //called for every tuple element
-            return (m_number == 0);
-        };
-        return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-    }
-
-    /**
-    * \brief Go through all tuple elements and schedule them.
-    * Presets number of new children to avoid a race.
-    * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
-    */
-    template<typename PT, typename... Ts>
-    inline void awaitable_tuple<PT, Ts...>::awaiter::await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-        auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
-            schedule(vec, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
-            m_number = 0;                               //after this always 0
-        };
-
-        auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-            std::initializer_list<int>{ (g(std::get<Idx>(m_tuple)), 0) ...}; //called for every tuple element
-        };
-
-        f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-    }
-
-    //co_await operator is defined for this awaitable, and results in the awaiter
-    template<typename PT, typename... Ts>
-    inline typename awaitable_tuple<PT, Ts...>::awaiter awaitable_tuple<PT, Ts...>::operator co_await() noexcept { return { m_tuple }; };
 
     //--------------------------------------------------------------------------------------------------
 
