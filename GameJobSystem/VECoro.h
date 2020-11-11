@@ -119,6 +119,8 @@ namespace vgjs {
     //Awaitables
 
 
+    using suspend_always = n_exp::suspend_always;
+
     /**
     * \brief Awaitable for awaiting a tuple of vector of type Coro<T>, Function{}, std::function<void(void)>.
     *
@@ -126,14 +128,15 @@ namespace vgjs {
     * The caller will then await the completion of the Coros. Afterwards,
     * the return values can be retrieved by calling get().
     */
-
-    using suspend_always = n_exp::suspend_always;
-
     template<typename PT, typename... Ts>
     struct awaitable_tuple {
+
+        /**
+        * \brief Awaiter for awaiting tuples of vectors
+        */
         struct awaiter : suspend_always {
-            std::tuple<std::pmr::vector<Ts>...>& m_tuple;       //vector with all children to start
-            std::size_t                          m_number = 0;   //total number of all new children to schedule
+            std::tuple<std::pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
+            std::size_t                          m_number = 0;   ///<total number of all new children to schedule
 
             /**
             * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
@@ -154,7 +157,7 @@ namespace vgjs {
             void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
                 auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
                     schedule(vec, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
-                    m_number = 0;                               //after this always 0
+                    m_number = 0;                                  //after this always 0
                 };
 
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
@@ -164,14 +167,24 @@ namespace vgjs {
                 f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
             }
 
+            /**
+            * \brief Awaiter constructor
+            * \parameter[in] children Reference to a tuple of vectors of children that should be awaited
+            */
             awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
         };
 
-        std::tuple<std::pmr::vector<Ts>...>& m_tuple;              //vector with all children to start
+        std::tuple<std::pmr::vector<Ts>...>& m_tuple;      ///<vector with all children to start
 
+        /**
+        * \brief Awaitable constructor
+        * \parameter[in] children Reference to a tuple of vectors of children that should be awaited
+        */
         awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
 
-        //co_await operator is defined for this awaitable, and results in the awaiter
+        /**
+        * \brief co_await operator is defined for this awaitable, and results in the awaiter
+        */
         awaiter operator co_await() noexcept { return { m_tuple }; };
     };
 
@@ -184,14 +197,18 @@ namespace vgjs {
     */
     template<typename PT, typename T>
     struct awaitable_coro {
+
+        /**
+        * \brief Awaiter for awaiting Coros, Functions and vectors
+        */
         struct awaiter : suspend_always {
-            T& m_child;                      //child/children
+            T& m_child;                      ///<child/vector of children
 
             /**
             * \brief If m_child is a vector this makes sure that there are children in the vector
             */
             bool await_ready() noexcept {                   //suspend only if there are children to create
-                if constexpr (is_pmr_vector<T>::value) {
+                if constexpr (is_pmr_vector< typename std::decay<T>::type >::value) {
                     return m_child.empty();
                 }
                 return false;
@@ -205,14 +222,24 @@ namespace vgjs {
                 schedule(std::forward<T>(m_child), &h.promise());  //schedule the coro, function or vector
             }
 
+            /**
+            * \brief Awaiter constructor
+            * \parameter[in] child Reference to a child that should be awaited
+            */
             awaiter(T& child) noexcept : m_child(child) {};
         };
 
-        T& m_child;                     //child/children
+        T& m_child;                     ///<child/children
 
+        /**
+        * \brief Awaitable constructor
+        * \parameter[in] child Reference to a child that should be awaited
+        */
         awaitable_coro(T& child) noexcept : m_child(child) {};
 
-        //co_await operator is defined for this awaitable, and results in the awaiter
+        /**
+        * \brief co_await operator is defined for this awaitable, and results in the awaiter
+        */
         awaiter operator co_await() noexcept { return { m_child }; };
     };
 
@@ -225,7 +252,7 @@ namespace vgjs {
     template<typename PT>
     struct awaitable_resume_on {
         struct awaiter : suspend_always {
-            int32_t m_thread_index; //the thread index to use
+            int32_t m_thread_index;         ///<the thread index to use
 
             /**
             * \brief Test whether the job is already on the right thread.
@@ -242,14 +269,25 @@ namespace vgjs {
                 h.promise().m_thread_index = m_thread_index;
                 JobSystem::instance().schedule(&h.promise());
             }
+
+            /**
+            * \brief Awaiter constructor
+            * \parameter[in] thread_index NUmber of the thread to migrate to
+            */
             awaiter(int32_t thread_index) noexcept : m_thread_index(thread_index) {};
         };
 
         int32_t m_thread_index; //the thread index to use
 
+        /**
+        * \brief Awaiter constructor
+        * \parameter[in] thread_index NUmber of the thread to migrate to
+        */
         awaitable_resume_on(int32_t thread_index) noexcept : m_thread_index(thread_index) {};
 
-        //co_await operator is defined for this awaitable, and results in the awaiter
+        /**
+        * \brief co_await operator is defined for this awaitable, and results in the awaiter
+        */
         awaiter operator co_await() noexcept { return { m_thread_index }; };
     };
 
@@ -337,14 +375,26 @@ namespace vgjs {
         template<typename T> friend struct coro_deallocator;
 
     protected:
-        n_exp::coroutine_handle<> m_coro;
-        bool m_is_parent_function = current_job() == nullptr ? true : current_job()->is_function();
-        bool* m_ready_ptr = nullptr; //points to flag which is true if value is ready, else false
+        n_exp::coroutine_handle<> m_coro;   ///<handle of the coroutine
+        bool m_is_parent_function = current_job() == nullptr ? true : current_job()->is_function(); ///<is the parent a Function or nullptr?
+        bool* m_ready_ptr = nullptr;        ///<points to flag which is true if value is ready, else false
 
     public:
-        explicit         Coro_promise_base(n_exp::coroutine_handle<> coro) noexcept : m_coro(coro) {};
-        void             unhandled_exception() noexcept { std::terminate(); };
-        suspend_always   initial_suspend() noexcept { return {}; };
+        /**
+        * \brief Constructor
+        * \param[in] coro The handle of the coroutine (typeless because the base class does not depend on types)
+        */
+        explicit Coro_promise_base(n_exp::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+
+        /**
+        * \brief React to unhandled exceptions
+        */
+        void unhandled_exception() noexcept { std::terminate(); };
+
+        /**
+        * \brief Initially always suspend
+        */
+        suspend_always initial_suspend() noexcept { return {}; };
 
         /**
         * \brief Resume the Coro at its suspension point.
@@ -360,6 +410,7 @@ namespace vgjs {
             return true;
         };
 
+        //operators for allocating and deallocating memory, implementations follow later in this file
         template<typename... Args>
         void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
 
