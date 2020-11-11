@@ -594,17 +594,20 @@ namespace vgjs {
         * \brief Coro future constructor
         * \param[in] t Source coroutine that is moved into this coroutine
         */
-        Coro(Coro<T>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})),
-                                        m_value_ptr(std::exchange(t.m_value_ptr, {})),
-                                        m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {};
+        Coro(Coro<T>&& t)  noexcept : Coro_base(t.m_promise)
+                                        , m_coro(std::exchange(t.m_coro, {}))
+                                        , m_value_ptr(std::exchange(t.m_value_ptr, {}))
+                                        , m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {};
 
         /**
         * \brief Move operator
         * \param[in] t Source coroutine that is moved into this coroutine
         */
         void operator= (Coro<T>&& t) noexcept {
-            std::swap(m_coro, t.m_coro);
-            std::swap(m_value_ptr, t.m_value_ptr);
+            m_is_parent_function    = t.m_is_parent_function;
+            m_coro                  = std::exchange(t.m_coro, {});
+            m_value_ptr             = std::exchange( t.m_value_ptr, nullptr );
+            m_promise               = std::exchange( t.m_promise, {});
         }
 
         /**
@@ -763,13 +766,19 @@ namespace vgjs {
         * \brief Coro future constructor
         * \param[in] t Source coroutine that is moved into this coroutine
         */
-        Coro(Coro<void>&& t) noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+        Coro(Coro<void>&& t) noexcept : Coro_base(t.m_promise)
+                                        , m_coro(std::exchange(t.m_coro, {}))
+                                        , m_is_parent_function(t.m_is_parent_function) {};
 
         /**
         * \brief Move operator
         * \param[in] t Source coroutine that is moved into this coroutine
         */
-        void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
+        void operator= (Coro<void>&& t) noexcept { 
+            m_is_parent_function    = t.m_is_parent_function;
+            m_coro                  = std::exchange(t.m_coro, {});
+            m_promise               = std::exchange(t.m_promise, {});
+        };
 
         /**
         * \brief Destructor of the Coro promise.
