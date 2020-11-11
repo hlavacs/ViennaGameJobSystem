@@ -46,7 +46,7 @@ int main()
 
 	JobSystem::instance();
 
-	schedule( [](){ driver(1000); });
+	schedule( [](){ driver(50); });
 
 	//schedule([=]() {docu::test(5); });
 	
