@@ -453,8 +453,12 @@ namespace vgjs {
         };
 
         static Coro<T>  get_return_object_on_allocation_failure();
-        job_deallocator get_deallocator() noexcept { return coro_deallocator<T>{}; };    //called for deallocation
         Coro<T>         get_return_object() noexcept;
+
+        /**
+        * \returns a deallocator, used only if program ends.
+        */
+        job_deallocator get_deallocator() noexcept { return coro_deallocator<T>{}; };    //called for deallocation
 
         /**
         * \brief Store the value returned by co_return.
@@ -574,6 +578,9 @@ namespace vgjs {
 
         /**
         * \brief Coro future constructor
+        * \param[in] h Coroutine handle
+        * \param[in] value_ptr Shared pointer to the value to return, used only if parent is a function or nullptr
+        * \param[in] is_parent_function Flag for using shared value pointer
         */
         Coro(   n_exp::coroutine_handle<promise_type> h
                 , std::shared_ptr<std::pair<bool, T>>& value_ptr
@@ -586,6 +593,7 @@ namespace vgjs {
 
         /**
         * \brief Coro future constructor
+        * \param[in] t Source coroutine that is moved into this coroutine
         */
         Coro(Coro<T>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})),
                                         m_value_ptr(std::exchange(t.m_value_ptr, {})),
@@ -593,6 +601,7 @@ namespace vgjs {
 
         /**
         * \brief Assignment operator
+        * \param[in] t Source coroutine that is moved into this coroutine
         */
         void operator= (Coro<T>&& t) noexcept {
             std::swap(m_coro, t.m_coro);
@@ -603,14 +612,14 @@ namespace vgjs {
         * \brief Destructor of the Coro promise.
         */
         ~Coro() noexcept {
-            if (!m_is_parent_function && m_coro) {
+            if (!m_is_parent_function && m_coro) { //destroy the promise only if the parent is a coroutine (else it would destroy itself)
                 m_coro.destroy();
             }
         }
 
         /**
-        * \brief Retrieve the promised value or std::nullopt - nonblocking
-        * \returns the promised value or std::nullopt
+        * \brief Retrieve the promised value - nonblocking
+        * \returns the promised value
         */
         std::pair<bool, T> get() noexcept {
             if (m_is_parent_function) {
@@ -674,20 +683,52 @@ namespace vgjs {
         };
 
         static Coro<>   get_return_object_on_allocation_failure();
-        job_deallocator get_deallocator() noexcept { return coro_deallocator<void>{}; };    //called for deallocation
         Coro<void>      get_return_object() noexcept;
-        void            return_void() noexcept {};
+
+        /**
+        * \returns a deallocator, used only if program ends.
+        */
+        job_deallocator get_deallocator() noexcept { return coro_deallocator<void>{}; };    //called for deallocation
+
+        /**
+        * \brief Return from aco_return.
+        */
+        void return_void() noexcept {};
+
+        /**
+        * \brief Await a co_yield.
+        * \returns a yield_awaiter.
+        */
         yield_awaiter<void> yield_value() noexcept { return {}; };
 
+        /**
+        * \brief Called by co_await to create an awaitable for tuples of vectors of coroutines or functions.
+        * \param[in] tuple The tuple holding vectors of stuff to await.
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
         template<typename... Ts>
         awaitable_tuple<void, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
 
+        /**
+        * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
+        * \param[in] coro The coroutine, Function or vector to await.
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
         template<typename U>
-        awaitable_coro<void, U>      await_transform(U&& coro) noexcept { return { coro }; };
+        awaitable_coro<void, U> await_transform(U&& coro) noexcept { return { coro }; };
 
-        awaitable_resume_on<void>    await_transform(int thread_index) noexcept { return (int32_t)thread_index; };
+        /**.
+        * \brief Called by co_await to create an awaitable for migrating to another thread.
+        * \param[in] thread_index The thread to migrate to.
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
+        awaitable_resume_on<void> await_transform(int thread_index) noexcept { return (int32_t)thread_index; };
 
-        final_awaiter<void>          final_suspend() noexcept { return {}; };
+        /**
+        * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
+        * \returns the final awaiter.
+        */
+        final_awaiter<void> final_suspend() noexcept { return {}; };
     };
 
 
@@ -697,7 +738,7 @@ namespace vgjs {
     template<>
     class Coro<void> : public Coro_base {
     protected:
-        bool m_is_parent_function;
+        bool m_is_parent_function;      ///<If true then the parent is a function or nullptr, if false the parent is a coroutine
 
     public:
         using promise_type = Coro_promise<void>;

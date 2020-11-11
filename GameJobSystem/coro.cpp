@@ -175,7 +175,7 @@ namespace coro {
 
     Coro<float> coroTest1(int i) {
         //std::cout << "Before coroTest1() " << std::endl;
-        //co_await 1;
+        co_await 1;
 
         co_await coroTest2(i);
 
