@@ -17,7 +17,7 @@ namespace func {
 
     using namespace vgjs;
 
-    auto g_global_mem5 = n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 100000, .largest_required_pool_block = 1 << 22 }, n_pmr::new_delete_resource());
+    auto g_global_mem5 = ::n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 100000, .largest_required_pool_block = 1 << 22 }, n_pmr::new_delete_resource());
 
     std::atomic<uint32_t> cnt = 0;
 

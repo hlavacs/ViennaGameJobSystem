@@ -1,5 +1,5 @@
 #ifndef VECORO_H
-#define VECORO_h
+#define VECORO_H
 
 
 
@@ -56,7 +56,7 @@ namespace vgjs {
     struct is_pmr_vector : std::false_type {};
 
     template<typename T>
-    struct is_pmr_vector<std::pmr::vector<T>> : std::true_type {};
+    struct is_pmr_vector<n_pmr::vector<T>> : std::true_type {};
 
     //---------------------------------------------------------------------------------------------------
     //schedule functions for coroutines
@@ -135,7 +135,7 @@ namespace vgjs {
         * \brief Awaiter for awaiting tuples of vectors
         */
         struct awaiter : suspend_always {
-            std::tuple<std::pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
+            std::tuple<n_pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
             std::size_t                          m_number = 0;   ///<total number of all new children to schedule
 
             /**
@@ -155,7 +155,7 @@ namespace vgjs {
             * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
             */
             void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
+                auto g = [&, this]<typename T>(n_pmr::vector<T> & vec) {
                     schedule(vec, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
                     m_number = 0;                                  //after this always 0
                 };
@@ -171,16 +171,16 @@ namespace vgjs {
             * \brief Awaiter constructor
             * \parameter[in] children Reference to a tuple of vectors of children that should be awaited
             */
-            awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
+            awaiter(std::tuple<n_pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
         };
 
-        std::tuple<std::pmr::vector<Ts>...>& m_tuple;      ///<vector with all children to start
+        std::tuple<n_pmr::vector<Ts>...>& m_tuple;      ///<vector with all children to start
 
         /**
         * \brief Awaitable constructor
         * \parameter[in] children Reference to a tuple of vectors of children that should be awaited
         */
-        awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
+        awaitable_tuple(std::tuple<n_pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
 
         /**
         * \brief co_await operator is defined for this awaitable, and results in the awaiter
@@ -412,10 +412,10 @@ namespace vgjs {
 
         //operators for allocating and deallocating memory, implementations follow later in this file
         template<typename... Args>
-        void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
+        void* operator new(std::size_t sz, std::allocator_arg_t, n_pmr::memory_resource* mr, Args&&... args) noexcept;
 
         template<typename Class, typename... Args>
-        void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
+        void* operator new(std::size_t sz, Class, std::allocator_arg_t, n_pmr::memory_resource* mr, Args&&... args) noexcept;
 
         template<typename Class, typename... Args>
         void* operator new(std::size_t sz, Class, Args&&... args) noexcept;
@@ -493,7 +493,7 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename... Ts>
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<n_pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
 
         /**
         * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
@@ -707,7 +707,7 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename... Ts>
-        awaitable_tuple<void, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
+        awaitable_tuple<void, Ts...> await_transform(std::tuple<n_pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
 
         /**
         * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
@@ -902,14 +902,14 @@ namespace vgjs {
     * \returns a pointer to the newly allocated promise.
     */
     template<typename... Args>
-    inline void* Coro_promise_base::operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
+    inline void* Coro_promise_base::operator new(std::size_t sz, std::allocator_arg_t, n_pmr::memory_resource* mr, Args&&... args) noexcept {
         //std::cout << "Coro new " << sz << "\n";
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
+        auto allocatorOffset = (sz + alignof(n_pmr::memory_resource*) - 1) & ~(alignof(n_pmr::memory_resource*) - 1);
         char* ptr = (char*)mr->allocate(allocatorOffset + sizeof(mr));
         if (ptr == nullptr) {
             std::terminate();
         }
-        *reinterpret_cast<std::pmr::memory_resource**>(ptr + allocatorOffset) = mr;
+        *reinterpret_cast<n_pmr::memory_resource**>(ptr + allocatorOffset) = mr;
         return ptr;
     }
 
@@ -927,7 +927,7 @@ namespace vgjs {
     * \returns a pointer to the newly allocated promise.
     */
     template<typename Class, typename... Args>
-    inline void* Coro_promise_base::operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
+    inline void* Coro_promise_base::operator new(std::size_t sz, Class, std::allocator_arg_t, n_pmr::memory_resource* mr, Args&&... args) noexcept {
         return operator new(sz, std::allocator_arg, mr, args...);
     }
 
@@ -940,7 +940,7 @@ namespace vgjs {
     */
     template<typename Class, typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Class, Args&&... args) noexcept {
-        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
+        return operator new(sz, std::allocator_arg, n_pmr::new_delete_resource(), args...);
     }
 
     /**
@@ -951,7 +951,7 @@ namespace vgjs {
     */
     template<typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Args&&... args) noexcept {
-        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
+        return operator new(sz, std::allocator_arg, n_pmr::new_delete_resource(), args...);
     }
 
     /**
@@ -961,9 +961,9 @@ namespace vgjs {
     */
     inline void Coro_promise_base::operator delete(void* ptr, std::size_t sz) noexcept {
         //std::cout << "Coro delete " << sz << "\n";
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-        auto allocator = (std::pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
-        (*allocator)->deallocate(ptr, allocatorOffset + sizeof(std::pmr::memory_resource*));
+        auto allocatorOffset = (sz + alignof(n_pmr::memory_resource*) - 1) & ~(alignof(n_pmr::memory_resource*) - 1);
+        auto allocator = (n_pmr::memory_resource**)((char*)(ptr)+allocatorOffset);
+        (*allocator)->deallocate(ptr, allocatorOffset + sizeof(n_pmr::memory_resource*));
     }
 
     //---------------------------------------------------------------------------------------------------

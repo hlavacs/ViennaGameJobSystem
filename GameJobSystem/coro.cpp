@@ -19,7 +19,7 @@ namespace coro {
 
     using namespace vgjs;
 
-    auto g_global_mem4 = n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, n_pmr::new_delete_resource());
+    auto g_global_mem4 = n_pmr::synchronized_pool_resource( { .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, n_pmr::new_delete_resource());
 
     class CoroClass {
         int number = 1;

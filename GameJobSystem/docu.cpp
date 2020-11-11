@@ -17,7 +17,7 @@ namespace docu {
 
     using namespace vgjs;
 
-    auto g_global_mem = n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 10 }, n_pmr::new_delete_resource());
+    auto g_global_mem = ::n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 10 }, n_pmr::new_delete_resource());
 
     namespace docu1 {
         void printData(int i) {

@@ -1,19 +1,18 @@
 In file included from coro.cpp:12:
+In file included from ./VEGameJobSystem.h:43:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/coroutine:295:2: error: "the coroutine header requires -fcoroutines"
+#error "the coroutine header requires -fcoroutines"
+ ^
+In file included from coro.cpp:12:
 ./VEGameJobSystem.h:429:9: warning: explicitly defaulted move constructor is implicitly deleted [-Wdefaulted-function-deleted]
         JobSystem(JobSystem&&) = default;                                       // but movable
         ^
 ./VEGameJobSystem.h:314:47: note: move constructor of 'JobSystem' is implicitly deleted because field 'm_thread_count' has a deleted move constructor
         std::atomic<uint32_t>                               m_thread_count = 0;     ///<number of threads in the pool
                                                             ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1643:7: note: copy constructor of 'atomic<unsigned int>' is implicitly deleted because base class '__atomic_base<unsigned int>' has a deleted copy constructor
-    : public __atomic_base<_Tp>
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/atomic:782:7: note: 'atomic' has been explicitly marked deleted here
+      atomic(const atomic&) = delete;
       ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1562:7: note: copy constructor of '__atomic_base<unsigned int, true>' is implicitly deleted because base class '__atomic_base<unsigned int, false>' has a deleted copy constructor
-    : public __atomic_base<_Tp, false>
-      ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1542:5: note: '__atomic_base' has been explicitly marked deleted here
-    __atomic_base(const __atomic_base&) = delete;
-    ^
 In file included from coro.cpp:12:
 ./VEGameJobSystem.h:430:20: warning: explicitly defaulted move assignment operator is implicitly deleted [-Wdefaulted-function-deleted]
         JobSystem& operator=(JobSystem&&) = default;
@@ -22,216 +21,67 @@ In file included from coro.cpp:12:
         const uint32_t                              c_queue_capacity = 100; ///<save at most N Jobs for recycling
                                                     ^
 In file included from coro.cpp:13:
-./VECoro.h:59:26: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-    struct is_pmr_vector<std::pmr::vector<T>> : std::true_type {};
-                         ^~~~~~~~
-                         std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:138:24: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-            std::tuple<std::pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
-                       ^~~~~~~~
-                       std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:174:32: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-            awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-                               ^~~~~~~~
-                               std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:177:20: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        std::tuple<std::pmr::vector<Ts>...>& m_tuple;      ///<vector with all children to start
-                   ^~~~~~~~
-                   std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:183:36: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-                                   ^~~~~~~~
-                                   std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:158:48: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-                auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
-                                               ^~~~~~~~
-                                               std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:415:66: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
-                                                                 ^~~~~~~~
-                                                                 std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:418:73: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
-                                                                        ^~~~~~~~
-                                                                        std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:496:62: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
-                                                             ^~~~~~~~
-                                                             std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:710:65: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        awaitable_tuple<void, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
-                                                                ^~~~~~~~
-                                                                std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:905:88: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-    inline void* Coro_promise_base::operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-                                                                                       ^~~~~~~~
-                                                                                       std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:907:46: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                             ^~~~~~~~
-                                             std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:907:91: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                                                                          ^~~~~~~~
-                                                                                          std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:912:27: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        *reinterpret_cast<std::pmr::memory_resource**>(ptr + allocatorOffset) = mr;
-                          ^~~~~~~~
-                          std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:930:95: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-    inline void* Coro_promise_base::operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-                                                                                              ^~~~~~~~
-                                                                                              std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:943:53: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
-                                                    ^~~~~~~~
-                                                    std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:954:53: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
-                                                    ^~~~~~~~
-                                                    std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:964:46: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                             ^~~~~~~~
-                                             std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from coro.cpp:13:
-./VECoro.h:964:91: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                                                                          ^~~~~~~~
-                                                                                          std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
+./VECoro.h:122:35: error: no type named 'suspend_always' in namespace 'std::experimental'
+    using suspend_always = n_exp::suspend_always;
+                           ~~~~~~~^
+./VECoro.h:137:26: error: expected class name
+        struct awaiter : suspend_always {
+                         ^
+./VECoro.h:157:39: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                               ~~~~~~~^
+./VECoro.h:204:26: error: expected class name
+        struct awaiter : suspend_always {
+                         ^
+./VECoro.h:221:39: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                               ~~~~~~~^
+./VECoro.h:254:26: error: expected class name
+        struct awaiter : suspend_always {
+                         ^
+./VECoro.h:268:39: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                               ~~~~~~~^
+./VECoro.h:302:35: error: expected class name
+    struct yield_awaiter : public suspend_always {
+                                  ^
+./VECoro.h:307:35: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        void await_suspend(n_exp::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+                           ~~~~~~~^
+./VECoro.h:337:35: error: expected class name
+    struct final_awaiter : public suspend_always {
+                                  ^
+./VECoro.h:342:35: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        bool await_suspend(n_exp::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+                           ~~~~~~~^
+./VECoro.h:378:16: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        n_exp::coroutine_handle<> m_coro;   ///<handle of the coroutine
+        ~~~~~~~^
+./VECoro.h:387:43: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        explicit Coro_promise_base(n_exp::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+                                   ~~~~~~~^
+./VECoro.h:397:9: error: unknown type name 'suspend_always'
+        suspend_always initial_suspend() noexcept { return {}; };
+        ^
+./VECoro.h:452:41: error: no member named 'coroutine_handle' in namespace 'std::experimental'
+            : Coro_promise_base{ n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+                                 ~~~~~~~^
+./VECoro.h:452:73: error: expected '(' for function-style cast or type construction
+            : Coro_promise_base{ n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+                                                         ~~~~~~~~~~~~~~~^
+./VECoro.h:452:76: error: no member named 'from_promise' in the global namespace
+            : Coro_promise_base{ n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+                                                                         ~~^
+./VECoro.h:571:16: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        n_exp::coroutine_handle<promise_type> m_coro;       ///<handle to Coro promise
+        ~~~~~~~^
 fatal error: too many errors emitted, stopping now [-ferror-limit=]
 2 warnings and 20 errors generated.
+In file included from docu.cpp:10:
+In file included from ./VEGameJobSystem.h:43:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/coroutine:295:2: error: "the coroutine header requires -fcoroutines"
+#error "the coroutine header requires -fcoroutines"
+ ^
 In file included from docu.cpp:10:
 ./VEGameJobSystem.h:429:9: warning: explicitly defaulted move constructor is implicitly deleted [-Wdefaulted-function-deleted]
         JobSystem(JobSystem&&) = default;                                       // but movable
@@ -239,15 +89,9 @@ In file included from docu.cpp:10:
 ./VEGameJobSystem.h:314:47: note: move constructor of 'JobSystem' is implicitly deleted because field 'm_thread_count' has a deleted move constructor
         std::atomic<uint32_t>                               m_thread_count = 0;     ///<number of threads in the pool
                                                             ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1643:7: note: copy constructor of 'atomic<unsigned int>' is implicitly deleted because base class '__atomic_base<unsigned int>' has a deleted copy constructor
-    : public __atomic_base<_Tp>
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/atomic:782:7: note: 'atomic' has been explicitly marked deleted here
+      atomic(const atomic&) = delete;
       ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1562:7: note: copy constructor of '__atomic_base<unsigned int, true>' is implicitly deleted because base class '__atomic_base<unsigned int, false>' has a deleted copy constructor
-    : public __atomic_base<_Tp, false>
-      ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1542:5: note: '__atomic_base' has been explicitly marked deleted here
-    __atomic_base(const __atomic_base&) = delete;
-    ^
 In file included from docu.cpp:10:
 ./VEGameJobSystem.h:430:20: warning: explicitly defaulted move assignment operator is implicitly deleted [-Wdefaulted-function-deleted]
         JobSystem& operator=(JobSystem&&) = default;
@@ -256,216 +100,67 @@ In file included from docu.cpp:10:
         const uint32_t                              c_queue_capacity = 100; ///<save at most N Jobs for recycling
                                                     ^
 In file included from docu.cpp:11:
-./VECoro.h:59:26: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-    struct is_pmr_vector<std::pmr::vector<T>> : std::true_type {};
-                         ^~~~~~~~
-                         std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:138:24: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-            std::tuple<std::pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
-                       ^~~~~~~~
-                       std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:174:32: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-            awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-                               ^~~~~~~~
-                               std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:177:20: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        std::tuple<std::pmr::vector<Ts>...>& m_tuple;      ///<vector with all children to start
-                   ^~~~~~~~
-                   std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:183:36: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-                                   ^~~~~~~~
-                                   std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:158:48: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-                auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
-                                               ^~~~~~~~
-                                               std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:415:66: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
-                                                                 ^~~~~~~~
-                                                                 std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:418:73: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
-                                                                        ^~~~~~~~
-                                                                        std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:496:62: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
-                                                             ^~~~~~~~
-                                                             std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:710:65: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        awaitable_tuple<void, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
-                                                                ^~~~~~~~
-                                                                std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:905:88: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-    inline void* Coro_promise_base::operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-                                                                                       ^~~~~~~~
-                                                                                       std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:907:46: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                             ^~~~~~~~
-                                             std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:907:91: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                                                                          ^~~~~~~~
-                                                                                          std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:912:27: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        *reinterpret_cast<std::pmr::memory_resource**>(ptr + allocatorOffset) = mr;
-                          ^~~~~~~~
-                          std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:930:95: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-    inline void* Coro_promise_base::operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-                                                                                              ^~~~~~~~
-                                                                                              std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:943:53: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
-                                                    ^~~~~~~~
-                                                    std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:954:53: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
-                                                    ^~~~~~~~
-                                                    std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:964:46: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                             ^~~~~~~~
-                                             std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from docu.cpp:11:
-./VECoro.h:964:91: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                                                                          ^~~~~~~~
-                                                                                          std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
+./VECoro.h:122:35: error: no type named 'suspend_always' in namespace 'std::experimental'
+    using suspend_always = n_exp::suspend_always;
+                           ~~~~~~~^
+./VECoro.h:137:26: error: expected class name
+        struct awaiter : suspend_always {
+                         ^
+./VECoro.h:157:39: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                               ~~~~~~~^
+./VECoro.h:204:26: error: expected class name
+        struct awaiter : suspend_always {
+                         ^
+./VECoro.h:221:39: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                               ~~~~~~~^
+./VECoro.h:254:26: error: expected class name
+        struct awaiter : suspend_always {
+                         ^
+./VECoro.h:268:39: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                               ~~~~~~~^
+./VECoro.h:302:35: error: expected class name
+    struct yield_awaiter : public suspend_always {
+                                  ^
+./VECoro.h:307:35: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        void await_suspend(n_exp::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+                           ~~~~~~~^
+./VECoro.h:337:35: error: expected class name
+    struct final_awaiter : public suspend_always {
+                                  ^
+./VECoro.h:342:35: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        bool await_suspend(n_exp::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+                           ~~~~~~~^
+./VECoro.h:378:16: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        n_exp::coroutine_handle<> m_coro;   ///<handle of the coroutine
+        ~~~~~~~^
+./VECoro.h:387:43: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        explicit Coro_promise_base(n_exp::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+                                   ~~~~~~~^
+./VECoro.h:397:9: error: unknown type name 'suspend_always'
+        suspend_always initial_suspend() noexcept { return {}; };
+        ^
+./VECoro.h:452:41: error: no member named 'coroutine_handle' in namespace 'std::experimental'
+            : Coro_promise_base{ n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+                                 ~~~~~~~^
+./VECoro.h:452:73: error: expected '(' for function-style cast or type construction
+            : Coro_promise_base{ n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+                                                         ~~~~~~~~~~~~~~~^
+./VECoro.h:452:76: error: no member named 'from_promise' in the global namespace
+            : Coro_promise_base{ n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+                                                                         ~~^
+./VECoro.h:571:16: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        n_exp::coroutine_handle<promise_type> m_coro;       ///<handle to Coro promise
+        ~~~~~~~^
 fatal error: too many errors emitted, stopping now [-ferror-limit=]
 2 warnings and 20 errors generated.
+In file included from func.cpp:10:
+In file included from ./VEGameJobSystem.h:43:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/coroutine:295:2: error: "the coroutine header requires -fcoroutines"
+#error "the coroutine header requires -fcoroutines"
+ ^
 In file included from func.cpp:10:
 ./VEGameJobSystem.h:429:9: warning: explicitly defaulted move constructor is implicitly deleted [-Wdefaulted-function-deleted]
         JobSystem(JobSystem&&) = default;                                       // but movable
@@ -473,15 +168,9 @@ In file included from func.cpp:10:
 ./VEGameJobSystem.h:314:47: note: move constructor of 'JobSystem' is implicitly deleted because field 'm_thread_count' has a deleted move constructor
         std::atomic<uint32_t>                               m_thread_count = 0;     ///<number of threads in the pool
                                                             ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1643:7: note: copy constructor of 'atomic<unsigned int>' is implicitly deleted because base class '__atomic_base<unsigned int>' has a deleted copy constructor
-    : public __atomic_base<_Tp>
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/atomic:782:7: note: 'atomic' has been explicitly marked deleted here
+      atomic(const atomic&) = delete;
       ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1562:7: note: copy constructor of '__atomic_base<unsigned int, true>' is implicitly deleted because base class '__atomic_base<unsigned int, false>' has a deleted copy constructor
-    : public __atomic_base<_Tp, false>
-      ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1542:5: note: '__atomic_base' has been explicitly marked deleted here
-    __atomic_base(const __atomic_base&) = delete;
-    ^
 In file included from func.cpp:10:
 ./VEGameJobSystem.h:430:20: warning: explicitly defaulted move assignment operator is implicitly deleted [-Wdefaulted-function-deleted]
         JobSystem& operator=(JobSystem&&) = default;
@@ -489,34 +178,38 @@ In file included from func.cpp:10:
 ./VEGameJobSystem.h:309:53: note: move assignment operator of 'JobSystem' is implicitly deleted because field 'c_queue_capacity' is of const-qualified type 'const uint32_t' (aka 'const unsigned int')
         const uint32_t                              c_queue_capacity = 100; ///<save at most N Jobs for recycling
                                                     ^
-func.cpp:20:33: error: no member named 'synchronized_pool_resource' in namespace 'std::experimental::fundamentals_v1::pmr'
-    auto g_global_mem5 = n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 100000, .largest_required_pool_block = 1 << 22 }, n_pmr::new_delete_resource());
-                         ~~~~~~~^
+func.cpp:20:35: error: no member named 'synchronized_pool_resource' in namespace 'std::experimental::fundamentals_v2::pmr'
+    auto g_global_mem5 = ::n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 100000, .largest_required_pool_block = 1 << 22 }, n_pmr::new_delete_resource());
+                         ~~~~~~~~~^
+2 warnings and 2 errors generated.
+In file included from main.cpp:10:
+In file included from ./VEGameJobSystem.h:43:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/coroutine:295:2: error: "the coroutine header requires -fcoroutines"
+#error "the coroutine header requires -fcoroutines"
+ ^
+In file included from main.cpp:10:
+./VEGameJobSystem.h:429:9: warning: explicitly defaulted move constructor is implicitly deleted [-Wdefaulted-function-deleted]
+        JobSystem(JobSystem&&) = default;                                       // but movable
+        ^
+./VEGameJobSystem.h:314:47: note: move constructor of 'JobSystem' is implicitly deleted because field 'm_thread_count' has a deleted move constructor
+        std::atomic<uint32_t>                               m_thread_count = 0;     ///<number of threads in the pool
+                                                            ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/atomic:782:7: note: 'atomic' has been explicitly marked deleted here
+      atomic(const atomic&) = delete;
+      ^
+In file included from main.cpp:10:
+./VEGameJobSystem.h:430:20: warning: explicitly defaulted move assignment operator is implicitly deleted [-Wdefaulted-function-deleted]
+        JobSystem& operator=(JobSystem&&) = default;
+                   ^
+./VEGameJobSystem.h:309:53: note: move assignment operator of 'JobSystem' is implicitly deleted because field 'c_queue_capacity' is of const-qualified type 'const uint32_t' (aka 'const unsigned int')
+        const uint32_t                              c_queue_capacity = 100; ///<save at most N Jobs for recycling
+                                                    ^
 2 warnings and 1 error generated.
-In file included from main.cpp:10:
-./VEGameJobSystem.h:429:9: warning: explicitly defaulted move constructor is implicitly deleted [-Wdefaulted-function-deleted]
-        JobSystem(JobSystem&&) = default;                                       // but movable
-        ^
-./VEGameJobSystem.h:314:47: note: move constructor of 'JobSystem' is implicitly deleted because field 'm_thread_count' has a deleted move constructor
-        std::atomic<uint32_t>                               m_thread_count = 0;     ///<number of threads in the pool
-                                                            ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1643:7: note: copy constructor of 'atomic<unsigned int>' is implicitly deleted because base class '__atomic_base<unsigned int>' has a deleted copy constructor
-    : public __atomic_base<_Tp>
-      ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1562:7: note: copy constructor of '__atomic_base<unsigned int, true>' is implicitly deleted because base class '__atomic_base<unsigned int, false>' has a deleted copy constructor
-    : public __atomic_base<_Tp, false>
-      ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1542:5: note: '__atomic_base' has been explicitly marked deleted here
-    __atomic_base(const __atomic_base&) = delete;
-    ^
-In file included from main.cpp:10:
-./VEGameJobSystem.h:430:20: warning: explicitly defaulted move assignment operator is implicitly deleted [-Wdefaulted-function-deleted]
-        JobSystem& operator=(JobSystem&&) = default;
-                   ^
-./VEGameJobSystem.h:309:53: note: move assignment operator of 'JobSystem' is implicitly deleted because field 'c_queue_capacity' is of const-qualified type 'const uint32_t' (aka 'const unsigned int')
-        const uint32_t                              c_queue_capacity = 100; ///<save at most N Jobs for recycling
-                                                    ^
-2 warnings generated.
+In file included from mixed.cpp:9:
+In file included from ./VEGameJobSystem.h:43:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/coroutine:295:2: error: "the coroutine header requires -fcoroutines"
+#error "the coroutine header requires -fcoroutines"
+ ^
 In file included from mixed.cpp:9:
 ./VEGameJobSystem.h:429:9: warning: explicitly defaulted move constructor is implicitly deleted [-Wdefaulted-function-deleted]
         JobSystem(JobSystem&&) = default;                                       // but movable
@@ -524,15 +217,9 @@ In file included from mixed.cpp:9:
 ./VEGameJobSystem.h:314:47: note: move constructor of 'JobSystem' is implicitly deleted because field 'm_thread_count' has a deleted move constructor
         std::atomic<uint32_t>                               m_thread_count = 0;     ///<number of threads in the pool
                                                             ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1643:7: note: copy constructor of 'atomic<unsigned int>' is implicitly deleted because base class '__atomic_base<unsigned int>' has a deleted copy constructor
-    : public __atomic_base<_Tp>
+/usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/atomic:782:7: note: 'atomic' has been explicitly marked deleted here
+      atomic(const atomic&) = delete;
       ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1562:7: note: copy constructor of '__atomic_base<unsigned int, true>' is implicitly deleted because base class '__atomic_base<unsigned int, false>' has a deleted copy constructor
-    : public __atomic_base<_Tp, false>
-      ^
-/usr/lib/llvm-10/bin/../include/c++/v1/atomic:1542:5: note: '__atomic_base' has been explicitly marked deleted here
-    __atomic_base(const __atomic_base&) = delete;
-    ^
 In file included from mixed.cpp:9:
 ./VEGameJobSystem.h:430:20: warning: explicitly defaulted move assignment operator is implicitly deleted [-Wdefaulted-function-deleted]
         JobSystem& operator=(JobSystem&&) = default;
@@ -541,213 +228,59 @@ In file included from mixed.cpp:9:
         const uint32_t                              c_queue_capacity = 100; ///<save at most N Jobs for recycling
                                                     ^
 In file included from mixed.cpp:10:
-./VECoro.h:59:26: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-    struct is_pmr_vector<std::pmr::vector<T>> : std::true_type {};
-                         ^~~~~~~~
-                         std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:138:24: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-            std::tuple<std::pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
-                       ^~~~~~~~
-                       std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:174:32: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-            awaiter(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-                               ^~~~~~~~
-                               std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:177:20: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        std::tuple<std::pmr::vector<Ts>...>& m_tuple;      ///<vector with all children to start
-                   ^~~~~~~~
-                   std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:183:36: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        awaitable_tuple(std::tuple<std::pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-                                   ^~~~~~~~
-                                   std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:158:48: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-                auto g = [&, this]<typename T>(std::pmr::vector<T> & vec) {
-                                               ^~~~~~~~
-                                               std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:415:66: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        void* operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
-                                                                 ^~~~~~~~
-                                                                 std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:418:73: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        void* operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept;
-                                                                        ^~~~~~~~
-                                                                        std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:496:62: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
-                                                             ^~~~~~~~
-                                                             std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:710:65: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        awaitable_tuple<void, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
-                                                                ^~~~~~~~
-                                                                std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:905:88: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-    inline void* Coro_promise_base::operator new(std::size_t sz, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-                                                                                       ^~~~~~~~
-                                                                                       std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:907:46: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                             ^~~~~~~~
-                                             std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:907:91: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                                                                          ^~~~~~~~
-                                                                                          std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:912:27: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        *reinterpret_cast<std::pmr::memory_resource**>(ptr + allocatorOffset) = mr;
-                          ^~~~~~~~
-                          std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:930:95: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-    inline void* Coro_promise_base::operator new(std::size_t sz, Class, std::allocator_arg_t, std::pmr::memory_resource* mr, Args&&... args) noexcept {
-                                                                                              ^~~~~~~~
-                                                                                              std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:943:53: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
-                                                    ^~~~~~~~
-                                                    std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:954:53: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        return operator new(sz, std::allocator_arg, std::pmr::new_delete_resource(), args...);
-                                                    ^~~~~~~~
-                                                    std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:964:46: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                             ^~~~~~~~
-                                             std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
-In file included from mixed.cpp:10:
-./VECoro.h:964:91: error: no member named 'pmr' in namespace 'std'; did you mean 'std::experimental::pmr'?
-        auto allocatorOffset = (sz + alignof(std::pmr::memory_resource*) - 1) & ~(alignof(std::pmr::memory_resource*) - 1);
-                                                                                          ^~~~~~~~
-                                                                                          std::experimental::pmr
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/vector:39:1: note: 'std::experimental::pmr' declared here
-_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR
-^
-/usr/lib/llvm-10/bin/../include/c++/v1/experimental/__config:31:81: note: expanded from macro '_LIBCPP_BEGIN_NAMESPACE_LFTS_PMR'
-#define _LIBCPP_BEGIN_NAMESPACE_LFTS_PMR _LIBCPP_BEGIN_NAMESPACE_LFTS namespace pmr {
-                                                                                ^
+./VECoro.h:122:35: error: no type named 'suspend_always' in namespace 'std::experimental'
+    using suspend_always = n_exp::suspend_always;
+                           ~~~~~~~^
+./VECoro.h:137:26: error: expected class name
+        struct awaiter : suspend_always {
+                         ^
+./VECoro.h:157:39: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                               ~~~~~~~^
+./VECoro.h:204:26: error: expected class name
+        struct awaiter : suspend_always {
+                         ^
+./VECoro.h:221:39: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                               ~~~~~~~^
+./VECoro.h:254:26: error: expected class name
+        struct awaiter : suspend_always {
+                         ^
+./VECoro.h:268:39: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                               ~~~~~~~^
+./VECoro.h:302:35: error: expected class name
+    struct yield_awaiter : public suspend_always {
+                                  ^
+./VECoro.h:307:35: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        void await_suspend(n_exp::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+                           ~~~~~~~^
+./VECoro.h:337:35: error: expected class name
+    struct final_awaiter : public suspend_always {
+                                  ^
+./VECoro.h:342:35: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        bool await_suspend(n_exp::coroutine_handle<Coro_promise<U>> h) noexcept { //called after suspending
+                           ~~~~~~~^
+./VECoro.h:378:16: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        n_exp::coroutine_handle<> m_coro;   ///<handle of the coroutine
+        ~~~~~~~^
+./VECoro.h:387:43: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        explicit Coro_promise_base(n_exp::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+                                   ~~~~~~~^
+./VECoro.h:397:9: error: unknown type name 'suspend_always'
+        suspend_always initial_suspend() noexcept { return {}; };
+        ^
+./VECoro.h:452:41: error: no member named 'coroutine_handle' in namespace 'std::experimental'
+            : Coro_promise_base{ n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+                                 ~~~~~~~^
+./VECoro.h:452:73: error: expected '(' for function-style cast or type construction
+            : Coro_promise_base{ n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+                                                         ~~~~~~~~~~~~~~~^
+./VECoro.h:452:76: error: no member named 'from_promise' in the global namespace
+            : Coro_promise_base{ n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this) } {
+                                                                         ~~^
+./VECoro.h:571:16: error: no template named 'coroutine_handle' in namespace 'std::experimental'
+        n_exp::coroutine_handle<promise_type> m_coro;       ///<handle to Coro promise
+        ~~~~~~~^
 fatal error: too many errors emitted, stopping now [-ferror-limit=]
 2 warnings and 20 errors generated.
