@@ -60,8 +60,9 @@ namespace vgjs {
     class JobSystem;
 
     bool is_logging();
-    void log_data(  std::chrono::high_resolution_clock::time_point& t1, std::chrono::high_resolution_clock::time_point& t2,
-                    int32_t exec_thread, bool finished, int32_t type, int32_t id);
+    void log_data(  std::chrono::high_resolution_clock::time_point& t1
+                    , std::chrono::high_resolution_clock::time_point& t2
+                    , int32_t exec_thread, bool finished, int32_t type, int32_t id);
     void save_log_file();
 
 
@@ -308,21 +309,21 @@ namespace vgjs {
         const uint32_t                              c_queue_capacity = 100; ///<save at most N Jobs for recycling
 
     private:
-        n_pmr::memory_resource*                  m_mr;                   ///<use to allocate/deallocate Jobs
-        std::vector<std::thread>	                m_threads;	            ///<array of thread structures
-        std::atomic<uint32_t>   		            m_thread_count = 0;     ///<number of threads in the pool
-        std::atomic<bool>                           m_terminated = false;   ///<flag set true when the last thread has exited
-        uint32_t									m_start_idx = 0;        ///<idx of first thread that is created
-        static inline thread_local  int32_t		    m_thread_index = -1;    ///<each thread has its own number
-        std::atomic<bool>							m_terminate = false;	///<Flag for terminating the pool
-        static inline thread_local Job_base*        m_current_job = nullptr;///<Pointer to the current job of this thread0
-        std::vector<JobQueue<Job_base>>             m_global_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
-        std::vector<JobQueue<Job_base>>             m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
-        JobQueue<Job>                               m_recycle;              ///<save old jobs for recycling
-        JobQueue<Job>                               m_delete;               ///<save old jobs for recycling
+        n_pmr::memory_resource*                 m_mr;                   ///<use to allocate/deallocate Jobs
+        std::vector<std::thread>	            m_threads;	            ///<array of thread structures
+        std::atomic<uint32_t>   		        m_thread_count = 0;     ///<number of threads in the pool
+        std::atomic<bool>                       m_terminated = false;   ///<flag set true when the last thread has exited
+        uint32_t								m_start_idx = 0;        ///<idx of first thread that is created
+        static inline thread_local  int32_t		m_thread_index = -1;    ///<each thread has its own number
+        std::atomic<bool>						m_terminate = false;	///<Flag for terminating the pool
+        static inline thread_local Job_base*    m_current_job = nullptr;///<Pointer to the current job of this thread0
+        std::vector<JobQueue<Job_base>>         m_global_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
+        std::vector<JobQueue<Job_base>>         m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
+        JobQueue<Job>                           m_recycle;              ///<save old jobs for recycling
+        JobQueue<Job>                           m_delete;               ///<save old jobs for recycling
         n_pmr::vector<n_pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
-        bool                                        m_logging = false;      ///< if true then jobs will be logged
-        std::map<int32_t, std::string>              m_types;                ///<map types to a string for logging
+        bool                                    m_logging = false;      ///< if true then jobs will be logged
+        std::map<int32_t, std::string>          m_types;                ///<map types to a string for logging
         std::chrono::time_point<std::chrono::high_resolution_clock> m_start_time = std::chrono::high_resolution_clock::now();	//time when program started
 
         /**
@@ -410,7 +411,9 @@ namespace vgjs {
         * \param[in] mr The memory resource to use for allocating Jobs.
         * \returns a pointer to the JobSystem instance.
         */
-        static JobSystem& instance(uint32_t threadCount = 0, uint32_t start_idx = 0, n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept {
+        static JobSystem& instance( uint32_t threadCount = 0
+                                    , uint32_t start_idx = 0
+                                    , n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept {
             static JobSystem instance(threadCount, start_idx, mr); //thread safe init guaranteed - Meyer's Singleton
             return instance;
         };
@@ -914,7 +917,6 @@ namespace vgjs {
         JobSystem::instance().clear_logs();
     }
 
-
     /**
     * \brief Store a job run in the log data
     * 
@@ -946,8 +948,15 @@ namespace vgjs {
     * \param[in] name Type name of the job.
     * \param[in] args Indicates wehther the job has finshed.
     */
-    inline void save_job(  std::ofstream& out, std::string cat, uint64_t pid, uint64_t tid,
-                           uint64_t ts, int64_t dur, std::string ph, std::string name, std::string args) {
+    inline void save_job(   std::ofstream& out
+                            , std::string cat
+                            , uint64_t pid
+                            , uint64_t tid
+                            , uint64_t ts
+                            , int64_t dur
+                            , std::string ph
+                            , std::string name
+                            , std::string args) {
 
         std::stringstream time;
         time.precision(15);
