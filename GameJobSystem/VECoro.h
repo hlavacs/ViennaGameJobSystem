@@ -185,15 +185,33 @@ namespace vgjs {
         struct awaiter : suspend_always {
             T& m_child;                      //child/children
 
-            bool await_ready() noexcept;
-            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept;
+            /**
+            * \brief If m_child is a vector this makes sure that there are children in the vector
+            */
+            bool await_ready() noexcept {                   //suspend only if there are children to create
+                if constexpr (is_pmr_vector<T>::value) {
+                    return m_child.empty();
+                }
+                return false;
+            }
+
+            /**
+            * \brief Forward the child to the correct version of schedule()
+            * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
+            */
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                schedule(std::forward<T>(m_child), &h.promise());  //schedule the coro, function or vector
+            }
+
             awaiter(T& child) noexcept : m_child(child) {};
         };
 
         T& m_child;                     //child/children
 
         awaitable_coro(T& child) noexcept : m_child(child) {};
-        awaiter operator co_await() noexcept;
+
+        //co_await operator is defined for this awaitable, and results in the awaiter
+        awaiter operator co_await() noexcept { return { m_child }; };
     };
 
 
@@ -494,29 +512,6 @@ namespace vgjs {
 
     //--------------------------------------------------------------------------------------------------
 
-    /**
-    * \brief If m_child is a vector this makes sure that there are children in the vector
-    */
-    template<typename PT, typename T>
-    inline bool awaitable_coro<PT, T>::awaiter::await_ready() noexcept {                   //suspend only if there are children to create
-        if constexpr (is_pmr_vector<T>::value) {
-            return m_child.empty();
-        }
-        return false;
-    }
-
-    /**
-    * \brief Forward the child to the correct version of schedule()
-    * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
-    */
-    template<typename PT, typename T>
-    inline void awaitable_coro<PT, T>::awaiter::await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-        schedule(std::forward<T>(m_child), &h.promise());  //schedule the coro, function or vector
-    }
-
-    //co_await operator is defined for this awaitable, and results in the awaiter
-    template<typename PT, typename T>
-    inline typename awaitable_coro<PT, T>::awaiter awaitable_coro<PT, T>::operator co_await() noexcept { return { m_child }; };
 
     //--------------------------------------------------------------------------------------------------
 
