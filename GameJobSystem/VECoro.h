@@ -440,8 +440,8 @@ namespace vgjs {
         template<typename F> friend class Coro;
 
     protected:
-        std::shared_ptr<std::pair<bool, T>> m_value_ptr;  //a shared view of the return value
-        std::pair<bool, T>                  m_value;
+        std::shared_ptr<std::pair<bool, T>> m_value_ptr;    ///<a shared view of the return value, use if parent is a function
+        std::pair<bool, T>                  m_value;        ///<a local storage of the value, use if parent is a coroutine
 
     public:
 
@@ -483,15 +483,34 @@ namespace vgjs {
             return {};  //return a yield_awaiter
         }
 
+        /**
+        * \brief Called by co_await to create an awaitable for tuples of vectors of coroutines or functions.
+        * \param[in] tuple The tuple holding vectors of stuff to await.
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
         template<typename... Ts>
         awaitable_tuple<T, Ts...> await_transform(std::tuple<std::pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
 
+        /**
+        * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
+        * \param[in] coro The coroutine, Function or vector to await.
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
         template<typename U>
-        awaitable_coro<T, U>      await_transform(U&& coro) noexcept { return { coro }; };
+        awaitable_coro<T, U> await_transform(U&& coro) noexcept { return { coro }; };
 
-        awaitable_resume_on<T>    await_transform(int thread_index) noexcept { return { (int32_t)thread_index}; };
+        /**.
+        * \brief Called by co_await to create an awaitable for migrating to another thread.
+        * \param[in] thread_index The thread to migrate to.
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
+        awaitable_resume_on<T> await_transform(int thread_index) noexcept { return { (int32_t)thread_index}; };
 
-        final_awaiter<T>          final_suspend() noexcept { return {}; };
+        /**
+        * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
+        * \returns the final awaiter.
+        */
+        final_awaiter<T> final_suspend() noexcept { return {}; };
     };
 
 
@@ -507,9 +526,25 @@ namespace vgjs {
         Coro_promise_base* m_promise = nullptr;
 
     public:
+        /**
+        * \brief Constructor empty
+        */
         explicit Coro_base() noexcept {};
-        explicit Coro_base(Coro_promise_base* promise) noexcept : Queuable(), m_promise(promise) {}         //constructor
+
+        /**
+        * \brief Constructor 
+        * \param[in] promise The promise corresponding to this future.
+        */
+        explicit Coro_base(Coro_promise_base* promise) noexcept : Queuable(), m_promise(promise) {};   //constructor
+        
+        /**
+        * \brief Resume the coroutine.
+        */
         bool resume() noexcept { return m_promise->resume(); };         //resume the Coro
+        
+        /**
+        * \returns a pointer to the promise of this coroutine.
+        */
         Coro_promise_base* promise() noexcept { return m_promise; };   //get the promise to use it as Job 
     };
 
@@ -525,11 +560,11 @@ namespace vgjs {
     class Coro : public Coro_base {
     public:
         using promise_type = Coro_promise<T>;
-        bool m_is_parent_function;
-        std::shared_ptr<std::pair<bool, T>> m_value_ptr;
+        bool m_is_parent_function;                          ///<if true then the parent is a function or nullptr
+        std::shared_ptr<std::pair<bool, T>> m_value_ptr;    ///<pointer to the value, use only if parent is a function or nullptr
 
     private:
-        n_exp::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
+        n_exp::coroutine_handle<promise_type> m_coro;       ///<handle to Coro promise
 
     public:
         /**
