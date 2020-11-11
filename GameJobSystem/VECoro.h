@@ -600,7 +600,7 @@ namespace vgjs {
                                         m_is_parent_function(std::exchange(t.m_is_parent_function, {})) {};
 
         /**
-        * \brief Assignment operator
+        * \brief Move operator
         * \param[in] t Source coroutine that is moved into this coroutine
         */
         void operator= (Coro<T>&& t) noexcept {
@@ -747,17 +747,36 @@ namespace vgjs {
         n_exp::coroutine_handle<promise_type> m_coro;   //handle to Coro promise
 
     public:
+        /**
+        * \brief Coro future constructor
+        */
         Coro() noexcept : Coro_base() {};
 
-        Coro(n_exp::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept 
+        /**
+        * \brief Coro future constructor
+        * \param[in] h Coroutine handle
+        * \param[in] is_parent_function Flag for using shared value pointer
+        */
+        Coro(n_exp::coroutine_handle<promise_type> coro, bool is_parent_function) noexcept
             : Coro_base(&coro.promise()), m_is_parent_function(is_parent_function), m_coro(coro) {};
 
-        Coro(Coro<void>&& t)  noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
+        /**
+        * \brief Coro future constructor
+        * \param[in] t Source coroutine that is moved into this coroutine
+        */
+        Coro(Coro<void>&& t) noexcept : Coro_base(t.m_promise), m_coro(std::exchange(t.m_coro, {})) {};
 
+        /**
+        * \brief Move operator
+        * \param[in] t Source coroutine that is moved into this coroutine
+        */
         void operator= (Coro<void>&& t) noexcept { std::swap(m_coro, t.m_coro); };
 
+        /**
+        * \brief Destructor of the Coro promise.
+        */
         ~Coro() noexcept {
-            if (!m_is_parent_function && m_coro) {
+            if (!m_is_parent_function && m_coro) { //destroy the promise only if the parent is a coroutine (else it would destroy itself)
                 m_coro.destroy();
             }
         }
@@ -791,6 +810,7 @@ namespace vgjs {
 
     /**
     * \brief This deallocator is used to destroy coro promises when the system is shut down.
+    * \param[in] job Pointer to the job (=coroutine promise) to deallocate (=destroy)
     */
     template<typename T>
     inline void coro_deallocator<T>::deallocate(Job_base* job) noexcept {    //called when the job system is destroyed
@@ -803,6 +823,7 @@ namespace vgjs {
 
     /**
     * \brief This deallocator is used to destroy coro promises when the system is shut down.
+    * \param[in] job Pointer to the job (=coroutine promise) to deallocate (=destroy)
     */
     inline void coro_deallocator<void>::deallocate(Job_base* job) noexcept {    //called when the job system is destroyed
         auto coro_promise = (Coro_promise<void>*)job;
@@ -821,16 +842,18 @@ namespace vgjs {
     * \param[in] h Handle of the coro, is used to get the promise (=Job)
     */
     inline void yield_awaiter<void>::await_suspend(n_exp::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
-        Coro_promise<void>& promise = h.promise();
+        Coro_promise<void>& promise = h.promise();                 ///<tmp pointer to promise
+        bool is_parent_function = promise.m_is_parent_function;    ///<tmp copy of flag
+        auto parent = promise.m_parent;                            ///<tmp pointer to parent
 
-        if (promise.m_parent != nullptr) {          //if there is a parent
-            if (promise.m_is_parent_function) {       //if it is a Job
-                JobSystem::instance().child_finished((Job*)promise.m_parent); //indicate that this child has finished
+        if (parent != nullptr) {          //if there is a parent
+            if (is_parent_function) {       //if it is a Job
+                JobSystem::instance().child_finished((Job*)parent); //indicate that this child has suspended
             }
             else {  //parent is a coro
-                uint32_t num = promise.m_parent->m_children.fetch_sub(1);   //one less child
-                if (num == 1) {                                             //was it the last child?
-                    JobSystem::instance().schedule(promise.m_parent);      //if last reschedule the parent coro
+                uint32_t num = parent->m_children.fetch_sub(1);   //one less child
+                if (num == 1) {                                   //was it the last child?
+                    JobSystem::instance().schedule(parent);       //if last reschedule the parent coro
                 }
             }
         }
@@ -843,18 +866,18 @@ namespace vgjs {
     * \param[in] h Handle of the coro, is used to get the promise (=Job)
     */
     inline bool final_awaiter<void>::await_suspend(n_exp::coroutine_handle<Coro_promise<void>> h) noexcept { //called after suspending
-        Coro_promise<void>& promise = h.promise();
-        bool is_parent_function = promise.m_is_parent_function;
-        auto parent = promise.m_parent;
+        Coro_promise<void>& promise = h.promise();                 ///<tmp pointer to promise
+        bool is_parent_function = promise.m_is_parent_function;    ///<tmp copy of flag
+        auto parent = promise.m_parent;                            ///<tmp pointer to parent
 
-        if (parent != nullptr) {          //if there is a parent
+        if (parent != nullptr) {            //if there is a parent
             if (is_parent_function) {       //if it is a Job
                 JobSystem::instance().child_finished((Job*)promise.m_parent);//indicate that this child has finished
             }
             else {
-                uint32_t num = parent->m_children.fetch_sub(1);        //one less child
-                if (num == 1) {                                             //was it the last child?
-                    JobSystem::instance().schedule(parent);      //if last reschedule the parent coro
+                uint32_t num = parent->m_children.fetch_sub(1);   //one less child
+                if (num == 1) {                                   //was it the last child?
+                    JobSystem::instance().schedule(parent);       //if last reschedule the parent coro
                 }
             }
         }
