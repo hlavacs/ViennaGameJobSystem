@@ -135,14 +135,14 @@ namespace vgjs {
         */
         struct awaiter : suspend_always {
             std::tuple<n_pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
-            std::size_t                          m_number = 0;   ///<total number of all new children to schedule
+            std::size_t                       m_number = 0;   ///<total number of all new children to schedule
 
             /**
             * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
             */
             bool await_ready() noexcept {                                 //suspend only if there are no Coros
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ (m_number += std::get<Idx>(m_tuple).size(), 0) ...}; //called for every tuple element
+                    m_number = (std::get<Idx>(m_tuple).size() + ...); //called for every tuple element
                     return (m_number == 0);
                 };
                 return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
@@ -160,7 +160,7 @@ namespace vgjs {
                 };
 
                 auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    std::initializer_list<int>{ (g(std::get<Idx>(m_tuple)), 0) ...}; //called for every tuple element
+                    ( g(std::get<Idx>(m_tuple)), ... ); //called for every tuple element
                 };
 
                 f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
