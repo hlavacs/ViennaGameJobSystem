@@ -30,7 +30,7 @@ namespace docu {
             }
 
             //after all children have finished, this function will be scheduled to thread 0
-            continuation(Function{ std::bind(vgjs::terminate), 0 });
+            continuation(Function{ std::bind(vgjs::terminate), thread_index{0} });
         }
     }
 
@@ -38,7 +38,7 @@ namespace docu {
     namespace docu2 {
         //the coro do_compute() uses g_global_mem to allocate its promise!
         Coro<int> do_compute(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
-            co_await 0;     //move this job to the thread with number 0
+            co_await thread_index{ 0 };     //move this job to the thread with number 0
             co_return i;    //return the promised value;
         }
 
@@ -90,7 +90,7 @@ namespace docu {
             fv.emplace_back([=]() {func(4); });
 
             n_pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
-            Function f = Function([=]() {func(5); }, -1, 0, 0); //schedule to random thread, use type 0 and id 0
+            Function f = Function([=]() {func(5); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 }); //schedule to random thread, use type 0 and id 0
             jv.push_back(f);
 
             co_await tv; //await all elements of the Coro<int> vector
