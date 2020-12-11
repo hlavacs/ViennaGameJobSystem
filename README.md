@@ -42,7 +42,7 @@ The main thread can wait for this termination by calling vgjs::wait_for_terminat
         }
 
         //after all children have finished, this function will be scheduled to thread 0
-        continuation( Function{ std::bind(vgjs::terminate), 0 } );
+        continuation( Function{ std::bind(vgjs::terminate), thread_index{0} } );
     }
 
 	void test( int N ) {
@@ -118,10 +118,10 @@ Functions can be wrapped into std::function<void(void)> (e.g. create by using st
         schedule( [](){loop(10);} ); //schedule function loop(10) to random thread
         schedule( [](){loop(10); loop(100);} ); //schedule function loop(10) and loop(100) to random thread
 
-        Function func{ [](){loop(10);}, 1, 0, 999 }; //Function to run on thread 1, with type 0 and id 999 (for logging)
+        Function func{ [](){loop(10);}, thread_index{1}, thread_type{0}, thread_id{999} }; //Function to run on thread 1, with type 0 and id 999 (for logging)
         schedule( func ); //lvalue, so do not move the function func, it can be reused afterwards
 
-        schedule( Function{ [](){loop(10);}, 2 } ); //schedule to run on thread 2, use rvalue, so move semantics apply
+        schedule( Function{ [](){loop(10);}, thread_index{2} } ); //schedule to run on thread 2, use rvalue, so move semantics apply
     }
 
 Functions scheduling other functions create a parent-child relationship. Functions are immediately scheduled to be run, schedule() can be called any number of times to start an arbitrary number of children to run in parallel.
@@ -143,7 +143,7 @@ If the parent is a coroutine then the Coro_promise\<T\> only suspends at its end
 
     //the coro do_compute() uses g_global_mem to allocate its promise!
     Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
-        co_await 0;     //move this job to the thread with number 0
+        co_await thread_index{0};     //move this job to the thread with number 0
         co_return i;    //return the promised value;
     }
 
@@ -225,7 +225,7 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
       fv.emplace_back([=]() {func(4); });
 
       std::pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
-      Function f = Function([=]() {func(5); }, -1, 0, 0); //schedule to random thread, use type 0 and id 0
+      Function f = Function([=]() {func(5); }, thread_index{}, thread_type{0}, thread_id{0}); //schedule to random thread, use type 0 and id 0
       jv.push_back(f);
 
       co_await tv; //await all elements of the Coro<int> vector
@@ -255,7 +255,7 @@ It can be seen that the co_awaits are carried out sequentially, but the function
 Coroutine futures Coro\<T\> are also "callable", and you can pass in parameters similar to the Function{} class, setting thread index, type and id:
 
     //schedule to thread 0, set type to 11 and id to 99
-    co_await func(std::allocator_arg, &g_global_mem4, 1, 10)(0,11,99) ;
+    co_await func(std::allocator_arg, &g_global_mem4, 1, 10)( thread_index{0}, thread_type{11}, thread_id{99} ) ;
 
 Coroutines can also change their thread by awaiting a thread index number:
 
@@ -263,7 +263,7 @@ Coroutines can also change their thread by awaiting a thread index number:
 
         //do something until here ...
 
-        co_await 0;             //move this job to thread 0
+        co_await thread_index{0};   //move this job to thread 0
 
         float f = i + 0.5f;     //continue on thread 0
         co_return 10.0f * i;
