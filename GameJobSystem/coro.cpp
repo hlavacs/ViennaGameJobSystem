@@ -138,8 +138,8 @@ namespace coro {
         co_await recursive2(std::allocator_arg, &g_global_mem4, 1, 10);
 
         if (printb) std::cout << "Before First FCompute 999\n";
-
-        co_await[=]() { FCompute(999); };
+         
+        co_await [=]() { FCompute(999); };
 
         if (printb) std::cout << "After First FCompute 999\n";
 

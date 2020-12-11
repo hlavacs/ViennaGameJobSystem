@@ -40,12 +40,8 @@ namespace mixed {
             //co_await compute(i)(thread_index{}, thread_type{ 5 }, thread_id{ ++pdc });
             co_await Function([=]() { printData(i - 1, i + 1); }, thread_index{}, thread_type{ i }, thread_id{ ++pdc });
             //std::cout << "After Print Data A " << i-1 << std::endl;
-            
-            std::function<void(void)> ff = std::bind( printData, i-1, i+1 );
-
-            co_await ff;
-
-            //co_await Function([=]() {printData(i - 1, i + 1); }, thread_index{}, thread_type{ i }, thread_id{ ++pdc });
+          
+            co_await Function([=]() {printData(i - 1, i + 1); }, thread_index{}, thread_type{ i }, thread_id{ ++pdc });
             //std::cout << "After Print Data B " << i - 1 << std::endl;
         }
         co_return i;

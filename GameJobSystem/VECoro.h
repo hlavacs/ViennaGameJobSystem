@@ -63,9 +63,6 @@ namespace vgjs {
     template<typename T>
     concept CORO = std::is_base_of_v<Coro_base, typename std::decay<T>::type >; //resolve only for coroutines
 
-    template<typename T> //resolve only for Functions
-    concept FUNCTION = std::is_same_v<Function, typename std::decay<T>::type> || std::is_same_v<std::function<void(void)>, typename std::decay<T>::type>;
-
     /**
     * \brief Schedule a Coro into the job system.
     * Basic function for scheduling a coroutine Coro into the job system.
@@ -503,8 +500,8 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename U>
-        requires FUNCTION<U> || CORO<U> || is_pmr_vector< typename std::decay<U>::type >::value
-        awaitable_coro<T, U> await_transform(U&& coro) noexcept { return { coro }; };
+        requires !std::is_integral_v<U>
+        awaitable_coro<T, U> await_transform(U&& func) noexcept { return { func }; };
 
         /**.
         * \brief Called by co_await to create an awaitable for migrating to another thread.
@@ -721,6 +718,7 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename U>
+        requires !std::is_integral_v<U>
         awaitable_coro<void, U> await_transform(U&& coro) noexcept { return { coro }; };
 
         /**.
