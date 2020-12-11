@@ -621,14 +621,25 @@ namespace vgjs {
         }
 
         /**
+        * \brief Test whether promised value is available
+        * \returns true if promised value is available, else false
+        */
+        bool ready() noexcept {
+            if (m_is_parent_function) {
+                return m_value_ptr->first;
+            }
+            return m_coro.promise().m_value.first;
+        }
+
+        /**
         * \brief Retrieve the promised value - nonblocking
         * \returns the promised value
         */
-        std::pair<bool, T> get() noexcept {
+        T get() noexcept {
             if (m_is_parent_function) {
-                return *m_value_ptr;
+                return m_value_ptr->second;
             }
-            return m_coro.promise().m_value;
+            return m_coro.promise().m_value.second;
         }
 
         /**

@@ -47,7 +47,7 @@ namespace docu {
             for (int i = 0; i < N; ++i) {
                 auto f = do_compute(std::allocator_arg, mr, i);
                 co_await f;     //call do_compute() to create result
-                std::cout << "Result " << f.get().second << std::endl;
+                std::cout << "Result " << f.get() << std::endl;
             }
             vgjs::terminate();
             co_return;
@@ -64,10 +64,10 @@ namespace docu {
             co_return f;
         }
 
-        //A coro returning an int
-        Coro<int> coro_int(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
-            std::cout << "coro_int " << i << std::endl;
-            co_return i;
+        //A coro returning nothing
+        Coro<> coro_void(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
+            std::cout << "coro_void " << i << std::endl;
+            co_return;
         }
 
         //a function
@@ -77,13 +77,13 @@ namespace docu {
 
         Coro<int> test(std::allocator_arg_t, n_pmr::memory_resource* mr, int count) {
 
-            auto tv = n_pmr::vector<Coro<int>>{ mr };  //vector of Coro<int>
-            tv.emplace_back(coro_int(std::allocator_arg, &g_global_mem, 1));
+            auto tv = n_pmr::vector<Coro<>>{ mr };  //vector of Coro<>
+            tv.emplace_back(coro_void(std::allocator_arg, &g_global_mem, 1));
 
             auto tk = std::make_tuple(                     //tuple holding two vectors - Coro<int> and Coro<float>
-                n_pmr::vector<Coro<int>>{mr},
+                n_pmr::vector<Coro<>>{mr},
                 n_pmr::vector<Coro<float>>{mr});
-            get<0>(tk).emplace_back(coro_int(std::allocator_arg, &g_global_mem, 2));
+            get<0>(tk).emplace_back(coro_void(std::allocator_arg, &g_global_mem, 2));
             get<1>(tk).emplace_back(coro_float(std::allocator_arg, &g_global_mem, 3));
 
             auto fv = n_pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
@@ -125,7 +125,7 @@ namespace docu {
             for (int i = 0; i < N; ++i) {
                 g_yt_in = i; //set input parameter
                 co_await yt; //call the fiber and wait for it to complete
-                std::cout << "Yielding " << yt.get().second << "\n";
+                std::cout << "Yielding " << yt.get() << "\n";
             }
             vgjs::terminate();
             co_return 0;

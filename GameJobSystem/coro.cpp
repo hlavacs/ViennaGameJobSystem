@@ -81,7 +81,7 @@ namespace coro {
 
         co_await tk1;
 
-        co_return tk1.get().second;
+        co_return tk1.get();
     }
 
     void FCompute( int i ) {
@@ -129,7 +129,7 @@ namespace coro {
 
         co_await mf;
 
-        if (printb) std::cout << "Class member function " << mf.get().second << std::endl;
+        if (printb) std::cout << "Class member function " << mf.get() << std::endl;
 
         co_await tv;
 
