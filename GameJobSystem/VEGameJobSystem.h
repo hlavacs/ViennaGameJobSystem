@@ -615,6 +615,14 @@ namespace vgjs {
         }
 
         /**
+        * \brief Get the memory resource used for allocating job structures.
+        * \returns the memory resource used for allocating job structures.
+        */
+        n_pmr::memory_resource* memory_resource() {
+            return m_mr;
+        }
+
+        /**
         * \brief Schedule a job into the job system.
         * The Job will be put into a thread's queue for consumption.
         * 

@@ -950,7 +950,7 @@ namespace vgjs {
     */
     template<typename Class, typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Class, Args&&... args) noexcept {
-        return operator new(sz, std::allocator_arg, n_pmr::new_delete_resource(), args...);
+        return operator new(sz, std::allocator_arg, JobSystem::instance().memory_resource(), args...);
     }
 
     /**
@@ -961,7 +961,7 @@ namespace vgjs {
     */
     template<typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Args&&... args) noexcept {
-        return operator new(sz, std::allocator_arg, n_pmr::new_delete_resource(), args...);
+        return operator new(sz, std::allocator_arg, JobSystem::instance().memory_resource(), args...);
     }
 
     /**
