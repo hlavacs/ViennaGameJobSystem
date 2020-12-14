@@ -621,12 +621,6 @@ namespace vgjs {
             return m_current_job;
         }
 
-        /**
-        * \brief Set the current phase.
-        */
-        void set_phase( phase ph ) {
-            m_phase = ph;
-        }
 
         /**
         * \brief Get the current phase.
@@ -669,7 +663,7 @@ namespace vgjs {
         void schedule(Job_base* job ) noexcept {
             assert(job!=nullptr);
 
-            if (job->m_phase>=0 && m_phase.value>=0 && job->m_phase != m_phase) {
+            if (job->m_phase>=0 && job->m_phase != m_phase) {
                 if(!m_phase_queues.contains(job->m_phase)) {
                     m_phase_queues[job->m_phase] = std::make_unique<JobQueue<Job_base>>();
                 }
@@ -707,6 +701,28 @@ namespace vgjs {
         void schedule(std::function<void(void)>&& f, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
             schedule(Function{ std::forward<std::function<void(void)>>(f) }, parent, children );
         }
+
+        /**
+        * \brief Schedule all Jobs from a phase
+        * \param[in] ph The phase that is scheduled
+        * \param[in] parent The parent of this Job.
+        * \param[in] children Number used to increase the number of children of the parent.
+        */
+        void schedule(phase ph, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
+            m_phase = ph;
+            if (!m_phase_queues.contains(ph)) return;
+
+            JobQueue<Job_base>* queue = m_phase_queues[ph].get();
+
+            if (parent != nullptr) { 
+                if (children < 0) children = queue->size();
+                parent->m_children.fetch_add((int)children); 
+            }
+            while (Job_base* job = queue->pop()) {
+                job->m_parent = parent;
+                schedule(job);
+            }
+        };
 
         /**
         * \brief Store a continuation for the current Job. Will be scheduled once the current Job finishes.
@@ -868,6 +884,18 @@ namespace vgjs {
     inline void schedule(std::function<void(void)>& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
         JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), parent, children);   // forward to the job system
     };
+
+
+    /**
+    * \brief Schedule all functions from a phase
+    * \param[in] ph The phase to schedule.
+    * \param[in] parent The parent of this Job.
+    * \param[in] children Number used to increase the number of children of the parent.
+    */
+    inline void schedule(phase ph, Job_base* parent = current_job(), int32_t children = -1) noexcept {
+        JobSystem::instance().schedule(ph, parent, children);   // forward to the job system
+    };
+
 
     /**
     * \brief Schedule functions into the system. T can be a Function, std::function or a task<U>.
