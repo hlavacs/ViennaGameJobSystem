@@ -257,7 +257,7 @@ namespace vgjs {
             * \brief Test whether the job is already on the right thread.
             */
             bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
-                return (m_thread_index.value == JobSystem::instance().thread_index().value);
+                return (m_thread_index.value == JobSystem::instance().get_thread_index().value);
             }
 
             /**

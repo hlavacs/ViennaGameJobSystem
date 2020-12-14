@@ -59,21 +59,25 @@ namespace vgjs {
     class Job_base;
     class JobSystem;
 
-
-    struct thread_index {
-        int32_t value;
-        explicit thread_index(int32_t v = -1 ) : value(v) {};
+    template<typename T, typename P>
+    struct int_type {
+        T value{};
+        int_type() : value(-1) {};
+        explicit int_type(const T& t) : value(t) {};
+        int_type(const int_type<T, P>& t) : value(t.value) {};
+        int_type(const int_type<T, P>&& t) : value(t.value) {};
+        void operator=(const int_type& rhs) { value = rhs.value; };
+        void operator=(const int_type&& rhs) { value = rhs.value; };
+        auto operator<=>(const int_type& v) const = default;
+        auto operator<=>(const T& v) { return value <=> v; };
     };
 
-    struct thread_id {
-        int32_t value;
-        explicit thread_id(int32_t v = -1) : value(v) {};
-    };
+    using thread_index = int_type<int, struct P0>;
+    using thread_id = int_type<int, struct P1>;
+    using thread_type = int_type<int, struct P2>;
+    using thread_count = int_type<int, struct P3>;
+    using phase = int_type<int, struct P4>;
 
-    struct thread_type {
-        int32_t value;
-        explicit thread_type(int32_t v = -1) : value(v) {};
-    };
 
     bool is_logging();
     void log_data(  std::chrono::high_resolution_clock::time_point& t1
@@ -320,10 +324,11 @@ namespace vgjs {
     * It can add new jobs, and wait until they are done.
     */
     class JobSystem {
-        const uint32_t                              c_queue_capacity = 100; ///<save at most N Jobs for recycling
+        const uint32_t                          c_queue_capacity = 100; ///<save at most N Jobs for recycling
 
     private:
         n_pmr::memory_resource*                 m_mr;                   ///<use to allocate/deallocate Jobs
+        phase                                   m_phase;
         std::vector<std::thread>	            m_threads;	            ///<array of thread structures
         std::atomic<uint32_t>   		        m_thread_count = 0;     ///<number of threads in the pool
         std::atomic<bool>                       m_terminated = false;   ///<flag set true when the last thread has exited
@@ -392,10 +397,10 @@ namespace vgjs {
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0.
         * \param[in] mr The memory resource to use for allocating Jobs.
         */
-        JobSystem(uint32_t threadCount = 0, uint32_t start_idx = 0, n_pmr::memory_resource *mr = n_pmr::new_delete_resource() ) noexcept
+        JobSystem(thread_count threadCount = thread_count( 0 ), thread_index start_idx = thread_index( 0 ), n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept
             : m_mr(mr), m_start_idx(start_idx) {
 
-            m_thread_count = threadCount;
+            m_thread_count = threadCount.value;
             if (m_thread_count == 0) {
                 m_thread_count = std::thread::hardware_concurrency();		///< main thread is also running
             }
@@ -408,9 +413,9 @@ namespace vgjs {
                 m_local_queues.push_back(JobQueue<Job_base>());     //local job queue
             }
 
-            for (uint32_t i = start_idx; i < m_thread_count; i++) {
+            for (uint32_t i = start_idx.value; i < m_thread_count; i++) {
                 std::cout << "Starting thread " << i << std::endl;
-                m_threads.push_back(std::thread(&JobSystem::thread_task, this, i));	//spawn the pool threads
+                m_threads.push_back(std::thread(&JobSystem::thread_task, this, thread_index(i) ));	//spawn the pool threads
                 m_threads[i].detach();
             }
 
@@ -424,8 +429,8 @@ namespace vgjs {
         * \param[in] mr The memory resource to use for allocating Jobs.
         * \returns a pointer to the JobSystem instance.
         */
-        static JobSystem& instance( uint32_t threadCount = 0
-                                    , uint32_t start_idx = 0
+        static JobSystem& instance( thread_count threadCount = thread_count(0)
+                                    , thread_index start_idx = thread_index(0)
                                     , n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept {
             static JobSystem instance(threadCount, start_idx, mr); //thread safe init guaranteed - Meyer's Singleton
             return instance;
@@ -485,16 +490,16 @@ namespace vgjs {
         * \brief Every thread runs in this function
         * \param[in] threadIndex Number of this thread
         */
-        void thread_task(int32_t threadIndex = 0) noexcept {
-            constexpr uint32_t NOOP = 10;                                           //number of empty loops until garbage collection
-            m_thread_index.value = threadIndex;	                        //Remember your own thread index number
+        void thread_task(thread_index threadIndex = thread_index(0) ) noexcept {
+            constexpr uint32_t NOOP = 10;                                   //number of empty loops until garbage collection
+            m_thread_index = threadIndex;	                                //Remember your own thread index number
             static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
 
             thread_counter--;			                                    //count down
             while (thread_counter.load() > 0) {}	                        //Continue only if all threads are running
 
             uint32_t next = rand() % m_thread_count;                        //initialize at random position for stealing
-            thread_local uint32_t noop = NOOP;                               //number of empty loops until threads sleeps
+            thread_local uint32_t noop = NOOP;                              //number of empty loops until threads sleeps
             while (!m_terminate) {			                                //Run until the job system is terminated
                 m_current_job = m_local_queues[m_thread_index.value].pop();       //try get a job from the local queue
                 if (m_current_job == nullptr) {
@@ -599,10 +604,25 @@ namespace vgjs {
         }
 
         /**
+        * \brief Set the current phase.
+        */
+        void set_phase( phase ph ) {
+            m_phase = ph;
+        }
+
+        /**
+        * \brief Get the current phase.
+        * \returns the current phase.
+        */
+        phase get_phase() {
+            return m_phase;
+        }
+
+        /**
         * \brief Get the thread index the current job is running on.
         * \returns the index of the thread the current job is running on, or -1.
         */
-        thread_index thread_index() {
+        thread_index get_thread_index() {
             return m_thread_index;
         }
 
@@ -610,8 +630,8 @@ namespace vgjs {
         * \brief Get the number of threads in the system.
         * \returns the number of threads in the system.
         */
-        uint32_t thread_count() {
-            return m_thread_count;
+        thread_count get_thread_count() {
+            return thread_count( m_thread_count );
         }
 
         /**
@@ -953,7 +973,7 @@ namespace vgjs {
         thread_index exec_thread, bool finished, thread_type type, thread_id id) {
 
         auto& logs = JobSystem::instance().get_logs();
-        logs[JobSystem::instance().thread_index().value].emplace_back( t1, t2, JobSystem::instance().thread_index(), finished, type, id);
+        logs[JobSystem::instance().get_thread_index().value].emplace_back( t1, t2, JobSystem::instance().get_thread_index(), finished, type, id);
     }
 
     /**
