@@ -59,10 +59,13 @@ namespace vgjs {
     class Job_base;
     class JobSystem;
 
-    template<typename T, typename P>
+    template<typename T, typename P, int D = -1>
     struct int_type {
         T value{};
-        int_type() : value(-1) {};
+        int_type() {
+            if constexpr (std::is_unsigned_v<T> && D<0) { value = 0; }
+            else { value = static_cast<T>(D); }
+        };
         explicit int_type(const T& t) : value(t) {};
         int_type(const int_type<T, P>& t) : value(t.value) {};
         int_type(const int_type<T, P>&& t) : value(t.value) {};
@@ -77,7 +80,6 @@ namespace vgjs {
     using thread_type = int_type<int, struct P2>;
     using thread_count = int_type<int, struct P3>;
     using phase = int_type<int, struct P4>;
-
 
     bool is_logging();
     void log_data(  std::chrono::high_resolution_clock::time_point& t1
@@ -94,29 +96,38 @@ namespace vgjs {
     */
     struct Function {
         std::function<void(void)>   m_function = []() {};  //empty function
+        phase                       m_phase;
         thread_index                m_thread_index;        //thread that the f should run on
         thread_type                 m_type;                //type of the call
         thread_id                   m_id;                  //unique identifier of the call
 
-        Function(std::function<void(void)>&& f, thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{})
-            : m_function(std::move(f)), m_thread_index(index), m_type(type), m_id(id) {};
+        Function(std::function<void(void)>& f, thread_index index = thread_index{}, phase ph = phase{}, thread_type type = thread_type{}, thread_id id = thread_id{})
+            : m_function(f), m_thread_index(index), m_phase{ph}, m_type(type), m_id(id) {};
 
-        Function(std::function<void(void)>& f, thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{})
-            : m_function(f), m_thread_index(index), m_type(type), m_id(id) {};
+        Function(std::function<void(void)>&& f, thread_index index = thread_index{}, phase ph = phase{}, thread_type type = thread_type{}, thread_id id = thread_id{})
+            : m_function(std::move(f)), m_thread_index(index), m_phase{ ph }, m_type(type), m_id(id) {};
 
         Function(const Function& f) 
-            : m_function(f.m_function), m_thread_index(f.m_thread_index), m_type(f.m_type), m_id(f.m_id) {};
+            : m_function(f.m_function), m_thread_index(f.m_thread_index), m_phase(f.m_phase), m_type(f.m_type), m_id(f.m_id) {};
 
-        Function(Function& f) 
-            : m_function(std::move(f.m_function)), m_thread_index(f.m_thread_index), m_type(f.m_type), m_id(f.m_id) {};
+        Function(Function&& f)
+            : m_function(std::move(f.m_function)), m_thread_index(f.m_thread_index), m_phase(f.m_phase), m_type(f.m_type), m_id(f.m_id) {};
 
         Function& operator= (const Function& f) {
-            m_function = f.m_function; m_thread_index = f.m_thread_index; m_type = f.m_type;  m_id = f.m_id;
+            m_function = f.m_function; 
+            m_thread_index = f.m_thread_index; 
+            m_phase = f.m_phase;
+            m_type = f.m_type;  
+            m_id = f.m_id;
             return *this;
         };
 
         Function& operator= (Function&& f) {
-            m_function = std::move(f.m_function); m_thread_index = f.m_thread_index; m_type = f.m_type;  m_id = f.m_id;
+            m_function = std::move(f.m_function); 
+            m_thread_index = f.m_thread_index; 
+            m_phase = f.m_phase;
+            m_type = f.m_type;
+            m_id = f.m_id;
             return *this;
         };
     };
@@ -147,9 +158,12 @@ namespace vgjs {
         std::atomic<int>    m_children = 0;             //number of children this job is waiting for
         Job_base*           m_parent = nullptr;         //parent job that created this job
         thread_index        m_thread_index;             //thread that the job should run on and ran on
+        phase               m_phase;
         thread_type         m_type;                     //for logging performance
         thread_id           m_id;                       //for logging performance
         bool                m_is_function = false;      //default - this is not a function
+
+        Job_base() : m_children{ 0 }, m_parent{ nullptr }, m_thread_index{}, m_phase{}, m_type{}, m_id{}, m_is_function{ false } {}
 
         virtual bool resume() = 0;                      //this is the actual work to be done
         void operator() () noexcept {           //wrapper as function operator
@@ -165,11 +179,11 @@ namespace vgjs {
     */
     class Job : public Job_base {
     public:
-        n_pmr::memory_resource*  m_mr = nullptr;  //memory resource that was used to allocate this Job
+        n_pmr::memory_resource*     m_mr = nullptr;  //memory resource that was used to allocate this Job
         Job_base*                   m_continuation = nullptr;   //continuation follows this job (a coro is its own continuation)
         std::function<void(void)>   m_function;      //function to compute
 
-        Job() : Job_base() {
+        Job( n_pmr::memory_resource* pmr) : Job_base(), m_mr(pmr), m_continuation(nullptr) {
             m_children = 1;
             m_is_function = true;
         }
@@ -180,6 +194,7 @@ namespace vgjs {
             m_parent = nullptr;
             m_continuation = nullptr;
             m_thread_index = thread_index{};
+            m_phase = phase{};
             m_type = thread_type{};
             m_id = thread_id{};
         }
@@ -338,6 +353,9 @@ namespace vgjs {
         static inline thread_local Job_base*    m_current_job = nullptr;///<Pointer to the current job of this thread0
         std::vector<JobQueue<Job_base>>         m_global_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
         std::vector<JobQueue<Job_base>>         m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
+
+        std::map<phase,std::unique_ptr<JobQueue<Job_base>>>   m_phase_queues;
+
         JobQueue<Job>                           m_recycle;              ///<save old jobs for recycling
         JobQueue<Job>                           m_delete;               ///<save old jobs for recycling
         n_pmr::vector<n_pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
@@ -354,16 +372,15 @@ namespace vgjs {
         * \returns a pointer to the job.
         */
         Job* allocate_job() {
-            Job* job = m_recycle.pop();                                //try recycle queue
-            if (job == nullptr ) {                                     //none found
-                n_pmr::polymorphic_allocator<Job> allocator(m_mr);  //use this allocator
-                job = allocator.allocate(1);                           //allocate the object
+            Job* job = m_recycle.pop();                                 //try recycle queue
+            if (job == nullptr ) {                                      //none found
+                n_pmr::polymorphic_allocator<Job> allocator(m_mr);      //use this allocator
+                job = allocator.allocate(1);                            //allocate the object
                 if (job == nullptr) {
                     std::cout << "No job available\n";
                     std::terminate();
                 }
-                new (job) Job();                     //call constructor
-                job->m_mr = m_mr;                    //save memory resource for deallocation
+                new (job) Job(m_mr);                 //call constructor
             }
             else {                                  //job found
                 job->reset();                       //reset it
@@ -384,6 +401,7 @@ namespace vgjs {
                 std::terminate();
             }
             job->m_thread_index = f.m_thread_index;
+            job->m_phase        = f.m_phase;
             job->m_type         = f.m_type;
             job->m_id           = f.m_id;
             return job;
@@ -397,8 +415,8 @@ namespace vgjs {
         * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0.
         * \param[in] mr The memory resource to use for allocating Jobs.
         */
-        JobSystem(thread_count threadCount = thread_count( 0 ), thread_index start_idx = thread_index( 0 ), n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept
-            : m_mr(mr), m_start_idx(start_idx) {
+        JobSystem(thread_count threadCount = thread_count(0), thread_index start_idx = thread_index(0), n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept
+            : m_mr(mr), m_start_idx(start_idx), m_phase{0} {
 
             m_thread_count = threadCount.value;
             if (m_thread_count == 0) {
@@ -650,6 +668,14 @@ namespace vgjs {
         */
         void schedule(Job_base* job ) noexcept {
             assert(job!=nullptr);
+
+            if (job->m_phase>=0 && m_phase.value>=0 && job->m_phase != m_phase) {
+                if(!m_phase_queues.contains(job->m_phase)) {
+                    m_phase_queues[job->m_phase] = std::make_unique<JobQueue<Job_base>>();
+                }
+                m_phase_queues.at(job->m_phase)->push(job);
+                return;
+            }
 
             if (job->m_thread_index.value < 0 || job->m_thread_index.value >= (int)m_thread_count ) {
                  m_global_queues[rand() % m_thread_count].push(job);
@@ -1058,7 +1084,6 @@ namespace vgjs {
         outdata.close();
         JobSystem::instance().clear_logs();
     }
-
 
 
 }

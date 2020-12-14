@@ -90,7 +90,7 @@ namespace docu {
             fv.emplace_back([=]() {func(4); });
 
             n_pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
-            Function f = Function([=]() {func(5); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 }); //schedule to random thread, use type 0 and id 0
+            Function f = Function([=]() {func(5); }, thread_index{}, phase{}, thread_type{ 0 }, thread_id{ 0 }); //schedule to random thread, use type 0 and id 0
             jv.push_back(f);
 
             co_await tv; //await all elements of the Coro<int> vector
