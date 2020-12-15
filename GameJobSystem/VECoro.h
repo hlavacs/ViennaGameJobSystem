@@ -72,12 +72,12 @@ namespace vgjs {
     */
     template<typename T>
     requires CORO<T>   
-    void schedule( T& coro, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+    void schedule( T& coro, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
         if (parent != nullptr) {
             parent->m_children.fetch_add((int)children);       //await the completion of all children      
         }
         coro.promise()->m_parent = parent;
-        JobSystem::instance().schedule(coro.promise() );      //schedule the promise as job
+        JobSystem::instance().schedule( coro.promise(), ph );      //schedule the promise as job
     };
 
     /**
@@ -89,8 +89,8 @@ namespace vgjs {
     */
     template<typename T>
     requires CORO<T>
-    void schedule( T&& coro, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        schedule(coro, parent, children);
+    void schedule( T&& coro, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        schedule(coro, ph, parent, children);
     };
 
 
@@ -155,7 +155,7 @@ namespace vgjs {
             */
             void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
                 auto g = [&, this]<typename T>(n_pmr::vector<T> & vec) {
-                    schedule(vec, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
+                    schedule(vec, phase{}, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
                     m_number = 0;                                  //after this always 0
                 };
 
@@ -218,7 +218,7 @@ namespace vgjs {
             * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
             */
             void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                schedule(std::forward<T>(m_child), &h.promise());  //schedule the coro, function or vector
+                schedule(std::forward<T>(m_child), phase{}, &h.promise());  //schedule the coro, function or vector
             }
 
             /**
@@ -289,6 +289,46 @@ namespace vgjs {
         */
         awaiter operator co_await() noexcept { return { m_thread_index }; };
     };
+
+
+    /**
+    * \brief Awaiter for entering a given phase.
+    * This means that all pre-scheduled jobs for this phase will be scheduled and executed.
+    */
+    template<typename PT>
+    struct awaitable_phase {
+        struct awaiter : suspend_always {
+            phase m_phase;         ///<the phase to enter
+
+            /**
+            * \brief Enter the given phase
+            * \param[in] h The coro handle, can be used to get the promise.
+            */
+            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+                JobSystem::instance().schedule(m_phase);
+            }
+
+            /**
+            * \brief Awaiter constructor
+            * \parameter[in] thread_index NUmber of the thread to migrate to
+            */
+            awaiter(phase ph) noexcept : m_phase(ph) {};
+        };
+
+        phase m_phase; //the thread index to use
+
+        /**
+        * \brief Awaiter constructor
+        * \parameter[in] thread_index NUmber of the thread to migrate to
+        */
+        awaitable_phase(phase ph) noexcept : m_phase(ph) {};
+
+        /**
+        * \brief co_await operator is defined for this awaitable, and results in the awaiter
+        */
+        awaiter operator co_await() noexcept { return { m_phase }; };
+    };
+
 
 
     /**
@@ -509,6 +549,13 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         awaitable_resume_on<T> await_transform(thread_index index) noexcept { return { index }; };
+
+        /**.
+        * \brief Called by co_await to go to a given phase, i.e. schedule all jobs of this phase.
+        * \param[in] ph The phase the JS should go to.
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
+        awaitable_phase<T> await_transform(phase ph) noexcept { return { ph }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.

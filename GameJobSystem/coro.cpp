@@ -117,10 +117,10 @@ namespace coro {
 
             fv.emplace_back([=]() { FCompute(i); });
 
-            Function f([=]() { FuncCompute(i); }, thread_index{}, phase{}, thread_type{ 0 }, thread_id{ 0 });
+            Function f([=]() { FuncCompute(i); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 });
             jv.push_back( f );
 
-            jv.push_back(Function([=](){ FuncCompute(i); }, thread_index{}, phase{}, thread_type{ 0 }, thread_id{ 0 }));
+            jv.push_back(Function([=](){ FuncCompute(i); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 }));
         }
         
         if (printb) std::cout << "Before loop " << std::endl;

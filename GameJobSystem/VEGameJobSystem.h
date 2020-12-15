@@ -96,27 +96,25 @@ namespace vgjs {
     */
     struct Function {
         std::function<void(void)>   m_function = []() {};  //empty function
-        phase                       m_phase;
         thread_index                m_thread_index;        //thread that the f should run on
         thread_type                 m_type;                //type of the call
         thread_id                   m_id;                  //unique identifier of the call
 
-        Function(std::function<void(void)>& f, thread_index index = thread_index{}, phase ph = phase{}, thread_type type = thread_type{}, thread_id id = thread_id{})
-            : m_function(f), m_thread_index(index), m_phase{ph}, m_type(type), m_id(id) {};
+        Function(std::function<void(void)>& f, thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{})
+            : m_function(f), m_thread_index(index), m_type(type), m_id(id) {};
 
-        Function(std::function<void(void)>&& f, thread_index index = thread_index{}, phase ph = phase{}, thread_type type = thread_type{}, thread_id id = thread_id{})
-            : m_function(std::move(f)), m_thread_index(index), m_phase{ ph }, m_type(type), m_id(id) {};
+        Function(std::function<void(void)>&& f, thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{})
+            : m_function(std::move(f)), m_thread_index(index), m_type(type), m_id(id) {};
 
         Function(const Function& f) 
-            : m_function(f.m_function), m_thread_index(f.m_thread_index), m_phase(f.m_phase), m_type(f.m_type), m_id(f.m_id) {};
+            : m_function(f.m_function), m_thread_index(f.m_thread_index), m_type(f.m_type), m_id(f.m_id) {};
 
         Function(Function&& f)
-            : m_function(std::move(f.m_function)), m_thread_index(f.m_thread_index), m_phase(f.m_phase), m_type(f.m_type), m_id(f.m_id) {};
+            : m_function(std::move(f.m_function)), m_thread_index(f.m_thread_index), m_type(f.m_type), m_id(f.m_id) {};
 
         Function& operator= (const Function& f) {
             m_function = f.m_function; 
             m_thread_index = f.m_thread_index; 
-            m_phase = f.m_phase;
             m_type = f.m_type;  
             m_id = f.m_id;
             return *this;
@@ -125,7 +123,6 @@ namespace vgjs {
         Function& operator= (Function&& f) {
             m_function = std::move(f.m_function); 
             m_thread_index = f.m_thread_index; 
-            m_phase = f.m_phase;
             m_type = f.m_type;
             m_id = f.m_id;
             return *this;
@@ -158,12 +155,11 @@ namespace vgjs {
         std::atomic<int>    m_children = 0;             //number of children this job is waiting for
         Job_base*           m_parent = nullptr;         //parent job that created this job
         thread_index        m_thread_index;             //thread that the job should run on and ran on
-        phase               m_phase;
         thread_type         m_type;                     //for logging performance
         thread_id           m_id;                       //for logging performance
         bool                m_is_function = false;      //default - this is not a function
 
-        Job_base() : m_children{ 0 }, m_parent{ nullptr }, m_thread_index{}, m_phase{}, m_type{}, m_id{}, m_is_function{ false } {}
+        Job_base() : m_children{ 0 }, m_parent{ nullptr }, m_thread_index{}, m_type{}, m_id{}, m_is_function{ false } {}
 
         virtual bool resume() = 0;                      //this is the actual work to be done
         void operator() () noexcept {           //wrapper as function operator
@@ -194,7 +190,6 @@ namespace vgjs {
             m_parent = nullptr;
             m_continuation = nullptr;
             m_thread_index = thread_index{};
-            m_phase = phase{};
             m_type = thread_type{};
             m_id = thread_id{};
         }
@@ -401,7 +396,6 @@ namespace vgjs {
                 std::terminate();
             }
             job->m_thread_index = f.m_thread_index;
-            job->m_phase        = f.m_phase;
             job->m_type         = f.m_type;
             job->m_id           = f.m_id;
             return job;
@@ -660,14 +654,14 @@ namespace vgjs {
         * 
         * \param[in] job A pointer to the job to schedule.
         */
-        void schedule(Job_base* job ) noexcept {
+        void schedule(Job_base* job, phase ph = phase{}) noexcept {
             assert(job!=nullptr);
 
-            if (job->m_phase>=0 && job->m_phase != m_phase) {
-                if(!m_phase_queues.contains(job->m_phase)) {
-                    m_phase_queues[job->m_phase] = std::make_unique<JobQueue<Job_base>>();
+            if ( ph.value >= 0 && ph != m_phase) {
+                if(!m_phase_queues.contains(ph)) {
+                    m_phase_queues[ph] = std::make_unique<JobQueue<Job_base>>();
                 }
-                m_phase_queues.at(job->m_phase)->push(job);
+                m_phase_queues.at(ph)->push(job);
                 return;
             }
 
@@ -685,11 +679,11 @@ namespace vgjs {
         * \param[in] parent The parent of this Job.
         * \param[in] children Number used to increase the number of children of the parent.
         */
-        void schedule(Function&& source, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
+        void schedule(Function&& source, phase ph = phase{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
             Job *job = allocate_job( std::forward<Function>(source) );
             job->m_parent = parent;
             if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
-            schedule(job);
+            schedule(job, ph);
         };
 
         /**
@@ -698,8 +692,8 @@ namespace vgjs {
         * \param[in] parent The parent of this Job.
         * \param[in] children Number used to increase the number of children of the parent.
         */
-        void schedule(std::function<void(void)>&& f, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
-            schedule(Function{ std::forward<std::function<void(void)>>(f) }, parent, children );
+        void schedule(std::function<void(void)>&& f, phase ph = phase{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
+            schedule(Function{ std::forward<std::function<void(void)>>(f) }, ph, parent, children );
         }
 
         /**
@@ -712,15 +706,15 @@ namespace vgjs {
             m_phase = ph;
             if (!m_phase_queues.contains(ph)) return;
 
-            JobQueue<Job_base>* queue = m_phase_queues[ph].get();
+            JobQueue<Job_base>* queue = m_phase_queues[ph].get();   //get the queue for this phase
 
             if (parent != nullptr) { 
-                if (children < 0) children = queue->size();
-                parent->m_children.fetch_add((int)children); 
+                if (children < 0) children = queue->size();     //if the number of children is not given, then use queue size
+                parent->m_children.fetch_add((int)children);    //add this number to the number of children of parent
             }
-            while (Job_base* job = queue->pop()) {
+            while (Job_base* job = queue->pop()) {     //schedule all jobs from the phase queue
                 job->m_parent = parent;
-                schedule(job);
+                schedule(job, ph);
             }
         };
 
@@ -851,8 +845,8 @@ namespace vgjs {
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule( Function&& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule( std::forward<Function>(f), parent, children );
+    inline void schedule( Function&& f, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        JobSystem::instance().schedule( std::forward<Function>(f), ph, parent, children );
     }
 
     /**
@@ -861,8 +855,8 @@ namespace vgjs {
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule(Function& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule(std::forward<Function>(f), parent, children);
+    inline void schedule(Function& f, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        JobSystem::instance().schedule(std::forward<Function>(f), ph, parent, children);
     }
 
     /**
@@ -871,8 +865,8 @@ namespace vgjs {
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule( std::function<void(void)>&& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), parent, children); // forward to the job system
+    inline void schedule( std::function<void(void)>&& f, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), ph, parent, children); // forward to the job system
     };
 
     /**
@@ -881,8 +875,8 @@ namespace vgjs {
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule(std::function<void(void)>& f, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), parent, children);   // forward to the job system
+    inline void schedule(std::function<void(void)>& f, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), ph, parent, children);   // forward to the job system
     };
 
 
@@ -912,14 +906,14 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     template<typename T>
-    inline void schedule( n_pmr::vector<T>& functions, Job_base* parent = current_job(), int32_t children = -1) noexcept {
+    inline void schedule( n_pmr::vector<T>& functions, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = -1) noexcept {
         
         if (children < 0) {                     //default? use vector size.
             children = (int)functions.size(); 
         }
 
         for (auto& f : functions) { //schedule all elements, use the total number of children for the first call, then 0
-            schedule( std::forward<T>(f), parent, children ); //might call the coro version, so do not call job system here!
+            schedule( std::forward<T>(f), ph, parent, children ); //might call the coro version, so do not call job system here!
             children = 0;
         }
     };
@@ -1112,7 +1106,6 @@ namespace vgjs {
         outdata.close();
         JobSystem::instance().clear_logs();
     }
-
 
 }
 

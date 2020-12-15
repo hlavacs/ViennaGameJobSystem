@@ -38,10 +38,10 @@ namespace mixed {
         //std::cout << "Print Data Coro " << i << " id " << ++pdc << std::endl;
         if (i >0 ) {
             //co_await compute(i)(thread_index{}, thread_type{ 5 }, thread_id{ ++pdc });
-            co_await Function([=]() { printData(i - 1, i + 1); }, thread_index{}, phase{}, thread_type{ i }, thread_id{ ++pdc });
+            co_await Function([=]() { printData(i - 1, i + 1); }, thread_index{}, thread_type{ i }, thread_id{ ++pdc });
             //std::cout << "After Print Data A " << i-1 << std::endl;
           
-            co_await Function([=]() {printData(i - 1, i + 1); }, thread_index{}, phase{}, thread_type{ i }, thread_id{ ++pdc });
+            co_await Function([=]() {printData(i - 1, i + 1); }, thread_index{}, thread_type{ i }, thread_id{ ++pdc });
             //std::cout << "After Print Data B " << i - 1 << std::endl;
         }
         co_return i;
@@ -78,7 +78,7 @@ namespace mixed {
         schedule( f );
         //std::this_thread::sleep_for(std::chrono::microseconds(1));
 
-        continuation(Function([=]() { loop(i - 1); }, thread_index{ i - 1 }, phase{}, thread_type{ 4 }, thread_id{ 0 }));
+        continuation(Function([=]() { loop(i - 1); }, thread_index{ i - 1 }, thread_type{ 4 }, thread_id{ 0 }));
 
     }
 
@@ -88,12 +88,12 @@ namespace mixed {
             return;
         }
 
-        //schedule( Function( F( printData(i, -1) ), thread_index{}, phase{}, thread_type{ 1 }, thread_id {0} )  );
+        //schedule( Function( F( printData(i, -1) ), thread_index{}, thread_type{ 1 }, thread_id {0} )  );
 
 
         //schedule( F(printData(i, -1)));
 
-        schedule(Function([=]() { loop(i); }, thread_index{ i }, phase{}, thread_type{ 4 }, thread_id{ 0 }));
+        schedule(Function([=]() { loop(i); }, thread_index{ i }, thread_type{ 4 }, thread_id{ 0 }));
 
         //continuation( Function( F( vgjs::terminate() ), thread_index{}, phase{}, thread_type{ 3 }, thread_id {0}  ) );
     }
@@ -112,7 +112,7 @@ namespace mixed {
 
         //JobSystem::instance().enable_logging();
 
-        schedule(Function( [=]() { driver(5, "Driver"); }, thread_index{}, phase{}, thread_type{ 0 }, thread_id{ 0 }));
+        schedule(Function( [=]() { driver(5, "Driver"); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 }));
         //schedule( F( driver(4, "Driver") ) );
 
         std::cout << "Ending mixed test()\n";
