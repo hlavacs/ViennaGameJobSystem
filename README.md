@@ -5,6 +5,7 @@ Important features are:
 * Supports C++20 (coroutines, concepts, polymorphic allocators and memory resources, ...)
 * Can be run with coroutines (better convenience), with C++ functions (better performance), or both
 * Use coroutines as fibers to improve on performance
+* Supports an arbitrary number of phases the game loop can be in.
 * Enables a data oriented, data parallel paradigm
 * Intended as partner project of the Vienna Vulkan Engine (https://github.com/hlavacs/ViennaVulkanEngine) implementing a game engine using the VGJS
 
@@ -328,12 +329,58 @@ In C++ *functions*, children are started with the *schedule()* command, which is
 
 If the parent is a *coroutine*, then children are spawned by calling the *co_await* operator. Here the coro waits until all children have finished and resumes right after the *co_await*. Since the coro continues, it does not finish yet. Only after calling *co_return*, the coro finishes, and notifies its own parent. A coro should NOT call *schedule()* or *continuation()*!
 
+## Phases
+A unique feature of VGJS is allowing phases. Consider a game loop where things are done in parallel. While user callbacks work on the current state, they might share a common state and rely on the data integrity while running. Thus changing data or deleting entities should be done after the callbacks are finished. VGJS allows to schedule jobs for doing this for a future phase. At the beginning, VGJS is in no phase (actually, phase -1). Calling *schedule(phase{0})* transfers VGJS into phase 0. When scheduling a job without specifying a phase, or specifying the current phase, the job will be put into a global or local queue for running. If, however, *schedule()* is called with a phase different from the current phase, the job is placed into the phase's queue and waits there, until VGJS enters the phase. Once VGJS enters this phase,
+all jobs from the phase are scheduled to the global/locals queues to run as *children* of the *current* job. Consider the following example:
+
+    schedule(phase{0}); //enter phase 0 (run all jobs from phase 0 now)
+
+    schedule([=](){ loop(1); });            //immediately scheduled
+    schedule([=](){ loop(2); }, phase{0});  //immediately scheduled
+
+    schedule([=](){ loop(3); }, phase{1});  //wait in queue of phase 1
+    schedule([=](){ loop(4); }, phase{1});  //wait in queue of phase 1
+
+    schedule(phase{1}); //enter phase 1 and run all jobs from there
+    schedule([=](){ loop(5); });            //immediately scheduled
+    schedule([=](){ loop(6); }, phase{1});  //immediately scheduled
+
+    continuation([=](){ after_phase1(); }); //continuation waits for jobs to finish
+
+Phases act like barriers, but jobs can be prescheduled to do stuff in a later phase. E.g., changing shared resources or deleting entities can be scheduled to a later phase, in which the resources are no longer accessed in parallel.
+
+Coroutines schedule functions and other coroutines for future phases also using the *schedule()* function. However, entering a phase must be done with *co_await*:
+
+    Coro<> driver( int i) {
+      //...
+    }
+
+    Coro<> test() {
+        co_await phase{0}; //enter phase 0
+
+        //... do other stuff
+
+        schedule(driver(1), phase{1}); //schedule for phase 1
+
+        //... do other stuff
+
+        co_await phase{1}; //enter phase 1 and schedule all waiting functions and coros
+
+    }
+
+
 ## Breaking the Parent-Child Relationship
 Jobs having a parent will trigger a continuation of this parent after they have finished. This also means that these continuations depend on the children and have to wait. Starting a job that does not have a parent is easily done by using *nullptr* as the second argument of the *schedule()* call.
 
     void driver() {
-        schedule( loop(std::allocator_arg, &g_global_mem4, 90), nullptr );
+        schedule( loop(std::allocator_arg, &g_global_mem4, 90), phase{}, nullptr );
     }
+
+The parameter will always be used if specified, also when scheduling a phase. Therefore
+
+    schedule(phase{1}, nullptr);
+
+enters phase 1, runs all waiting jobs, but these jobs do not have any parent, and the current job does not depend on them.
 
 
 ## Never use Pointers and References to Local Variables in *Functions* - only in Coroutines!

@@ -294,11 +294,12 @@ namespace vgjs {
     /**
     * \brief Awaiter for entering a given phase.
     * This means that all pre-scheduled jobs for this phase will be scheduled and executed.
+    * The coro will wait for all of them to finish.
     */
     template<typename PT>
     struct awaitable_phase {
         struct awaiter : suspend_always {
-            phase m_phase;         ///<the phase to enter
+            phase m_phase;         ///<The phase to go to.
 
             /**
             * \brief Enter the given phase
@@ -310,16 +311,16 @@ namespace vgjs {
 
             /**
             * \brief Awaiter constructor
-            * \parameter[in] thread_index NUmber of the thread to migrate to
+            * \parameter[in] ph The phase to go to.
             */
             awaiter(phase ph) noexcept : m_phase(ph) {};
         };
 
-        phase m_phase; //the thread index to use
+        phase m_phase; //The phase to go to.
 
         /**
-        * \brief Awaiter constructor
-        * \parameter[in] thread_index NUmber of the thread to migrate to
+        * \brief Awaiter constructor.
+        * \parameter[in] ph The phase to go to.
         */
         awaitable_phase(phase ph) noexcept : m_phase(ph) {};
 
