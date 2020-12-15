@@ -63,8 +63,8 @@ namespace vgjs {
     struct int_type {
         T value{};
         int_type() {
-            if constexpr (std::is_unsigned_v<T> && D<0) { value = 0; }
-            else { value = static_cast<T>(D); }
+            static_assert( !(std::is_unsigned_v<T> && static_cast<int>(D) < 0 ) );
+            value = static_cast<T>(D);
         };
         explicit int_type(const T& t) : value(t) {};
         int_type(const int_type<T, P>& t) : value(t.value) {};
