@@ -26,6 +26,9 @@
     <ClCompile Include="docu.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="phases.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VECoro.h">

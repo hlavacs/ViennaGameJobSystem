@@ -35,6 +35,7 @@ namespace vgjs {
     template<typename PT, typename... Ts> struct awaitable_tuple; //co_await a tuple of vectors
     template<typename PT, typename T> struct awaitable_coro; //co_await coros, functions, vectors
     template<typename PT> struct awaitable_resume_on; //change the thread
+    template<typename PT> struct awaitable_phase; //goto phase
     template<typename U> struct yield_awaiter;  //co_yield
     template<typename U> struct final_awaiter;  //final_suspend
 
@@ -73,11 +74,18 @@ namespace vgjs {
     template<typename T>
     requires CORO<T>   
     void schedule( T& coro, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        if (parent != nullptr) {
-            parent->m_children.fetch_add((int)children);       //await the completion of all children      
-        }
+        auto& js = JobSystem::instance();
+
         coro.promise()->m_parent = parent;
-        JobSystem::instance().schedule( coro.promise(), ph );      //schedule the promise as job
+        if (ph.value < 0 || ph == js.get_phase()) {
+            if (parent != nullptr) {
+                parent->m_children.fetch_add((int)children);       //await the completion of all children      
+            }
+        }
+        else {
+            coro.promise()->m_parent = nullptr;
+        }
+        js.schedule( coro.promise(), ph );      //schedule the promise as job
     };
 
     /**
@@ -424,7 +432,7 @@ namespace vgjs {
         * \brief Constructor
         * \param[in] coro The handle of the coroutine (typeless because the base class does not depend on types)
         */
-        explicit Coro_promise_base(n_exp::coroutine_handle<> coro) noexcept : m_coro(coro) {};
+        explicit Coro_promise_base(n_exp::coroutine_handle<> coro) noexcept : Job_base(), m_coro(coro) {};
 
         /**
         * \brief React to unhandled exceptions
@@ -587,7 +595,7 @@ namespace vgjs {
         * \brief Constructor 
         * \param[in] promise The promise corresponding to this future.
         */
-        explicit Coro_base(Coro_promise_base* promise) noexcept : Queuable(), m_promise(promise) {};   //constructor
+        explicit Coro_base(Coro_promise_base* promise ) noexcept : Queuable(), m_promise(promise) {};   //constructor
         
         /**
         * \brief Resume the coroutine.
@@ -664,6 +672,8 @@ namespace vgjs {
         */
         ~Coro() noexcept {
             if (!m_is_parent_function && m_coro) { //destroy the promise only if the parent is a coroutine (else it would destroy itself)
+                auto ph = m_coro.promise().m_phase;
+                if (ph.value >= 0 && ph != JobSystem::instance().get_phase()) return;
                 m_coro.destroy();
             }
         }
@@ -787,6 +797,13 @@ namespace vgjs {
         */
         awaitable_resume_on<void> await_transform(thread_index index ) noexcept { return { index }; };
 
+        /**.
+        * \brief Called by co_await to go to a given phase, i.e. schedule all jobs of this phase.
+        * \param[in] ph The phase the JS should go to.
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
+        awaitable_phase<void> await_transform(phase ph) noexcept { return { ph }; };
+
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
         * \returns the final awaiter.
@@ -846,6 +863,8 @@ namespace vgjs {
         */
         ~Coro() noexcept {
             if (!m_is_parent_function && m_coro) { //destroy the promise only if the parent is a coroutine (else it would destroy itself)
+                auto ph = m_coro.promise().m_phase;
+                if (ph.value >= 0 && ph != JobSystem::instance().get_phase()) return;
                 m_coro.destroy();
             }
         }
@@ -1060,8 +1079,7 @@ namespace vgjs {
         }
 
         return Coro<T>{
-            n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this),
-                m_value_ptr, m_is_parent_function };
+            n_exp::coroutine_handle<Coro_promise<T>>::from_promise(*this), m_value_ptr, m_is_parent_function };
     }
 
     //---------------------------------------------------------------------------------------------------

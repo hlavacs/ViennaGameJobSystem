@@ -351,22 +351,51 @@ Phases act like barriers, but jobs can be prescheduled to do stuff in a later ph
 
 Coroutines schedule functions and other coroutines for future phases also using the *schedule()* function. However, entering a phase must be done with *co_await*:
 
-    Coro<> driver( int i) {
-      //...
+    Coro<> phase2() {
+        std::cout << "Phase 2" << std::endl;
+        co_await thread_index{ 1 };
+        co_await phase{ 2 };
+
+        co_return;
+      }
+
+    void printPar( int i) {
+        std::cout << "i: " << i << std::endl;
     }
 
-    Coro<> test() {
-        co_await phase{0}; //enter phase 0
+    void phase1() {
+        std::cout << "Phase 1" << std::endl;
+        schedule(phase{ 1 });
 
-        //... do other stuff
+        schedule([=]() { printPar(4); }, phase{ 2 });
+        schedule([=]() { printPar(5); }, phase{ 2 });
+        schedule([=]() { printPar(6); }, phase{ 2 });
 
-        schedule(driver(1), phase{1}); //schedule for phase 1
+        schedule( phase2() );
+      }
 
-        //... do other stuff
+    void phase0() {
+        std::cout << "Phase 0" << std::endl;
+        schedule(phase{0});
 
-        co_await phase{1}; //enter phase 1 and schedule all waiting functions and coros
+        schedule([=]() { printPar(0); } );
 
+        schedule( [=]() { printPar(1); }, phase{ 1 } );
+        schedule([=]() { printPar(2); }, phase{ 1 });
+        schedule([=]() { printPar(3); }, phase{ 1 });
+
+        continuation([]() { phase1(); });
+      }
+
+    void test() {
+        std::cout << "Starting phases test()\n";
+
+        schedule([=](){ phase0(); });
+
+        std::cout << "Ending phases test()\n";
     }
+
+The example program above first schedules a function *phase0()* which enters phase 0, 
 
 
 ## Breaking the Parent-Child Relationship

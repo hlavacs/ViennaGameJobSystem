@@ -25,12 +25,17 @@ namespace docu {
 	void test(int);
 }
 
+namespace phases {
+	void test();
+}
+
 
 void driver( int i ) {
 
-	vgjs::schedule( std::bind(coro::test) );
-	vgjs::schedule (std::bind(func::test) );
-	vgjs::schedule(std::bind(mixed::test) );
+	//vgjs::schedule( std::bind(coro::test) );
+	//vgjs::schedule (std::bind(func::test) );
+	//vgjs::schedule(std::bind(mixed::test) );
+	vgjs::schedule(std::bind(phases::test));
 
 	if (i <= 1) {
 		vgjs::continuation([]() { std::cout << "terminate()\n";  vgjs::terminate(); } );
@@ -46,7 +51,7 @@ int main()
 
 	JobSystem::instance();
 
-	schedule( [](){ driver(200); });
+	schedule( [](){ driver(1); });
 
 	//schedule([=]() {docu::test(5); });
 	
