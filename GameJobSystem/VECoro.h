@@ -76,14 +76,17 @@ namespace vgjs {
     void schedule( T& coro, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
         auto& js = JobSystem::instance();
 
-        coro.promise()->m_parent = parent;
-        if (ph.value < 0 || ph == js.get_phase()) {
+        auto promise = coro.promise();
+
+        promise->m_parent = parent;
+        if (ph.value < 0 || ph == js.get_phase()) {                 //schedule for current phase
             if (parent != nullptr) {
                 parent->m_children.fetch_add((int)children);       //await the completion of all children      
             }
         }
-        else {
-            coro.promise()->m_parent = nullptr;
+        else {                                  //schedule for future phase - the promise will not be available then
+            promise->set_self_destruct(true);
+            promise->m_parent = nullptr;
         }
         js.schedule( coro.promise(), ph );      //schedule the promise as job
     };
@@ -100,7 +103,6 @@ namespace vgjs {
     void schedule( T&& coro, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
         schedule(coro, ph, parent, children);
     };
-
 
     //---------------------------------------------------------------------------------------------------
     //Deallocators
@@ -288,7 +290,7 @@ namespace vgjs {
 
         /**
         * \brief Awaiter constructor
-        * \parameter[in] thread_index NUmber of the thread to migrate to
+        * \parameter[in] thread_index Number of the thread to migrate to
         */
         awaitable_resume_on(thread_index index) noexcept : m_thread_index(index) {};
 
@@ -308,6 +310,13 @@ namespace vgjs {
     struct awaitable_phase {
         struct awaiter : suspend_always {
             phase m_phase;         ///<The phase to go to.
+
+            /**
+            * \brief Test whether the job is already on the right thread.
+            */
+            bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
+                return false;
+            }
 
             /**
             * \brief Enter the given phase
@@ -337,7 +346,6 @@ namespace vgjs {
         */
         awaiter operator co_await() noexcept { return { m_phase }; };
     };
-
 
 
     /**
@@ -426,6 +434,7 @@ namespace vgjs {
         n_exp::coroutine_handle<> m_coro;   ///<handle of the coroutine
         bool m_is_parent_function = current_job() == nullptr ? true : current_job()->is_function(); ///<is the parent a Function or nullptr?
         bool* m_ready_ptr = nullptr;        ///<points to flag which is true if value is ready, else false
+        bool m_self_destruct = false;
 
     public:
         /**
@@ -457,6 +466,9 @@ namespace vgjs {
             }
             return true;
         };
+
+        void set_self_destruct(bool b = true) { m_self_destruct = b; }
+        bool get_self_destruct() { return m_self_destruct; }
 
         //operators for allocating and deallocating memory, implementations follow later in this file
         template<typename... Args>
@@ -564,7 +576,8 @@ namespace vgjs {
         * \param[in] ph The phase the JS should go to.
         * \returns the awaitable for this parameter type of the co_await operator.
         */
-        awaitable_phase<T> await_transform(phase ph) noexcept { return { ph }; };
+        template<typename... Ts>
+        awaitable_phase<T> await_transform(phase ph, Ts... args) noexcept { return { ph }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
@@ -672,8 +685,7 @@ namespace vgjs {
         */
         ~Coro() noexcept {
             if (!m_is_parent_function && m_coro) { //destroy the promise only if the parent is a coroutine (else it would destroy itself)
-                auto ph = m_coro.promise().m_phase;
-                if (ph.value >= 0 && ph != JobSystem::instance().get_phase()) return;
+                if (m_coro.promise().get_self_destruct()) return;
                 m_coro.destroy();
             }
         }
@@ -863,8 +875,7 @@ namespace vgjs {
         */
         ~Coro() noexcept {
             if (!m_is_parent_function && m_coro) { //destroy the promise only if the parent is a coroutine (else it would destroy itself)
-                auto ph = m_coro.promise().m_phase;
-                if (ph.value >= 0 && ph != JobSystem::instance().get_phase()) return;
+                if (m_coro.promise().get_self_destruct()) return;
                 m_coro.destroy();
             }
         }

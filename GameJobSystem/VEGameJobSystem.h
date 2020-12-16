@@ -155,12 +155,11 @@ namespace vgjs {
         std::atomic<int>    m_children = 0;             //number of children this job is waiting for
         Job_base*           m_parent = nullptr;         //parent job that created this job
         thread_index        m_thread_index;             //thread that the job should run on and ran on
-        phase               m_phase;
         thread_type         m_type;                     //for logging performance
         thread_id           m_id;                       //for logging performance
         bool                m_is_function = false;      //default - this is not a function
 
-        Job_base() : m_children{ 0 }, m_parent{ nullptr }, m_thread_index{}, m_phase{}, m_type{}, m_id{}, m_is_function{ false } {}
+        Job_base() : m_children{ 0 }, m_parent{ nullptr }, m_thread_index{}, m_type{}, m_id{}, m_is_function{ false } {}
 
         virtual bool resume() = 0;                      //this is the actual work to be done
         void operator() () noexcept {           //wrapper as function operator
@@ -191,7 +190,6 @@ namespace vgjs {
             m_parent = nullptr;
             m_continuation = nullptr;
             m_thread_index = thread_index{};
-            m_phase = phase{};
             m_type = thread_type{};
             m_id = thread_id{};
         }
@@ -659,7 +657,6 @@ namespace vgjs {
         void schedule(Job_base* job, phase ph = phase{}) noexcept {
             assert(job!=nullptr);
 
-            job->m_phase = ph;
             if ( ph.value >= 0 && ph != m_phase) {
                 if(!m_phase_queues.contains(ph)) {
                     m_phase_queues[ph] = std::make_unique<JobQueue<Job_base>>();

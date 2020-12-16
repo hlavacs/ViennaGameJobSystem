@@ -39,7 +39,7 @@ namespace phases {
         schedule([=]() { printPar(5); }, phase{ 2 });
         schedule([=]() { printPar(6); }, phase{ 2 });
 
-        co_await phase2();
+        co_await phase{ 2 }, phase2();
 
         //schedule(phase2(), phase{ 2 });
         //schedule(phase{ 2 });
