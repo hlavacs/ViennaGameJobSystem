@@ -19,12 +19,12 @@ namespace phases {
 
     auto g_global_mem5 = ::n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, n_pmr::new_delete_resource());
 
-    Coro<> phase2() {
+    Coro<int> phase2() {
         std::cout << "Phase 2" << std::endl;
         co_await thread_index{ 1 };
         co_await phase{ 2 };
 
-        co_return;
+        co_return 0;
     }
 
     void printPar( int i) {
@@ -35,14 +35,10 @@ namespace phases {
         std::cout << "Phase 1" << std::endl;
         schedule(phase{ 1 });
 
-        schedule([=]() { printPar(4); }, phase{ 2 });
-        schedule([=]() { printPar(5); }, phase{ 2 });
-        schedule([=]() { printPar(6); }, phase{ 2 });
+        co_await phase{ 2 }, std::make_tuple([=]() { printPar(4); }, [=]() { printPar(5); }, [=]() { printPar(6); });
 
-        co_await phase{ 2 }, phase2();
+        co_await phase{ 2 };
 
-        //schedule(phase2(), phase{ 2 });
-        //schedule(phase{ 2 });
         co_return 0;
     }
 

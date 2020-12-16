@@ -705,10 +705,11 @@ namespace vgjs {
         * \param[in] ph The phase that is scheduled
         * \param[in] parent The parent of this Job.
         * \param[in] children Number used to increase the number of children of the parent.
+        * \returns the number of scheduled jobs.
         */
-        void schedule(phase ph, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(phase ph, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
             m_phase = ph;
-            if (!m_phase_queues.contains(ph)) return;
+            if (!m_phase_queues.contains(ph)) return 0;
 
             JobQueue<Job_base>* queue = m_phase_queues[ph].get();   //get the queue for this phase
 
@@ -716,10 +717,13 @@ namespace vgjs {
                 if (children < 0) children = queue->size();     //if the number of children is not given, then use queue size
                 parent->m_children.fetch_add((int)children);    //add this number to the number of children of parent
             }
+            uint32_t num_jobs = 0;
             while (Job_base* job = queue->pop()) {     //schedule all jobs from the phase queue
                 job->m_parent = parent;
                 schedule(job, ph);
+                ++num_jobs;
             }
+            return num_jobs;
         };
 
         /**
