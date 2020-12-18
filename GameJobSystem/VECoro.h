@@ -130,6 +130,7 @@ namespace vgjs {
 
     using suspend_always = n_exp::suspend_always;
 
+
     /**
     * \brief Awaitable for awaiting a tuple of vector of type Coro<T>, Function{}, std::function<void(void)>.
     *
@@ -269,6 +270,10 @@ namespace vgjs {
             if constexpr (is_pmr_vector< typename std::decay<U>::type >::value) {
                 return children.size();
             }
+            if constexpr (std::is_same_v<typename std::decay<U>::type, phase>) {
+                m_phase = children;
+                return 0;
+            }
             return 1;
         };
 
@@ -283,8 +288,10 @@ namespace vgjs {
             };
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
 
-            if (m_number == 0 && (m_phase.value < 0 || m_phase == JobSystem::instance().get_phase())) return true; //nothing to be done?
-
+            //if m_number == 0 then the only possible thing is to schedule a phase, so test if the phase is given and different to current one
+            if (m_number == 0 && (m_phase.value < 0 || m_phase == JobSystem::instance().get_phase())) {   //nothing to be done?
+                return true;
+            }
             return false;
         }
 
@@ -311,6 +318,11 @@ namespace vgjs {
             //The number of new jobs>0
 
             auto g = [&, this]<typename T>(T & children) {
+                //only schedule the phase itself if it is the only argument
+                if constexpr (std::is_same_v<typename std::decay<T>::type, phase> && sizeof...(Ts) > 1) {
+                    return 0;
+                }
+
                 schedule(children, m_phase, &h.promise(), (int)m_number);   //in first call the number of children is the total number of all jobs
                 m_number = 0;                                               //after this always 0
             };
@@ -332,7 +344,7 @@ namespace vgjs {
         * \brief Awaiter constructor.
         * \parameter[in] ph The phase to go to.
         */
-        awaitable_phase(phase ph, Ts... args) noexcept : m_phase(ph), m_tuple( std::make_tuple<Ts...>(args...) ) {};
+        awaitable_phase(std::tuple<Ts...> tuple) noexcept : m_tuple( tuple ) {};
     };
 
 
@@ -565,10 +577,7 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename... Ts>
-        awaitable_phase<T, Ts...> await_transform( awaitable_phase<T, Ts...> awa ) noexcept { return awa; };
-
-        awaitable_phase<T> await_transform(phase ph) noexcept { return { ph }; };
-
+        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...> tuple) noexcept { return {tuple}; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
@@ -807,8 +816,6 @@ namespace vgjs {
         */
         template<typename... Ts>
         awaitable_phase<void, Ts...> await_transform(awaitable_phase<void, Ts...> awa) noexcept { return awa; };
-
-        awaitable_phase<void> await_transform(phase ph) noexcept { return { ph }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.

@@ -707,7 +707,7 @@ namespace vgjs {
         * \param[in] children Number used to increase the number of children of the parent.
         * \returns the number of scheduled jobs.
         */
-        uint32_t schedule(phase ph, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(phase ph, phase ph2 = phase{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
             m_phase = ph;
             if (!m_phase_queues.contains(ph)) return 0;
 
@@ -894,8 +894,8 @@ namespace vgjs {
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule(phase ph, Job_base* parent = current_job(), int32_t children = -1) noexcept {
-        JobSystem::instance().schedule(ph, parent, children);   // forward to the job system
+    inline void schedule(phase ph, phase ph2 = phase{}, Job_base * parent = current_job(), int32_t children = -1) noexcept {
+        JobSystem::instance().schedule(ph, ph2, parent, children);   // forward to the job system
     };
 
 
