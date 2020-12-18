@@ -315,16 +315,16 @@ namespace vgjs {
                 return JobSystem::instance().schedule(m_phase) > 0;     //goto phase m_phase, if jobs were scheduled - await them
             }
 
-            //The number of new jobs>0
+            //The number of new jobs>0 from here on
 
             auto g = [&, this]<typename T>(T & children) {
-                //only schedule the phase itself if it is the only argument
-                if constexpr (std::is_same_v<typename std::decay<T>::type, phase> && sizeof...(Ts) > 1) {
-                    return 0;
+                if constexpr (std::is_same_v<typename std::decay<T>::type, phase> ) { //never schedule phases here
+                    return;
                 }
-
-                schedule(children, m_phase, &h.promise(), (int)m_number);   //in first call the number of children is the total number of all jobs
-                m_number = 0;                                               //after this always 0
+                else {
+                    schedule(children, m_phase, &h.promise(), (int)m_number);   //in first call the number of children is the total number of all jobs
+                    m_number = 0;                                               //after this always 0
+                }
             };
 
             auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {

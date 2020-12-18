@@ -33,8 +33,6 @@ namespace phases {
 
     Coro<int> phase1() {
         std::cout << "Phase 1" << std::endl;
-        schedule(phase{ 1 });
-
         co_await std::make_tuple( phase{ 2 }, std::bind( printPar, 4 ) );
 
         co_await std::bind(printPar, 4);
