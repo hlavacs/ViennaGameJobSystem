@@ -35,7 +35,9 @@ namespace phases {
         std::cout << "Phase 1" << std::endl;
         schedule(phase{ 1 });
 
-        co_await phase{ 2 }, std::make_tuple([=]() { printPar(4); }, [=]() { printPar(5); }, [=]() { printPar(6); });
+        //co_await awaitable_phase( phase{ 2 }, std::bind( printPar, 4 ) );
+
+        co_await std::bind(printPar, 4);
 
         co_await phase{ 2 };
 

@@ -138,63 +138,44 @@ namespace vgjs {
     * the return values can be retrieved by calling get().
     */
     template<typename PT, typename... Ts>
-    struct awaitable_tuple {
+    struct awaitable_tuple : suspend_always {
+        std::tuple<n_pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
+        std::size_t                       m_number = 0;   ///<total number of all new children to schedule
 
         /**
-        * \brief Awaiter for awaiting tuples of vectors
+        * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
         */
-        struct awaiter : suspend_always {
-            std::tuple<n_pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
-            std::size_t                       m_number = 0;   ///<total number of all new children to schedule
+        bool await_ready() noexcept {                                 //suspend only if there are no Coros
+            auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
+                m_number = (std::get<Idx>(m_tuple).size() + ...); //called for every tuple element
+                return (m_number == 0);
+            };
+            return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
+        }
 
-            /**
-            * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
-            */
-            bool await_ready() noexcept {                                 //suspend only if there are no Coros
-                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    m_number = (std::get<Idx>(m_tuple).size() + ...); //called for every tuple element
-                    return (m_number == 0);
-                };
-                return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-            }
+        /**
+        * \brief Go through all tuple elements and schedule them.
+        * Presets number of new children to avoid a race.
+        * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
+        */
+        void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+            auto g = [&, this]<typename T>(n_pmr::vector<T> & vec) {
+                schedule(vec, phase{}, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
+                m_number = 0;                                  //after this always 0
+            };
 
-            /**
-            * \brief Go through all tuple elements and schedule them.
-            * Presets number of new children to avoid a race.
-            * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
-            */
-            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                auto g = [&, this]<typename T>(n_pmr::vector<T> & vec) {
-                    schedule(vec, phase{}, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
-                    m_number = 0;                                  //after this always 0
-                };
-
-                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    ( g(std::get<Idx>(m_tuple)), ... ); //called for every tuple element
-                };
-
-                f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-            }
-
-            /**
-            * \brief Awaiter constructor
-            * \parameter[in] children Reference to a tuple of vectors of children that should be awaited
-            */
-            awaiter(std::tuple<n_pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-        };
-
-        std::tuple<n_pmr::vector<Ts>...>& m_tuple;      ///<vector with all children to start
+            auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
+                ( g(std::get<Idx>(m_tuple)), ... ); //called for every tuple element
+            };
+            
+            f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
+        }
 
         /**
         * \brief Awaitable constructor
         * \parameter[in] children Reference to a tuple of vectors of children that should be awaited
         */
         awaitable_tuple(std::tuple<n_pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-
-        /**
-        * \brief co_await operator is defined for this awaitable, and results in the awaiter
-        */
-        awaiter operator co_await() noexcept { return { m_tuple }; };
     };
 
 
@@ -205,51 +186,33 @@ namespace vgjs {
     * the return values can be retrieved by calling get() for Coro<t>.
     */
     template<typename PT, typename T>
-    struct awaitable_coro {
+    struct awaitable_coro : suspend_always {
+
+       T& m_child;   ///<child/children
+
+       /**
+        * \brief If m_child is a vector this makes sure that there are children in the vector
+        */
+        bool await_ready() noexcept {                   //suspend only if there are children to create
+            if constexpr (is_pmr_vector< typename std::decay<T>::type >::value) {
+                return m_child.empty();
+            }
+            return false;
+        }
 
         /**
-        * \brief Awaiter for awaiting Coros, Functions and vectors
+        * \brief Forward the child to the correct version of schedule()
+        * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
         */
-        struct awaiter : suspend_always {
-            T& m_child;                      ///<child/vector of children
-
-            /**
-            * \brief If m_child is a vector this makes sure that there are children in the vector
-            */
-            bool await_ready() noexcept {                   //suspend only if there are children to create
-                if constexpr (is_pmr_vector< typename std::decay<T>::type >::value) {
-                    return m_child.empty();
-                }
-                return false;
-            }
-
-            /**
-            * \brief Forward the child to the correct version of schedule()
-            * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
-            */
-            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                schedule(std::forward<T>(m_child), phase{}, &h.promise());  //schedule the coro, function or vector
-            }
-
-            /**
-            * \brief Awaiter constructor
-            * \parameter[in] child Reference to a child that should be awaited
-            */
-            awaiter(T& child) noexcept : m_child(child) {};
-        };
-
-        T& m_child;                     ///<child/children
+        void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+            schedule(std::forward<T>(m_child), phase{}, &h.promise());  //schedule the coro, function or vector
+        }
 
         /**
         * \brief Awaitable constructor
         * \parameter[in] child Reference to a child that should be awaited
         */
         awaitable_coro(T& child) noexcept : m_child(child) {};
-
-        /**
-        * \brief co_await operator is defined for this awaitable, and results in the awaiter
-        */
-        awaiter operator co_await() noexcept { return { m_child }; };
     };
 
 
@@ -259,45 +222,30 @@ namespace vgjs {
     * is immediately rescheduled into the system
     */
     template<typename PT>
-    struct awaitable_resume_on {
-        struct awaiter : suspend_always {
-            thread_index m_thread_index;         ///<the thread index to use
-
-            /**
-            * \brief Test whether the job is already on the right thread.
-            */
-            bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
-                return (m_thread_index.value == JobSystem::instance().get_thread_index().value);
-            }
-
-            /**
-            * \brief Set the thread index and reschedule the coro
-            * \param[in] h The coro handle, can be used to get the promise.
-            */
-            void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                h.promise().m_thread_index = m_thread_index;
-                JobSystem::instance().schedule(&h.promise());
-            }
-
-            /**
-            * \brief Awaiter constructor
-            * \parameter[in] thread_index NUmber of the thread to migrate to
-            */
-            awaiter(thread_index index) noexcept : m_thread_index(index) {};
-        };
-
+    struct awaitable_resume_on : suspend_always {
         thread_index m_thread_index; //the thread index to use
+
+        /**
+        * \brief Test whether the job is already on the right thread.
+        */
+        bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
+            return (m_thread_index.value == JobSystem::instance().get_thread_index().value);
+        }
+
+        /**
+        * \brief Set the thread index and reschedule the coro
+        * \param[in] h The coro handle, can be used to get the promise.
+        */
+        void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+            h.promise().m_thread_index = m_thread_index;
+            JobSystem::instance().schedule(&h.promise());
+        }
 
         /**
         * \brief Awaiter constructor
         * \parameter[in] thread_index Number of the thread to migrate to
         */
         awaitable_resume_on(thread_index index) noexcept : m_thread_index(index) {};
-
-        /**
-        * \brief co_await operator is defined for this awaitable, and results in the awaiter
-        */
-        awaiter operator co_await() noexcept { return { m_thread_index }; };
     };
 
 
@@ -307,101 +255,84 @@ namespace vgjs {
     * The coro will wait for all of them to finish.
     */
     template<typename PT, typename... Ts>
-    struct awaitable_phase {
-        struct awaiter : suspend_always {
-            phase               m_phase;          ///<The phase to go to.
-            std::tuple<Ts...>   m_tuple;          ///<vector with all children to start
-            std::size_t         m_number = 0;     ///<total number of all new children to schedule
+    struct awaitable_phase : suspend_always {
+        phase               m_phase;          ///<The phase to go to.
+        std::tuple<Ts...>   m_tuple;          ///<vector with all children to start
+        std::size_t         m_number = 0;     ///<total number of all new children to schedule
 
-            /**
-            * \brief Count the number of children to schedule.
-            * \returns the number of children to schedule.
-            */
-            template<typename U>
-            size_t size( U& children ) {
-                if constexpr (is_pmr_vector< typename std::decay<U>::type >::value) {
-                     return children.size();
-                }
-                return 1;
-            };
-
-            /**
-            * \brief Count the number of new jobs, then return false to force suspension.
-            * If nothings is to be done, then prevent suspension.
-            * \returns true if nothing is to be done, else false
-            */
-            bool await_ready() noexcept {               //suspend only if there is something to do
-                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    m_number = (size(std::get<Idx>(m_tuple)) + ... + 0); //called for every tuple element
-                };
-                f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-
-                if (m_number == 0 && ( m_phase.value<0 || m_phase==JobSystem::instance().get_phase() )) return true; //nothing to be done?
-
-                return false;
+        /**
+        * \brief Count the number of children to schedule.
+        * \returns the number of children to schedule.
+        */
+        template<typename U>
+        size_t size(U& children) {
+            if constexpr (is_pmr_vector< typename std::decay<U>::type >::value) {
+                return children.size();
             }
-
-            /**
-            * \brief Determine whether to stay in suspension or not
-            * 
-            * The coro should suspend if:
-            * - The number of new jobs=0 and m_phase>=0 and m_phase!=current JS phase and there are jobs for this phase waiting
-            * - The number of new jobs>0 and m_phase is either -1 or equal to the current JS phase
-            *
-            * The coro should continue if:
-            * - The number of new jobs=0 and (m_phase<0 || m_phase=current JS phase) -> nothing to do
-            * - The number of new jobs>0 and m_phase>=0 and m_phase!=current JS phase -> schedule the jobs for this phase
-            *
-            * \param[in] h The coro handle, can be used to get the promise.
-            * \returns true if the coro suspends, or false if the coro should continue
-            * 
-            */
-            bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-                if (m_number == 0) {                                        //The number of new jobs=0 - we tested the rest already
-                    return JobSystem::instance().schedule(m_phase) > 0;     //goto phase m_phase, if jobs were scheduled - await them
-                }
-
-                //The number of new jobs>0
-
-                auto g = [&, this]<typename T>(T& children) {
-                    schedule(children, m_phase, &h.promise(), (int)m_number);   //in first call the number of children is the total number of all jobs
-                    m_number = 0;                                               //after this always 0
-                };
-
-                auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                    (g(std::get<Idx>(m_tuple)), ...); //called for every tuple element
-                };
-
-                f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-
-                if (m_phase.value >= 0 && m_phase != JobSystem::instance().get_phase()) { //schedule for another phase
-                    return false;   //do not suspend
-                }
-
-                return true;    //schedule for this phase, so suspend
-            }
-
-            /**
-            * \brief Awaiter constructor
-            * \parameter[in] ph The phase to go to.
-            */
-            awaiter(phase ph, std::tuple<Ts...>&& tuple) noexcept : m_phase(ph), m_tuple(std::move(tuple)) {};
+            return 1;
         };
 
-        phase m_phase; //The phase to go to.
-        std::tuple<Ts...> m_tuple;      ///<vector with all children to start
+        /**
+        * \brief Count the number of new jobs, then return false to force suspension.
+        * If nothings is to be done, then prevent suspension.
+        * \returns true if nothing is to be done, else false
+        */
+        bool await_ready() noexcept {               //suspend only if there is something to do
+            auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
+                m_number = (size(std::get<Idx>(m_tuple)) + ... + 0); //called for every tuple element
+            };
+            f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
+
+            if (m_number == 0 && (m_phase.value < 0 || m_phase == JobSystem::instance().get_phase())) return true; //nothing to be done?
+
+            return false;
+        }
+
+        /**
+        * \brief Determine whether to stay in suspension or not
+        *
+        * The coro should suspend if:
+        * - The number of new jobs=0 and m_phase>=0 and m_phase!=current JS phase and there are jobs for this phase waiting
+        * - The number of new jobs>0 and m_phase is either -1 or equal to the current JS phase
+        *
+        * The coro should continue if:
+        * - The number of new jobs=0 and (m_phase<0 || m_phase=current JS phase) -> nothing to do
+        * - The number of new jobs>0 and m_phase>=0 and m_phase!=current JS phase -> schedule the jobs for this phase
+        *
+        * \param[in] h The coro handle, can be used to get the promise.
+        * \returns true if the coro suspends, or false if the coro should continue
+        *
+        */
+        bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+            if (m_number == 0) {                                        //The number of new jobs=0 - we tested the rest already
+                return JobSystem::instance().schedule(m_phase) > 0;     //goto phase m_phase, if jobs were scheduled - await them
+            }
+
+            //The number of new jobs>0
+
+            auto g = [&, this]<typename T>(T & children) {
+                schedule(children, m_phase, &h.promise(), (int)m_number);   //in first call the number of children is the total number of all jobs
+                m_number = 0;                                               //after this always 0
+            };
+
+            auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
+                (g(std::get<Idx>(m_tuple)), ...); //called for every tuple element
+            };
+
+            f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
+
+            if (m_phase.value >= 0 && m_phase != JobSystem::instance().get_phase()) { //schedule for another phase
+                return false;   //do not suspend
+            }
+
+            return true;    //schedule for this phase, so suspend
+        }
 
         /**
         * \brief Awaiter constructor.
         * \parameter[in] ph The phase to go to.
         */
-        awaitable_phase(phase ph, std::tuple<Ts...>&& tuple) noexcept : m_phase(ph), m_tuple(std::move(tuple)) {};
-        awaitable_phase(phase ph, std::tuple<Ts...>& tuple) noexcept : m_phase(ph), m_tuple(std::move(tuple)) {};
-
-        /**
-        * \brief co_await operator is defined for this awaitable, and results in the awaiter
-        */
-        awaiter operator co_await() noexcept { return { m_phase, std::move(m_tuple) }; };
+        awaitable_phase(phase ph, Ts... args) noexcept : m_phase(ph), m_tuple( std::make_tuple<Ts...>(args...) ) {};
     };
 
 
@@ -634,9 +565,10 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename... Ts>
-        awaitable_phase<T, Ts...> await_transform(phase ph, Ts... args) noexcept { 
-            return { ph, std::make_tuple(args...) };
-        };
+        awaitable_phase<T, Ts...> await_transform( awaitable_phase<T, Ts...> awa ) noexcept { return awa; };
+
+        awaitable_phase<T> await_transform(phase ph) noexcept { return { ph }; };
+
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
@@ -874,9 +806,9 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename... Ts>
-        awaitable_phase<void, Ts...> await_transform(phase ph, Ts... args) noexcept { 
-            return { ph, std::make_tuple(args...) }; 
-        };
+        awaitable_phase<void, Ts...> await_transform(awaitable_phase<void, Ts...> awa) noexcept { return awa; };
+
+        awaitable_phase<void> await_transform(phase ph) noexcept { return { ph }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
