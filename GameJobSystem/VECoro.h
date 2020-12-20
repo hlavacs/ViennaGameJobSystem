@@ -344,7 +344,7 @@ namespace vgjs {
         * \brief Awaiter constructor.
         * \parameter[in] ph The phase to go to.
         */
-        awaitable_phase(std::tuple<Ts...>&& tuple) noexcept : m_tuple( std::move(tuple) ) {};
+        awaitable_phase(std::tuple<Ts...>&& tuple) noexcept : m_tuple( std::forward<std::tuple<Ts...>>(tuple) ) {};
     };
 
 
@@ -548,21 +548,13 @@ namespace vgjs {
         }
 
         /**
-        * \brief Called by co_await to create an awaitable for tuples of vectors of coroutines or functions.
-        * \param[in] tuple The tuple holding vectors of stuff to await.
-        * \returns the awaitable for this parameter type of the co_await operator.
-        */
-        template<typename... Ts>
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<n_pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
-
-        /**
         * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
         * \param[in] coro The coroutine, Function or vector to await.
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename U>
         requires !std::is_integral_v<U>
-        awaitable_coro<T, U> await_transform(U&& func) noexcept { return { func }; };
+        awaitable_phase<T, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
 
         /**.
         * \brief Called by co_await to create an awaitable for migrating to another thread.
@@ -578,6 +570,9 @@ namespace vgjs {
         */
         template<typename... Ts>
         awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+
+        template<typename... Ts>
+        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.

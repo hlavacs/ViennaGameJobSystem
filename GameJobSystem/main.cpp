@@ -32,9 +32,9 @@ namespace phases {
 
 void driver( int i ) {
 
-	//vgjs::schedule( std::bind(coro::test) );
-	//vgjs::schedule (std::bind(func::test) );
-	//vgjs::schedule(std::bind(mixed::test) );
+	vgjs::schedule( std::bind(coro::test) );
+	vgjs::schedule (std::bind(func::test) );
+	vgjs::schedule(std::bind(mixed::test) );
 	vgjs::schedule(std::bind(phases::test));
 
 	if (i <= 1) {
@@ -51,7 +51,7 @@ int main()
 
 	JobSystem::instance();
 
-	schedule( [](){ driver(10); });
+	schedule( [](){ driver(50); });
 
 	//schedule([=]() {docu::test(5); });
 	
