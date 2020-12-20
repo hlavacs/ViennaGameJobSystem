@@ -284,8 +284,27 @@ namespace vgjs {
             return true;    //schedule for this phase, so suspend
         }
 
+        template<typename T, typename... Ts>
+        decltype(auto) func(T& t, Ts&... args) {
+            if constexpr (sizeof... (Ts) > 0) {
+                if constexpr (std::is_base_of_v<Coro_base, std::remove_reference<T>> && !std::is_same_v<std::remove_reference<T>, Coro<void>>) {
+                    return std::tuple_cat(t.get(), func(args...));
+                }
+                return func(args...);
+            }
+
+            if constexpr (std::is_base_of_v<Coro_base,std::remove_reference<T>> && !std::is_same_v<std::remove_reference<T>,Coro<void>>) {
+                return t.get();
+            }
+            return;
+        }
+
         decltype(auto) await_resume() {
-            return std::make_tuple(1);
+            decltype(auto) f = [&, this]<typename... Ts>(Ts&... args) {
+                return func(args...);
+            };
+
+            return std::apply(f, m_tuple); //call f and create an integer list going from 0 to sizeof(Ts)-1
         }
 
         /**
