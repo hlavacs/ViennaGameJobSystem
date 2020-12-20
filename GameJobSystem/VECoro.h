@@ -131,7 +131,7 @@ namespace vgjs {
 
 
     /**
-    * \brief Awaiter for changing the thread that the coro is run on.
+    * \brief Awaitable for changing the thread that the coro is run on.
     * After suspending the thread number is set to the target thread, then the job
     * is immediately rescheduled into the system
     */
@@ -162,23 +162,27 @@ namespace vgjs {
         awaitable_resume_on(thread_index index) noexcept : m_thread_index(index) {};
     };
 
+
+    /**
+    * \brief Awaitable for scheduling a phase
+    */
     template<typename PT>
     struct awaitable_phase : suspend_always {
         phase       m_phase;      //the phase to schedule
         uint32_t    m_number = 0;     //Number of scheduled jobs
 
         /**
-        * \brief Test whether the job is already on the right thread.
-        * \returns true if nothing is to be done, else false
+        * \brief Test whether the given phase is valid.
+        * \returns true if nothing is to be done, else false.
         */
-        bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
+        bool await_ready() noexcept {  //do nothing if the given phase is invalid
             return m_phase.value < 0 || m_phase == JobSystem::instance().get_phase();
         }
 
         /**
-        * \brief Set the thread index and reschedule the coro
+        * \brief Set the phase and schedule its jobs. Resume immediately if there were no jobs.
         * \param[in] h The coro handle, can be used to get the promise.
-        * \returns true of the coro should be suspended, else false
+        * \returns true of the coro should be suspended, else false.
         */
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
             m_number = JobSystem::instance().schedule(m_phase);
@@ -202,15 +206,16 @@ namespace vgjs {
 
 
     /**
-    * \brief Awaiter for entering a given phase.
-    * This means that all pre-scheduled jobs for this phase will be scheduled and executed.
-    * The coro will wait for all of them to finish.
+    * \brief Awaitable for scheduling jobs.
+    * All jobs are put into std::tuples.
+    * If one of the elements is a valid phase different to the current one, the jobs are scheduled for this
+    * phase and the coro is resumed immediately.
     */
     template<typename PT, typename... Ts>
     struct awaitable_tuple : suspend_always {
-        phase               m_phase;          ///<The phase to go to.
+        phase               m_phase;          ///<The phase to schedule to
         std::tuple<Ts...>   m_tuple;          ///<vector with all children to start
-        std::size_t         m_number = 0;     ///<total number of all new children to schedule
+        std::size_t         m_number;         ///<total number of all new children to schedule
 
         /**
         * \brief Count the number of children to schedule.
@@ -287,7 +292,7 @@ namespace vgjs {
         * \brief Awaiter constructor.
         * \parameter[in] ph The phase to go to.
         */
-        awaitable_tuple(std::tuple<Ts...>&& tuple) noexcept : m_tuple( std::forward<std::tuple<Ts...>>(tuple) ) {};
+        awaitable_tuple(std::tuple<Ts...>&& tuple) noexcept : m_phase{}, m_number{0}, m_tuple(std::forward<std::tuple<Ts...>>(tuple)) {};
     };
 
 
