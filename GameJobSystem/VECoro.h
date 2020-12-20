@@ -32,9 +32,7 @@ namespace vgjs {
     template<> struct coro_deallocator<void>;
     
     //awaitables for co_await and co_yield, and final awaiting
-    template<typename PT, typename... Ts> struct awaitable_phase; //goto phase
-    template<typename PT, typename... Ts> struct awaitable_tuple; //co_await a tuple of vectors
-    template<typename PT, typename T> struct awaitable_coro; //co_await coros, functions, vectors
+    template<typename PT, typename... Ts> struct awaitable_tuple; //goto phase
     template<typename PT> struct awaitable_resume_on; //change the thread
     template<typename U> struct yield_awaiter;  //co_yield
     template<typename U> struct final_awaiter;  //final_suspend
@@ -132,92 +130,6 @@ namespace vgjs {
 
 
     /**
-    * \brief Awaitable for awaiting a tuple of vector of type Coro<T>, Function{}, std::function<void(void)>.
-    *
-    * The tuple can contain vectors with different types.
-    * The caller will then await the completion of the Coros. Afterwards,
-    * the return values can be retrieved by calling get().
-    */
-    template<typename PT, typename... Ts>
-    struct awaitable_tuple : suspend_always {
-        std::tuple<n_pmr::vector<Ts>...>& m_tuple;        ///<vector with all children to start
-        std::size_t                       m_number = 0;   ///<total number of all new children to schedule
-
-        /**
-        * \brief Count the jobs in the vectors. Return false if there are no jobs, else true.
-        */
-        bool await_ready() noexcept {                                 //suspend only if there are no Coros
-            auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                m_number = (std::get<Idx>(m_tuple).size() + ...); //called for every tuple element
-                return (m_number == 0);
-            };
-            return f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-        }
-
-        /**
-        * \brief Go through all tuple elements and schedule them.
-        * Presets number of new children to avoid a race.
-        * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
-        */
-        void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-            auto g = [&, this]<typename T>(n_pmr::vector<T> & vec) {
-                schedule(vec, phase{}, &h.promise(), (int)m_number);    //in first call the number of children is the total number of all jobs
-                m_number = 0;                                  //after this always 0
-            };
-
-            auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                ( g(std::get<Idx>(m_tuple)), ... ); //called for every tuple element
-            };
-            
-            f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
-        }
-
-        /**
-        * \brief Awaitable constructor
-        * \parameter[in] children Reference to a tuple of vectors of children that should be awaited
-        */
-        awaitable_tuple(std::tuple<n_pmr::vector<Ts>...>& children) noexcept : m_tuple(children) {};
-    };
-
-
-    /**
-    * \brief Awaiter for awaiting a Coro of type Coro<T> or std::function<void(void)>, or std::pmr::vector thereof
-    *
-    * The caller will await the completion of the Coro(s). Afterwards,
-    * the return values can be retrieved by calling get() for Coro<t>.
-    */
-    template<typename PT, typename T>
-    struct awaitable_coro : suspend_always {
-
-       T& m_child;   ///<child/children
-
-       /**
-        * \brief If m_child is a vector this makes sure that there are children in the vector
-        */
-        bool await_ready() noexcept {                   //suspend only if there are children to create
-            if constexpr (is_pmr_vector< typename std::decay<T>::type >::value) {
-                return m_child.empty();
-            }
-            return false;
-        }
-
-        /**
-        * \brief Forward the child to the correct version of schedule()
-        * \param[in] h The coro handle, can be used to get the promise which is the parent of the children.
-        */
-        void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-            schedule(std::forward<T>(m_child), phase{}, &h.promise());  //schedule the coro, function or vector
-        }
-
-        /**
-        * \brief Awaitable constructor
-        * \parameter[in] child Reference to a child that should be awaited
-        */
-        awaitable_coro(T& child) noexcept : m_child(child) {};
-    };
-
-
-    /**
     * \brief Awaiter for changing the thread that the coro is run on.
     * After suspending the thread number is set to the target thread, then the job
     * is immediately rescheduled into the system
@@ -256,7 +168,7 @@ namespace vgjs {
     * The coro will wait for all of them to finish.
     */
     template<typename PT, typename... Ts>
-    struct awaitable_phase : suspend_always {
+    struct awaitable_tuple : suspend_always {
         phase               m_phase;          ///<The phase to go to.
         std::tuple<Ts...>   m_tuple;          ///<vector with all children to start
         std::size_t         m_number = 0;     ///<total number of all new children to schedule
@@ -267,14 +179,14 @@ namespace vgjs {
         */
         template<typename U>
         size_t size(U& children) {
-            if constexpr (is_pmr_vector< typename std::decay<U>::type >::value) {
+            if constexpr (is_pmr_vector< typename std::decay<U>::type >::value) { //if this is a vector
                 return children.size();
             }
-            if constexpr (std::is_same_v<typename std::decay<U>::type, phase>) {
+            if constexpr (std::is_same_v<typename std::decay<U>::type, phase>) { //if this is a phase
                 m_phase = children;
                 return 0;
             }
-            return 1;
+            return 1;   //if this is a function, Function, or Coro
         };
 
         /**
@@ -340,11 +252,15 @@ namespace vgjs {
             return true;    //schedule for this phase, so suspend
         }
 
+        decltype(auto) await_resume() {
+            return std::make_tuple(1);
+        }
+
         /**
         * \brief Awaiter constructor.
         * \parameter[in] ph The phase to go to.
         */
-        awaitable_phase(std::tuple<Ts...>&& tuple) noexcept : m_tuple( std::forward<std::tuple<Ts...>>(tuple) ) {};
+        awaitable_tuple(std::tuple<Ts...>&& tuple) noexcept : m_tuple( std::forward<std::tuple<Ts...>>(tuple) ) {};
     };
 
 
@@ -548,19 +464,19 @@ namespace vgjs {
         }
 
         /**
-        * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
-        * \param[in] coro The coroutine, Function or vector to await.
+        * \brief Called by co_await to create an awaitable for coroutines, Functions, vectors, or tuples thereof.
+        * \param[in] func The coroutine, Function or vector to await.
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename U>
         requires !std::is_integral_v<U>
-        awaitable_phase<T, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
+        awaitable_tuple<T, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
 
         template<typename... Ts>
-        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         template<typename... Ts>
-        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**.
         * \brief Called by co_await to create an awaitable for migrating to another thread.
@@ -776,36 +692,19 @@ namespace vgjs {
         yield_awaiter<void> yield_value() noexcept { return {}; };
 
         /**
-        * \brief Called by co_await to create an awaitable for tuples of vectors of coroutines or functions.
-        * \param[in] tuple The tuple holding vectors of stuff to await.
-        * \returns the awaitable for this parameter type of the co_await operator.
-        */
-        //template<typename... Ts>
-        //awaitable_tuple<void, Ts...> await_transform(std::tuple<n_pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
-
-        /**
-        * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
-        * \param[in] coro The coroutine, Function or vector to await.
-        * \returns the awaitable for this parameter type of the co_await operator.
-        */
-        //template<typename U>
-        //requires !std::is_integral_v<U>
-        //awaitable_coro<void, U> await_transform(U&& coro) noexcept { return { coro }; };
-
-        /**
-        * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
-        * \param[in] coro The coroutine, Function or vector to await.
+        * \brief Called by co_await to create an awaitable for coroutines, Functions, vectors, or tuples thereof.
+        * \param[in] func The coroutine, Function or vector to await.
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename U>
         requires !std::is_integral_v<U>
-        awaitable_phase<void, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
+        awaitable_tuple<void, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
 
         template<typename... Ts>
-        awaitable_phase<void, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+        awaitable_tuple<void, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         template<typename... Ts>
-        awaitable_phase<void, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+        awaitable_tuple<void, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**.
         * \brief Called by co_await to create an awaitable for migrating to another thread.
@@ -813,14 +712,6 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         awaitable_resume_on<void> await_transform(thread_index index ) noexcept { return { index }; };
-
-        /**.
-        * \brief Called by co_await to go to a given phase, i.e. schedule all jobs of this phase.
-        * \param[in] ph The phase the JS should go to.
-        * \returns the awaitable for this parameter type of the co_await operator.
-        */
-        //template<typename... Ts>
-        //awaitable_phase<void, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
