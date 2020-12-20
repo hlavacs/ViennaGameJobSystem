@@ -32,10 +32,10 @@ namespace vgjs {
     template<> struct coro_deallocator<void>;
     
     //awaitables for co_await and co_yield, and final awaiting
+    template<typename PT, typename... Ts> struct awaitable_phase; //goto phase
     template<typename PT, typename... Ts> struct awaitable_tuple; //co_await a tuple of vectors
     template<typename PT, typename T> struct awaitable_coro; //co_await coros, functions, vectors
     template<typename PT> struct awaitable_resume_on; //change the thread
-    template<typename PT, typename... Ts> struct awaitable_phase; //goto phase
     template<typename U> struct yield_awaiter;  //co_yield
     template<typename U> struct final_awaiter;  //final_suspend
 
@@ -556,23 +556,18 @@ namespace vgjs {
         requires !std::is_integral_v<U>
         awaitable_phase<T, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
 
+        template<typename... Ts>
+        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+
+        template<typename... Ts>
+        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+
         /**.
         * \brief Called by co_await to create an awaitable for migrating to another thread.
         * \param[in] thread_index The thread to migrate to.
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         awaitable_resume_on<T> await_transform(thread_index index) noexcept { return { index }; };
-
-        /**.
-        * \brief Called by co_await to go to a given phase, i.e. schedule all jobs of this phase.
-        * \param[in] ph The phase the JS should go to.
-        * \returns the awaitable for this parameter type of the co_await operator.
-        */
-        template<typename... Ts>
-        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
-
-        template<typename... Ts>
-        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
@@ -785,8 +780,17 @@ namespace vgjs {
         * \param[in] tuple The tuple holding vectors of stuff to await.
         * \returns the awaitable for this parameter type of the co_await operator.
         */
-        template<typename... Ts>
-        awaitable_tuple<void, Ts...> await_transform(std::tuple<n_pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
+        //template<typename... Ts>
+        //awaitable_tuple<void, Ts...> await_transform(std::tuple<n_pmr::vector<Ts>...>& tuple) noexcept { return { tuple }; };
+
+        /**
+        * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
+        * \param[in] coro The coroutine, Function or vector to await.
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
+        //template<typename U>
+        //requires !std::is_integral_v<U>
+        //awaitable_coro<void, U> await_transform(U&& coro) noexcept { return { coro }; };
 
         /**
         * \brief Called by co_await to create an awaitable for coroutines, Functions, or vectors thereof.
@@ -795,7 +799,13 @@ namespace vgjs {
         */
         template<typename U>
         requires !std::is_integral_v<U>
-        awaitable_coro<void, U> await_transform(U&& coro) noexcept { return { coro }; };
+        awaitable_phase<void, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
+
+        template<typename... Ts>
+        awaitable_phase<void, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+
+        template<typename... Ts>
+        awaitable_phase<void, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**.
         * \brief Called by co_await to create an awaitable for migrating to another thread.
@@ -809,8 +819,8 @@ namespace vgjs {
         * \param[in] ph The phase the JS should go to.
         * \returns the awaitable for this parameter type of the co_await operator.
         */
-        template<typename... Ts>
-        awaitable_phase<void, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+        //template<typename... Ts>
+        //awaitable_phase<void, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
