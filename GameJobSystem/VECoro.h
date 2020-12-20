@@ -344,7 +344,7 @@ namespace vgjs {
         * \brief Awaiter constructor.
         * \parameter[in] ph The phase to go to.
         */
-        awaitable_phase(std::tuple<Ts...> tuple) noexcept : m_tuple( tuple ) {};
+        awaitable_phase(std::tuple<Ts...>&& tuple) noexcept : m_tuple( std::move(tuple) ) {};
     };
 
 
@@ -577,7 +577,7 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename... Ts>
-        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...> tuple) noexcept { return {tuple}; };
+        awaitable_phase<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
@@ -815,7 +815,7 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename... Ts>
-        awaitable_phase<void, Ts...> await_transform(awaitable_phase<void, Ts...> awa) noexcept { return awa; };
+        awaitable_phase<void, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
