@@ -34,6 +34,7 @@ namespace vgjs {
     //awaitables for co_await and co_yield, and final awaiting
     template<typename PT, typename... Ts> struct awaitable_tuple; //goto phase
     template<typename PT> struct awaitable_resume_on; //change the thread
+    template<typename PT> struct awaitable_phase; //schedule all jobs for a phase
     template<typename U> struct yield_awaiter;  //co_yield
     template<typename U> struct final_awaiter;  //final_suspend
 
@@ -161,6 +162,44 @@ namespace vgjs {
         awaitable_resume_on(thread_index index) noexcept : m_thread_index(index) {};
     };
 
+    template<typename PT>
+    struct awaitable_phase : suspend_always {
+        phase       m_phase;      //the phase to schedule
+        uint32_t    m_number = 0;     //Number of scheduled jobs
+
+        /**
+        * \brief Test whether the job is already on the right thread.
+        * \returns true if nothing is to be done, else false
+        */
+        bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
+            return m_phase.value < 0 || m_phase == JobSystem::instance().get_phase();
+        }
+
+        /**
+        * \brief Set the thread index and reschedule the coro
+        * \param[in] h The coro handle, can be used to get the promise.
+        * \returns true of the coro should be suspended, else false
+        */
+        bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
+            m_number = JobSystem::instance().schedule(m_phase);
+            return m_number > 0;     //goto phase m_phase, if jobs were scheduled - await them
+        }
+
+        /**
+        * \brief Returns the number of jobs that have been scheduled
+        * \returns the number of jobs that have been scheduled
+        */
+        uint32_t await_resume() {
+            return m_number;
+        }
+
+        /**
+        * \brief Awaiter constructor
+        * \parameter[in] ph The phase to schedule
+        */
+        awaitable_phase( phase ph) noexcept : m_phase(ph) {};
+    };
+
 
     /**
     * \brief Awaiter for entering a given phase.
@@ -186,7 +225,7 @@ namespace vgjs {
                 m_phase = children;
                 return 0;
             }
-            return 1;   //if this is a function, Function, or Coro
+            return 1;   //if this is a std::function, Function, or Coro
         };
 
         /**
@@ -200,35 +239,23 @@ namespace vgjs {
             };
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
 
-            //if m_number == 0 then the only possible thing is to schedule a phase, so test if the phase is given and different to current one
-            if (m_number == 0 && (m_phase.value < 0 || m_phase == JobSystem::instance().get_phase())) {   //nothing to be done?
+            if (m_number == 0) {   //nothing to be done -> do not suspend
                 return true;
             }
             return false;
         }
 
         /**
-        * \brief Determine whether to stay in suspension or not
+        * \brief Determine whether to stay in suspension or not.
         *
-        * The coro should suspend if:
-        * - The number of new jobs=0 and m_phase>=0 and m_phase!=current JS phase and there are jobs for this phase waiting
-        * - The number of new jobs>0 and m_phase is either -1 or equal to the current JS phase
-        *
-        * The coro should continue if:
-        * - The number of new jobs=0 and (m_phase<0 || m_phase=current JS phase) -> nothing to do
-        * - The number of new jobs>0 and m_phase>=0 and m_phase!=current JS phase -> schedule the jobs for this phase
+        * The coro should suspend if m_phase is either -1 or equal to the current JS phase.
+        * The coro should continue if m_phase>=0 and m_phase!=current JS phase -> schedule the jobs for this phase.
         *
         * \param[in] h The coro handle, can be used to get the promise.
-        * \returns true if the coro suspends, or false if the coro should continue
+        * \returns true if the coro suspends, or false if the coro should continue.
         *
         */
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-            if (m_number == 0) {                                        //The number of new jobs=0 - we tested the rest already
-                return JobSystem::instance().schedule(m_phase) > 0;     //goto phase m_phase, if jobs were scheduled - await them
-            }
-
-            //The number of new jobs>0 from here on
-
             auto g = [&, this]<typename T>(T & children) {
                 if constexpr (std::is_same_v<typename std::decay<T>::type, phase> ) { //never schedule phases here
                     return;
@@ -485,6 +512,13 @@ namespace vgjs {
         */
         awaitable_resume_on<T> await_transform(thread_index index) noexcept { return { index }; };
 
+        /**.
+        * \brief Called by co_await to create an awaitable for scheduling a phase
+        * \param[in] ph The phase to schedule
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
+        awaitable_phase<T> await_transform(phase ph) noexcept { return { ph }; };
+
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
         * \returns the final awaiter.
@@ -654,7 +688,6 @@ namespace vgjs {
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<void>> h) noexcept;
     };
 
-
     /**
     * \brief Coro promise for void
     */
@@ -712,6 +745,13 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         awaitable_resume_on<void> await_transform(thread_index index ) noexcept { return { index }; };
+
+        /**.
+        * \brief Called by co_await to create an awaitable for scheduling a phase
+        * \param[in] ph The phase to schedule
+        * \returns the awaitable for this parameter type of the co_await operator.
+        */
+        awaitable_phase<void> await_transform(phase ph) noexcept { return { ph }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
