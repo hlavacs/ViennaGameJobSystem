@@ -284,22 +284,28 @@ namespace vgjs {
             return true;    //schedule for this phase, so suspend
         }
 
-
+        /**
+        * \brief Collect the results and put thim into a tuple
+        *
+        * \param[in] t The current coro promise
+        * \returns a tuple holding the return value.
+        *
+        */
         template<typename T>
         auto get_val(T& t) {
             using type = typename std::decay_t<T>;
 
             if constexpr (std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
-                return t.get();
+                return std::make_tuple(t.get());
             }
             else {
                 if constexpr (is_pmr_vector<T>::value && std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
                     std::pmr::vector<type> ret;
                     for (auto& co : t) { ret.emplace(co.get()); }
-                    return ret;
+                    return std::make_tuple(ret);
                 }
                 else {
-                    return;
+                    return std::make_tuple();
                 }
             }
         }
@@ -316,31 +322,11 @@ namespace vgjs {
         auto func(T& t, Us&... args) {
             using type = typename std::decay_t<T>;
 
-            /*if constexpr (sizeof... (Us) > 0) {
-                if constexpr (std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
-                    return std::tuple_cat(t.get(), func(args...));
-                }
-                else {
-                    if constexpr (is_pmr_vector<T>::value && std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
-                        return std::tuple_cat(t.get(), func(args...));
-                    }
-                    return func(args...);
-                }
+            if constexpr (sizeof... (Us) > 0) {
+                return std::tuple_cat(get_val(t), func(args...));
             }
             else {
-                return;
-            }*/
-            
-            if constexpr (std::is_base_of_v<Coro_base,type> && !std::is_same_v<type,Coro<void>>) {
-                return std::make_tuple(t.get());
-            }
-            else {
-                if constexpr (is_pmr_vector<T>::value && std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
-                    return std::tuple_cat(t.get(), func(args...));
-                }
-                else {
-                    return;
-                }
+                return get_val(t);
             }
         }
 
@@ -350,10 +336,10 @@ namespace vgjs {
         *
         */
         auto await_resume() {
-            decltype(auto) f = [&, this]<typename... Us>(Us&... args) {
-                return func(args...);
+            auto f = [&, this]<typename... Us>(Us&... args) {
+                return func(args...);       //call func with all parameters from the tuple
             };
-            return std::apply(f, m_tuple); //call f and create an integer list going from 0 to sizeof(Ts)-1
+            return std::apply(f, m_tuple);  //call f with all parameters from the tuple
         }
 
         /**
