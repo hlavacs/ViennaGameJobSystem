@@ -284,23 +284,71 @@ namespace vgjs {
             return true;    //schedule for this phase, so suspend
         }
 
-        template<typename T, typename... Us>
-        auto func(T& t, Us&... args) {
-            if constexpr (sizeof... (Us) > 0) {
-                if constexpr (std::is_base_of_v<Coro_base, std::remove_reference_t<T>> && !std::is_same_v<std::remove_reference_t<T>, Coro<void>>) {
-                    return std::tuple_cat(t.get(), func(args...));
-                }
-                return func(args...);
-            }
 
-            if constexpr (std::is_base_of_v<Coro_base,std::remove_reference_t<T>> && !std::is_same_v<std::remove_reference_t<T>,Coro<void>>) {
-                return std::make_tuple(t.get());
+        template<typename T>
+        auto get_val(T& t) {
+            using type = typename std::decay_t<T>;
+
+            if constexpr (std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
+                return t.get();
             }
             else {
-                return;
+                if constexpr (is_pmr_vector<T>::value && std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
+                    std::pmr::vector<type> ret;
+                    for (auto& co : t) { ret.emplace(co.get()); }
+                    return ret;
+                }
+                else {
+                    return;
+                }
             }
         }
 
+        /**
+        * \brief Collect the results and put thim into a tuple
+        *
+        * \param[in] t The first coro promise
+        * \param[in] args The other coro promises
+        * \returns a tuple holding all return values.
+        *
+        */
+        template<typename T, typename... Us>
+        auto func(T& t, Us&... args) {
+            using type = typename std::decay_t<T>;
+
+            /*if constexpr (sizeof... (Us) > 0) {
+                if constexpr (std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
+                    return std::tuple_cat(t.get(), func(args...));
+                }
+                else {
+                    if constexpr (is_pmr_vector<T>::value && std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
+                        return std::tuple_cat(t.get(), func(args...));
+                    }
+                    return func(args...);
+                }
+            }
+            else {
+                return;
+            }*/
+            
+            if constexpr (std::is_base_of_v<Coro_base,type> && !std::is_same_v<type,Coro<void>>) {
+                return std::make_tuple(t.get());
+            }
+            else {
+                if constexpr (is_pmr_vector<T>::value && std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
+                    return std::tuple_cat(t.get(), func(args...));
+                }
+                else {
+                    return;
+                }
+            }
+        }
+
+        /**
+        * \brief Return the results from the co_await
+        * \returns the results from the co_await
+        *
+        */
         auto await_resume() {
             decltype(auto) f = [&, this]<typename... Us>(Us&... args) {
                 return func(args...);
