@@ -77,11 +77,9 @@ namespace coro {
     Coro<int> do_compute(std::allocator_arg_t, n_pmr::memory_resource* mr) {
         //std::cout << "DO Compute " << std::endl;
 
-        auto tk1 = compute(std::allocator_arg, mr, 1);
+        auto [ret] = co_await compute(std::allocator_arg, mr, 1);
 
-        co_await tk1;
-
-        co_return tk1.get();
+        co_return ret;
     }
 
     void FCompute( int i ) {
