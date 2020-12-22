@@ -329,10 +329,10 @@ In C++ *functions*, children are started with the *schedule()* command, which is
 
 If the parent is a *coroutine*, then children are spawned by calling the *co_await* operator. Here the coro waits until all children have finished and resumes right after the *co_await*. Since the coro continues, it does not finish yet. Only after calling *co_return*, the coro finishes, and notifies its own parent. A coro should NOT call *schedule()* or *continuation()*!
 
-## Tagged JobSystem
-A unique feature of VGJS is allowing tags. Consider a game loop where things are done in parallel. While user callbacks work on the current state, they might share a common state and rely on the data integrity while running. Thus changing data or deleting entities should be done after the callbacks are finished. VGJS allows to schedule jobs for doing this for the future.
+## Tagged Jobs
+A unique feature of VGJS is allowing *tags*. Consider a game loop where things are done in parallel. While user callbacks work on the current state, they might share a common state and rely on the data integrity while running. Thus changing data or deleting entities should be done after the callbacks are finished. VGJS allows to schedule jobs for doing this for the future.
 
-When scheduling a job without specifying a tag, the job is immediately put into a global or local queue for running. If, however, *schedule()* is called with a tag, the job is placed into the tag's queue and waits there, until this tag is scheduled. Once the tag is scheduled, all jobs with the same tag are scheduled to the global/locals queues to run as *children* of the *current* job. Consider the following example:
+When scheduling a job without specifying a tag, the job is immediately put into a global or local queue for running. If, however, *schedule()* is called with a tag, the job is placed into the tag's queue and waits there, until this tag is scheduled itself. Once the tag is scheduled, all jobs with the same tag are scheduled to the global/locals queues to run as *children* of the *current* job. Consider the following example:
 
     schedule([=](){ loop(1); });            //immediately scheduled
 
@@ -348,51 +348,67 @@ Tags act like barriers, and jobs can be prescheduled to do stuff later. E.g., ch
 
 Coroutines schedule functions and other coroutines for future runs also using the *schedule()* function. However, scheduling tag jobs must be done with *co_await*:
 
-    Coro<> tag() {
+    Coro<int> tag2() {
         std::cout << "Tag 2" << std::endl;
         co_await thread_index{ 1 };
-        co_await tag{ 2 };
 
-        co_return;
-      }
+        co_return 0;
+    }
 
     void printPar( int i) {
         std::cout << "i: " << i << std::endl;
     }
 
-    void tag() {
+    Coro<int> tag1() {
         std::cout << "Tag 1" << std::endl;
-        schedule(tag{ 1 });
 
-        schedule([=]() { printPar(4); }, tag{ 2 });
-        schedule([=]() { printPar(5); }, tag{ 2 });
-        schedule([=]() { printPar(6); }, tag{ 2 });
+        schedule([=]() { printPar(4); }, tag{ 1 });
+        schedule([=]() { printPar(5); }, tag{ 1 });
+        schedule([=]() { printPar(6); }, tag{ 1 });
+        co_await tag{ 1 };
 
-        schedule( tag2() );
-      }
+        co_await tag2();
+
+        co_return 0;
+    }
+
+
+    void tag0cont() {
+        schedule(tag1());
+    }
 
     void tag0() {
         std::cout << "Tag 0" << std::endl;
-        schedule(tag{0});
 
-        schedule([=]() { printPar(0); } );
+        schedule([=]() { printPar(1); }, tag{ 0 });
+        schedule([=]() { printPar(2); }, tag{ 0 });
+        schedule([=]() { printPar(3); }, tag{ 0 });
+        schedule( tag{ 0 } );
 
-        schedule( [=]() { printPar(1); }, tag{ 1 } );
-        schedule([=]() { printPar(2); }, tag{ 1 });
-        schedule([=]() { printPar(3); }, tag{ 1 });
-
-        continuation([]() { tag1(); });
-      }
+        continuation([]() { tag0cont(); });
+    }
 
     void test() {
-        std::cout << "Starting tags test()\n";
+        std::cout << "Starting tag test()\n";
 
         schedule([=](){ tag0(); });
 
-        std::cout << "Ending tagss test()\n";
+        std::cout << "Ending tag test()\n";
     }
 
-The example program above first schedules a function *tag0()* which runs tag 0 jobs.
+The example program above first schedules a function *tag0()* which runs tag 0 jobs. The output of this code is
+
+    Starting tag test()
+    Ending tag test()
+    Tag 0
+    i: i: 2
+    i: 3
+    Tag 1
+    i: 4
+    Tag 2
+    i: 5
+    i: 6
+    1
 
 
 ## Breaking the Parent-Child Relationship

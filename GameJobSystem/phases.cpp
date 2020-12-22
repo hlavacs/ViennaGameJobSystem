@@ -19,8 +19,8 @@ namespace phases {
 
     auto g_global_mem5 = ::n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, n_pmr::new_delete_resource());
 
-    Coro<int> phase2() {
-        std::cout << "Phase 2" << std::endl;
+    Coro<int> tag2() {
+        std::cout << "Tag 2" << std::endl;
         co_await thread_index{ 1 };
 
         co_return 0;
@@ -30,42 +30,41 @@ namespace phases {
         std::cout << "i: " << i << std::endl;
     }
 
-    Coro<int> phase1() {
-        std::cout << "Phase 1" << std::endl;
+    Coro<int> tag1() {
+        std::cout << "Tag 1" << std::endl;
 
-        auto fk4 = Function([]() { printPar(4); });
+        schedule([=]() { printPar(4); }, tag{ 1 });
+        schedule([=]() { printPar(5); }, tag{ 1 });
+        schedule([=]() { printPar(6); }, tag{ 1 });
+        co_await tag{ 1 };
 
-        co_await std::make_tuple( tag{ 2 }, fk4, std::bind( printPar, 4 ) );
-
-        co_await tag{ 2 };
+        co_await tag2();
 
         co_return 0;
     }
 
 
-    void phase0cont() {
-        schedule(phase1());
+    void tag0cont() {
+        schedule(tag1());
     }
 
-    void phase0() {
-        std::cout << "Phase 0" << std::endl;
-        schedule(tag{ 0 });
+    void tag0() {
+        std::cout << "Tag 0" << std::endl;
 
-        schedule([=]() { printPar(0); });
+        schedule([=]() { printPar(1); }, tag{ 0 });
+        schedule([=]() { printPar(2); }, tag{ 0 });
+        schedule([=]() { printPar(3); }, tag{ 0 });
+        schedule( tag{ 0 } );
 
-        schedule([=]() { printPar(1); }, tag{ 1 });
-        schedule([=]() { printPar(2); }, tag{ 1 });
-        schedule([=]() { printPar(3); }, tag{ 1 });
-
-        continuation([]() { phase0cont(); });
+        continuation([]() { tag0cont(); });
     }
 
     void test() {
-        std::cout << "Starting phases test()\n";
+        std::cout << "Starting tag test()\n";
 
-        schedule([=](){ phase0(); });
+        schedule([=](){ tag0(); });
 
-        std::cout << "Ending phases test()\n";
+        std::cout << "Ending tag test()\n";
     }
 
 }
