@@ -81,7 +81,11 @@ namespace coro {
         vec.push_back(compute(std::allocator_arg, &g_global_mem4, 2));
         vec.push_back(compute(std::allocator_arg, &g_global_mem4, 3));
 
-        auto [ret1,ret2] = co_await std::make_tuple(compute(std::allocator_arg, &g_global_mem4, 1), std::ref(vec) );  //or std::move
+        auto vec2 = n_pmr::vector<Coro<int>>{ mr };
+        vec2.push_back(compute(std::allocator_arg, &g_global_mem4, 4));
+        vec2.push_back(compute(std::allocator_arg, &g_global_mem4, 5));
+
+        auto [ret1,ret2,ret3] = co_await std::make_tuple(compute(std::allocator_arg, &g_global_mem4, 1), std::ref(vec), std::ref(vec2));  //or std::move
 
         co_return 0;
     }

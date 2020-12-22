@@ -32,9 +32,9 @@ namespace vgjs {
     template<> struct coro_deallocator<void>;
     
     //awaitables for co_await and co_yield, and final awaiting
-    template<typename PT, typename... Ts> struct awaitable_tuple; //goto phase
+    template<typename PT, typename... Ts> struct awaitable_tuple;
     template<typename PT> struct awaitable_resume_on; //change the thread
-    template<typename PT> struct awaitable_phase; //schedule all jobs for a phase
+    template<typename PT> struct awaitable_tag; //schedule all jobs for a tag
     template<typename U> struct yield_awaiter;  //co_yield
     template<typename U> struct final_awaiter;  //final_suspend
 
@@ -78,12 +78,12 @@ namespace vgjs {
         auto promise = coro.promise();
 
         promise->m_parent = parent;
-        if (tg.value < 0 ) { //|| ph == js.get_phase()) {                 //schedule for current phase
+        if (tg.value < 0 ) {           //schedule now
             if (parent != nullptr) {
                 parent->m_children.fetch_add((int)children);       //await the completion of all children      
             }
         }
-        else {                                  //schedule for future phase - the promise will not be available then
+        else {                                  //schedule for future tag - the promise will not be available then
             promise->set_self_destruct(true);
             promise->m_parent = nullptr;
         }
@@ -164,29 +164,29 @@ namespace vgjs {
 
 
     /**
-    * \brief Awaitable for scheduling a phase
+    * \brief Awaitable for scheduling a tag
     */
     template<typename PT>
-    struct awaitable_phase : suspend_always {
-        tag       m_tag;      //the phase to schedule
+    struct awaitable_tag : suspend_always {
+        tag       m_tag;            //the tag to schedule
         uint32_t  m_number = 0;     //Number of scheduled jobs
 
         /**
-        * \brief Test whether the given phase is valid.
+        * \brief Test whether the given tag is valid.
         * \returns true if nothing is to be done, else false.
         */
-        bool await_ready() noexcept {  //do nothing if the given phase is invalid
-            return m_tag.value < 0; // || m_phase == JobSystem::instance().get_phase();
+        bool await_ready() noexcept {  //do nothing if the given tag is invalid
+            return m_tag.value < 0; 
         }
 
         /**
-        * \brief Set the phase and schedule its jobs. Resume immediately if there were no jobs.
+        * \brief Schedule tag jobs. Resume immediately if there were no jobs.
         * \param[in] h The coro handle, can be used to get the promise.
         * \returns true of the coro should be suspended, else false.
         */
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
             m_number = JobSystem::instance().schedule(m_tag);
-            return m_number > 0;     //goto phase m_phase, if jobs were scheduled - await them
+            return m_number > 0;     //if jobs were scheduled - await them
         }
 
         /**
@@ -199,21 +199,21 @@ namespace vgjs {
 
         /**
         * \brief Awaiter constructor
-        * \parameter[in] ph The phase to schedule
+        * \parameter[in] tg The tag to schedule
         */
-        awaitable_phase( tag tg) noexcept : m_tag(tg) {};
+        awaitable_tag( tag tg) noexcept : m_tag(tg) {};
     };
 
 
     /**
     * \brief Awaitable for scheduling jobs.
     * All jobs are put into std::tuples.
-    * If one of the elements is a valid phase different to the current one, the jobs are scheduled for this
-    * phase and the coro is resumed immediately.
+    * If one of the elements is a valid tag the jobs are scheduled for this
+    * tag and the coro is resumed immediately.
     */
     template<typename PT, typename... Ts>
     struct awaitable_tuple : suspend_always {
-        tag                 m_tag;          ///<The phase to schedule to
+        tag                 m_tag;          ///<The tag to schedule to
         std::tuple<Ts...>   m_tuple;          ///<vector with all children to start
         std::size_t         m_number;         ///<total number of all new children to schedule
 
@@ -226,7 +226,7 @@ namespace vgjs {
             if constexpr (is_pmr_vector< typename std::decay<U>::type >::value) { //if this is a vector
                 return children.size();
             }
-            if constexpr (std::is_same_v<typename std::decay<U>::type, tag>) { //if this is a phase
+            if constexpr (std::is_same_v<typename std::decay<U>::type, tag>) { //if this is a tag
                 m_tag = children;
                 return 0;
             }
@@ -253,8 +253,8 @@ namespace vgjs {
         /**
         * \brief Determine whether to stay in suspension or not.
         *
-        * The coro should suspend if m_phase is either -1 or equal to the current JS phase.
-        * The coro should continue if m_phase>=0 and m_phase!=current JS phase -> schedule the jobs for this phase.
+        * The coro should suspend if m_tag is -1
+        * The coro should continue if m_tag>=0 
         *
         * \param[in] h The coro handle, can be used to get the promise.
         * \returns true if the coro suspends, or false if the coro should continue.
@@ -262,7 +262,7 @@ namespace vgjs {
         */
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
             auto g = [&, this]<typename T>(T & children) {
-                if constexpr (std::is_same_v<typename std::decay<T>::type, tag> ) { //never schedule phases here
+                if constexpr (std::is_same_v<typename std::decay<T>::type, tag> ) { //never schedule tags here
                     return;
                 }
                 else {
@@ -277,11 +277,11 @@ namespace vgjs {
 
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
 
-            if ( m_tag.value >= 0 ) { //&& m_phase != JobSystem::instance().get_phase()) { //schedule for another phase
+            if ( m_tag.value >= 0 ) { //schedule for another tag
                 return false;   //do not suspend
             }
 
-            return true;    //schedule for this phase, so suspend
+            return true;    //schedule now, so suspend
         }
 
         /**
@@ -357,7 +357,7 @@ namespace vgjs {
 
         /**
         * \brief Awaiter constructor.
-        * \parameter[in] ph The phase to go to.
+        * \parameter[in] tuple The tuple to schedule
         */
         awaitable_tuple(std::tuple<Ts...>&& tuple) noexcept : m_tag{}, m_number{0}, m_tuple(std::forward<std::tuple<Ts...>>(tuple)) {};
     };
@@ -585,11 +585,11 @@ namespace vgjs {
         awaitable_resume_on<T> await_transform(thread_index index) noexcept { return { index }; };
 
         /**.
-        * \brief Called by co_await to create an awaitable for scheduling a phase
-        * \param[in] ph The phase to schedule
+        * \brief Called by co_await to create an awaitable for scheduling a tag
+        * \param[in] tg The tag to schedule
         * \returns the awaitable for this parameter type of the co_await operator.
         */
-        awaitable_phase<T> await_transform(tag tg) noexcept { return { tg }; };
+        awaitable_tag<T> await_transform(tag tg) noexcept { return { tg }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
@@ -819,11 +819,11 @@ namespace vgjs {
         awaitable_resume_on<void> await_transform(thread_index index ) noexcept { return { index }; };
 
         /**.
-        * \brief Called by co_await to create an awaitable for scheduling a phase
-        * \param[in] ph The phase to schedule
+        * \brief Called by co_await to create an awaitable for scheduling a tag
+        * \param[in] tg The tag to schedule
         * \returns the awaitable for this parameter type of the co_await operator.
         */
-        awaitable_phase<void> await_transform(tag tg) noexcept { return { tg }; };
+        awaitable_tag<void> await_transform(tag tg) noexcept { return { tg }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
