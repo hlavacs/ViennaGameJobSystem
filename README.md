@@ -5,7 +5,7 @@ Important features are:
 * Supports C++20 (coroutines, concepts, polymorphic allocators and memory resources, ...)
 * Can be run with coroutines (better convenience), with C++ functions (better performance), or both
 * Use coroutines as fibers to improve on performance
-* Supports an arbitrary number of phases the game loop can be in.
+* Schedule jobs with tags, run jobs with the same tag together (like a barrier)
 * Enables a data oriented, data parallel paradigm
 * Intended as partner project of the Vienna Vulkan Engine (https://github.com/hlavacs/ViennaVulkanEngine) implementing a game engine using the VGJS
 
@@ -329,32 +329,29 @@ In C++ *functions*, children are started with the *schedule()* command, which is
 
 If the parent is a *coroutine*, then children are spawned by calling the *co_await* operator. Here the coro waits until all children have finished and resumes right after the *co_await*. Since the coro continues, it does not finish yet. Only after calling *co_return*, the coro finishes, and notifies its own parent. A coro should NOT call *schedule()* or *continuation()*!
 
-## Phases
-A unique feature of VGJS is allowing phases. Consider a game loop where things are done in parallel. While user callbacks work on the current state, they might share a common state and rely on the data integrity while running. Thus changing data or deleting entities should be done after the callbacks are finished. VGJS allows to schedule jobs for doing this for a future phase. At the beginning, VGJS is in no phase (actually, phase -1). Calling *schedule(phase{0})* transfers VGJS into phase 0. When scheduling a job without specifying a phase, or specifying the current phase, the job will be put into a global or local queue for running. If, however, *schedule()* is called with a phase different from the current phase, the job is placed into the phase's queue and waits there, until VGJS enters the phase. Once VGJS enters this phase,
-all jobs from the phase are scheduled to the global/locals queues to run as *children* of the *current* job. Consider the following example:
+## Tagged JobSystem
+A unique feature of VGJS is allowing tags. Consider a game loop where things are done in parallel. While user callbacks work on the current state, they might share a common state and rely on the data integrity while running. Thus changing data or deleting entities should be done after the callbacks are finished. VGJS allows to schedule jobs for doing this for the future.
 
-    schedule(phase{0}); //enter phase 0 (run all jobs from phase 0 now)
+When scheduling a job without specifying a tag, the job is immediately put into a global or local queue for running. If, however, *schedule()* is called with a tag, the job is placed into the tag's queue and waits there, until this tag is scheduled. Once the tag is scheduled, all jobs with the same tag are scheduled to the global/locals queues to run as *children* of the *current* job. Consider the following example:
 
     schedule([=](){ loop(1); });            //immediately scheduled
-    schedule([=](){ loop(2); }, phase{0});  //immediately scheduled
 
-    schedule([=](){ loop(3); }, phase{1});  //wait in queue of phase 1
-    schedule([=](){ loop(4); }, phase{1});  //wait in queue of phase 1
+    schedule([=](){ loop(3); }, tag{1});  //wait in queue of tag 1
+    schedule([=](){ loop(4); }, tag{1});  //wait in queue of tag 1
 
-    schedule(phase{1}); //enter phase 1 and run all jobs from there
+    schedule(tag{1});                       //run all jobs with tag 1
     schedule([=](){ loop(5); });            //immediately scheduled
-    schedule([=](){ loop(6); }, phase{1});  //immediately scheduled
 
-    continuation([=](){ after_phase1(); }); //continuation waits for jobs to finish
+    continuation([=](){ after_tag1(); }); //continuation waits for all jobs to finish
 
-Phases act like barriers, but jobs can be prescheduled to do stuff in a later phase. E.g., changing shared resources or deleting entities can be scheduled to a later phase, in which the resources are no longer accessed in parallel.
+Tags act like barriers, and jobs can be prescheduled to do stuff later. E.g., changing shared resources or deleting entities can be scheduled to run later, in which the resources are no longer accessed in parallel.
 
-Coroutines schedule functions and other coroutines for future phases also using the *schedule()* function. However, entering a phase must be done with *co_await*:
+Coroutines schedule functions and other coroutines for future runs also using the *schedule()* function. However, scheduling tag jobs must be done with *co_await*:
 
-    Coro<> phase2() {
-        std::cout << "Phase 2" << std::endl;
+    Coro<> tag() {
+        std::cout << "Tag 2" << std::endl;
         co_await thread_index{ 1 };
-        co_await phase{ 2 };
+        co_await tag{ 2 };
 
         co_return;
       }
@@ -363,53 +360,53 @@ Coroutines schedule functions and other coroutines for future phases also using 
         std::cout << "i: " << i << std::endl;
     }
 
-    void phase1() {
-        std::cout << "Phase 1" << std::endl;
-        schedule(phase{ 1 });
+    void tag() {
+        std::cout << "Tag 1" << std::endl;
+        schedule(tag{ 1 });
 
-        schedule([=]() { printPar(4); }, phase{ 2 });
-        schedule([=]() { printPar(5); }, phase{ 2 });
-        schedule([=]() { printPar(6); }, phase{ 2 });
+        schedule([=]() { printPar(4); }, tag{ 2 });
+        schedule([=]() { printPar(5); }, tag{ 2 });
+        schedule([=]() { printPar(6); }, tag{ 2 });
 
-        schedule( phase2() );
+        schedule( tag2() );
       }
 
-    void phase0() {
-        std::cout << "Phase 0" << std::endl;
-        schedule(phase{0});
+    void tag0() {
+        std::cout << "Tag 0" << std::endl;
+        schedule(tag{0});
 
         schedule([=]() { printPar(0); } );
 
-        schedule( [=]() { printPar(1); }, phase{ 1 } );
-        schedule([=]() { printPar(2); }, phase{ 1 });
-        schedule([=]() { printPar(3); }, phase{ 1 });
+        schedule( [=]() { printPar(1); }, tag{ 1 } );
+        schedule([=]() { printPar(2); }, tag{ 1 });
+        schedule([=]() { printPar(3); }, tag{ 1 });
 
-        continuation([]() { phase1(); });
+        continuation([]() { tag1(); });
       }
 
     void test() {
-        std::cout << "Starting phases test()\n";
+        std::cout << "Starting tags test()\n";
 
-        schedule([=](){ phase0(); });
+        schedule([=](){ tag0(); });
 
-        std::cout << "Ending phases test()\n";
+        std::cout << "Ending tagss test()\n";
     }
 
-The example program above first schedules a function *phase0()* which enters phase 0, 
+The example program above first schedules a function *tag0()* which runs tag 0 jobs.
 
 
 ## Breaking the Parent-Child Relationship
 Jobs having a parent will trigger a continuation of this parent after they have finished. This also means that these continuations depend on the children and have to wait. Starting a job that does not have a parent is easily done by using *nullptr* as the second argument of the *schedule()* call.
 
     void driver() {
-        schedule( loop(std::allocator_arg, &g_global_mem4, 90), phase{}, nullptr );
+        schedule( loop(std::allocator_arg, &g_global_mem4, 90), tag{}, nullptr );
     }
 
-The parameter will always be used if specified, also when scheduling a phase. Therefore
+The parameter will always be used if specified, also when scheduling tagged jobs. Therefore
 
-    schedule(phase{1}, nullptr);
+    schedule(tag{1}, nullptr);
 
-enters phase 1, runs all waiting jobs, but these jobs do not have any parent, and the current job does not depend on them.
+runs tag 0 jobs, but these jobs do not have any parent, and the current job does not depend on them.
 
 
 ## Never use Pointers and References to Local Variables in *Functions* - only in Coroutines!

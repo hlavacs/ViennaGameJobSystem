@@ -79,7 +79,7 @@ namespace vgjs {
     using thread_id = int_type<int, struct P1>;
     using thread_type = int_type<int, struct P2>;
     using thread_count = int_type<int, struct P3>;
-    using phase = int_type<int, struct P4>;
+    using tag = int_type<int, struct P4>;
 
     bool is_logging();
     void log_data(  std::chrono::high_resolution_clock::time_point& t1
@@ -338,7 +338,6 @@ namespace vgjs {
 
     private:
         n_pmr::memory_resource*                 m_mr;                   ///<use to allocate/deallocate Jobs
-        //phase                                   m_phase;
         std::vector<std::thread>	            m_threads;	            ///<array of thread structures
         std::atomic<uint32_t>   		        m_thread_count = 0;     ///<number of threads in the pool
         std::atomic<bool>                       m_terminated = false;   ///<flag set true when the last thread has exited
@@ -349,7 +348,7 @@ namespace vgjs {
         std::vector<JobQueue<Job_base>>         m_global_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
         std::vector<JobQueue<Job_base>>         m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
 
-        std::map<phase,std::unique_ptr<JobQueue<Job_base>>>   m_phase_queues;
+        std::map<tag,std::unique_ptr<JobQueue<Job_base>>>   m_tag_queues;
 
         JobQueue<Job>                           m_recycle;              ///<save old jobs for recycling
         JobQueue<Job>                           m_delete;               ///<save old jobs for recycling
@@ -615,15 +614,6 @@ namespace vgjs {
             return m_current_job;
         }
 
-
-        /**
-        * \brief Get the current phase.
-        * \returns the current phase.
-        */
-        //phase get_phase() {
-        //    return m_phase;
-        //}
-
         /**
         * \brief Get the thread index the current job is running on.
         * \returns the index of the thread the current job is running on, or -1.
@@ -654,14 +644,14 @@ namespace vgjs {
         * 
         * \param[in] job A pointer to the job to schedule.
         */
-        void schedule(Job_base* job, phase ph = phase{}) noexcept {
+        void schedule(Job_base* job, tag tg = tag{}) noexcept {
             assert(job!=nullptr);
 
-            if ( ph.value >= 0 ) { //&& ph != m_phase) {
-                if(!m_phase_queues.contains(ph)) {
-                    m_phase_queues[ph] = std::make_unique<JobQueue<Job_base>>();
+            if ( tg.value >= 0 ) {
+                if(!m_tag_queues.contains(tg)) {
+                    m_tag_queues[tg] = std::make_unique<JobQueue<Job_base>>();
                 }
-                m_phase_queues.at(ph)->push(job);
+                m_tag_queues.at(tg)->push(job);
                 return;
             }
 
@@ -679,39 +669,39 @@ namespace vgjs {
         * \param[in] parent The parent of this Job.
         * \param[in] children Number used to increase the number of children of the parent.
         */
-        void schedule(Function&& source, phase ph = phase{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
+        void schedule(Function&& source, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
             Job *job = allocate_job( std::forward<Function>(source) );
 
             job->m_parent = nullptr;
-            if (ph.value < 0 ) { //|| ph == m_phase) {
+            if (tg.value < 0 ) { 
                 job->m_parent = parent;
                 if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
             }
-            schedule(job, ph);
+            schedule(job);
         };
 
         /**
         * \brief Schedule a Job holding a function into the job system.
-        * \param[in] source An external function that is copied into the scheduled job.
+        * \param[in] f An external function that is copied into the scheduled job.
+        * \param[in] tg The tag that is scheduled
         * \param[in] parent The parent of this Job.
         * \param[in] children Number used to increase the number of children of the parent.
         */
-        void schedule(std::function<void(void)>&& f, phase ph = phase{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
-            schedule(Function{ std::forward<std::function<void(void)>>(f) }, ph, parent, children );
+        void schedule(std::function<void(void)>&& f, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
+            schedule(Function{ std::forward<std::function<void(void)>>(f) }, tg, parent, children );
         }
 
         /**
-        * \brief Schedule all Jobs from a phase
-        * \param[in] ph The phase that is scheduled
+        * \brief Schedule all Jobs from a tag
+        * \param[in] tg The tag that is scheduled
         * \param[in] parent The parent of this Job.
         * \param[in] children Number used to increase the number of children of the parent.
         * \returns the number of scheduled jobs.
         */
-        uint32_t schedule(phase ph, phase ph2 = phase{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
-            //m_phase = ph;
-            if (!m_phase_queues.contains(ph)) return 0;
+        uint32_t schedule(tag tg, tag tg2 = tag{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
+            if (!m_tag_queues.contains(tg)) return 0;
 
-            JobQueue<Job_base>* queue = m_phase_queues[ph].get();   //get the queue for this phase
+            JobQueue<Job_base>* queue = m_tag_queues[tg].get();   //get the queue for this tag
             uint32_t num_jobs = queue->size();
 
             if (parent != nullptr) { 
@@ -720,9 +710,9 @@ namespace vgjs {
             }
             uint32_t num = num_jobs;        //schedule at most num_jobs, since someone could add more jobs now
             Job_base* job = queue->pop();
-            while ( num>0 && job) {     //schedule all jobs from the phase queue
+            while ( num>0 && job) {     //schedule all jobs from the tag queue
                 job->m_parent = parent;
-                schedule(job, phase{});
+                schedule(job, tag{});
                 --num;
                 job = queue->pop();
             }
@@ -856,8 +846,8 @@ namespace vgjs {
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule( Function&& f, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule( std::forward<Function>(f), ph, parent, children );
+    inline void schedule( Function&& f, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        JobSystem::instance().schedule( std::forward<Function>(f), tg, parent, children );
     }
 
     /**
@@ -866,8 +856,8 @@ namespace vgjs {
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule(Function& f, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule(std::forward<Function>(f), ph, parent, children);
+    inline void schedule(Function& f, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        JobSystem::instance().schedule(std::forward<Function>(f), tg, parent, children);
     }
 
     /**
@@ -876,8 +866,8 @@ namespace vgjs {
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule( std::function<void(void)>&& f, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), ph, parent, children); // forward to the job system
+    inline void schedule( std::function<void(void)>&& f, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), tg, parent, children); // forward to the job system
     };
 
     /**
@@ -886,19 +876,19 @@ namespace vgjs {
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule(std::function<void(void)>& f, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), ph, parent, children);   // forward to the job system
+    inline void schedule(std::function<void(void)>& f, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), tg, parent, children);   // forward to the job system
     };
 
 
     /**
-    * \brief Schedule all functions from a phase
-    * \param[in] ph The phase to schedule.
+    * \brief Schedule all functions from a tag
+    * \param[in] tg The tag to schedule.
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
-    inline void schedule(phase ph, phase ph2 = phase{}, Job_base * parent = current_job(), int32_t children = -1) noexcept {
-        JobSystem::instance().schedule(ph, ph2, parent, children);   // forward to the job system
+    inline void schedule(tag tg, tag tg2 = tag{}, Job_base * parent = current_job(), int32_t children = -1) noexcept {
+        JobSystem::instance().schedule(tg, tg2, parent, children);   // forward to the job system
     };
 
 
@@ -917,14 +907,14 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     template<typename T>
-    inline void schedule( n_pmr::vector<T>& functions, phase ph = phase{}, Job_base* parent = current_job(), int32_t children = -1) noexcept {
+    inline void schedule( n_pmr::vector<T>& functions, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = -1) noexcept {
         
         if (children < 0) {                     //default? use vector size.
             children = (int)functions.size(); 
         }
 
         for (auto& f : functions) { //schedule all elements, use the total number of children for the first call, then 0
-            schedule( std::forward<T>(f), ph, parent, children ); //might call the coro version, so do not call job system here!
+            schedule( std::forward<T>(f), tg, parent, children ); //might call the coro version, so do not call job system here!
             children = 0;
         }
     };

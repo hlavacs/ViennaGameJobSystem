@@ -35,9 +35,9 @@ namespace phases {
 
         auto fk4 = Function([]() { printPar(4); });
 
-        co_await std::make_tuple( phase{ 2 }, fk4, std::bind( printPar, 4 ) );
+        co_await std::make_tuple( tag{ 2 }, fk4, std::bind( printPar, 4 ) );
 
-        co_await phase{ 2 };
+        co_await tag{ 2 };
 
         co_return 0;
     }
@@ -49,13 +49,13 @@ namespace phases {
 
     void phase0() {
         std::cout << "Phase 0" << std::endl;
-        schedule(phase{ 0 });
+        schedule(tag{ 0 });
 
         schedule([=]() { printPar(0); });
 
-        schedule([=]() { printPar(1); }, phase{ 1 });
-        schedule([=]() { printPar(2); }, phase{ 1 });
-        schedule([=]() { printPar(3); }, phase{ 1 });
+        schedule([=]() { printPar(1); }, tag{ 1 });
+        schedule([=]() { printPar(2); }, tag{ 1 });
+        schedule([=]() { printPar(3); }, tag{ 1 });
 
         continuation([]() { phase0cont(); });
     }
