@@ -310,6 +310,19 @@ namespace vgjs {
             }
         }
 
+        template<typename T>
+        auto get_val( std::pmr::vector<Coro<T>>& vec) {
+            if constexpr ( !std::is_void_v<T> ) {
+                std::pmr::vector<T> ret;
+                for (auto& co : vec) { ret.push_back(co.get()); }
+                return std::make_tuple(ret);
+            }
+            else {
+                return std::make_tuple();
+            }
+        }
+
+
         /**
         * \brief Collect the results and put thim into a tuple
         *

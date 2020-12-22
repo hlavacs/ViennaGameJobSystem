@@ -22,7 +22,6 @@ namespace phases {
     Coro<int> phase2() {
         std::cout << "Phase 2" << std::endl;
         co_await thread_index{ 1 };
-        co_await phase{ 2 };
 
         co_return 0;
     }
@@ -37,8 +36,6 @@ namespace phases {
         auto fk4 = Function([]() { printPar(4); });
 
         co_await std::make_tuple( phase{ 2 }, fk4, std::bind( printPar, 4 ) );
-
-        co_await std::bind(printPar, 4);
 
         co_await phase{ 2 };
 

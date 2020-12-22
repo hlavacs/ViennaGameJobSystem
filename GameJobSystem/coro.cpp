@@ -77,9 +77,13 @@ namespace coro {
     Coro<int> do_compute(std::allocator_arg_t, n_pmr::memory_resource* mr) {
         //std::cout << "DO Compute " << std::endl;
 
-        auto [ret] = co_await compute(std::allocator_arg, mr, 1);
+        auto vec = n_pmr::vector<Coro<int>>{ mr };
+        vec.push_back(compute(std::allocator_arg, &g_global_mem4, 2));
+        vec.push_back(compute(std::allocator_arg, &g_global_mem4, 3));
 
-        co_return ret;
+        auto [ret1,ret2] = co_await std::make_tuple(compute(std::allocator_arg, &g_global_mem4, 1), std::ref(vec) );  //or std::move
+
+        co_return 0;
     }
 
     void FCompute( int i ) {

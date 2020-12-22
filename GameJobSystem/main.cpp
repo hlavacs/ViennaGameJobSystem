@@ -33,9 +33,9 @@ namespace phases {
 void driver( int i ) {
 
 	vgjs::schedule( std::bind(coro::test) );
-	vgjs::schedule (std::bind(func::test) );
-	vgjs::schedule(std::bind(mixed::test) );
-	vgjs::schedule(std::bind(phases::test));
+	//vgjs::schedule (std::bind(func::test) );
+	//vgjs::schedule(std::bind(mixed::test) );
+	//vgjs::schedule(std::bind(phases::test));
 
 	if (i <= 1) {
 		vgjs::continuation([]() { std::cout << "terminate()\n";  vgjs::terminate(); } );
