@@ -78,7 +78,7 @@ namespace vgjs {
         auto promise = coro.promise();
 
         promise->m_parent = parent;
-        if (ph.value < 0 || ph == js.get_phase()) {                 //schedule for current phase
+        if (ph.value < 0 ) { //|| ph == js.get_phase()) {                 //schedule for current phase
             if (parent != nullptr) {
                 parent->m_children.fetch_add((int)children);       //await the completion of all children      
             }
@@ -176,7 +176,7 @@ namespace vgjs {
         * \returns true if nothing is to be done, else false.
         */
         bool await_ready() noexcept {  //do nothing if the given phase is invalid
-            return m_phase.value < 0 || m_phase == JobSystem::instance().get_phase();
+            return m_phase.value < 0; // || m_phase == JobSystem::instance().get_phase();
         }
 
         /**
@@ -277,7 +277,7 @@ namespace vgjs {
 
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
 
-            if (m_phase.value >= 0 && m_phase != JobSystem::instance().get_phase()) { //schedule for another phase
+            if ( m_phase.value >= 0 ) { //&& m_phase != JobSystem::instance().get_phase()) { //schedule for another phase
                 return false;   //do not suspend
             }
 

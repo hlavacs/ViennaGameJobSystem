@@ -338,7 +338,7 @@ namespace vgjs {
 
     private:
         n_pmr::memory_resource*                 m_mr;                   ///<use to allocate/deallocate Jobs
-        phase                                   m_phase;
+        //phase                                   m_phase;
         std::vector<std::thread>	            m_threads;	            ///<array of thread structures
         std::atomic<uint32_t>   		        m_thread_count = 0;     ///<number of threads in the pool
         std::atomic<bool>                       m_terminated = false;   ///<flag set true when the last thread has exited
@@ -410,7 +410,7 @@ namespace vgjs {
         * \param[in] mr The memory resource to use for allocating Jobs.
         */
         JobSystem(thread_count threadCount = thread_count(0), thread_index start_idx = thread_index(0), n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept
-            : m_mr(mr), m_start_idx(start_idx), m_phase{0} {
+            : m_mr(mr), m_start_idx(start_idx) {
 
             m_thread_count = threadCount.value;
             if (m_thread_count == 0) {
@@ -620,9 +620,9 @@ namespace vgjs {
         * \brief Get the current phase.
         * \returns the current phase.
         */
-        phase get_phase() {
-            return m_phase;
-        }
+        //phase get_phase() {
+        //    return m_phase;
+        //}
 
         /**
         * \brief Get the thread index the current job is running on.
@@ -657,7 +657,7 @@ namespace vgjs {
         void schedule(Job_base* job, phase ph = phase{}) noexcept {
             assert(job!=nullptr);
 
-            if ( ph.value >= 0 && ph != m_phase) {
+            if ( ph.value >= 0 ) { //&& ph != m_phase) {
                 if(!m_phase_queues.contains(ph)) {
                     m_phase_queues[ph] = std::make_unique<JobQueue<Job_base>>();
                 }
@@ -683,7 +683,7 @@ namespace vgjs {
             Job *job = allocate_job( std::forward<Function>(source) );
 
             job->m_parent = nullptr;
-            if (ph.value < 0 || ph == m_phase) {
+            if (ph.value < 0 ) { //|| ph == m_phase) {
                 job->m_parent = parent;
                 if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
             }
@@ -708,7 +708,7 @@ namespace vgjs {
         * \returns the number of scheduled jobs.
         */
         uint32_t schedule(phase ph, phase ph2 = phase{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
-            m_phase = ph;
+            //m_phase = ph;
             if (!m_phase_queues.contains(ph)) return 0;
 
             JobQueue<Job_base>* queue = m_phase_queues[ph].get();   //get the queue for this phase
@@ -720,7 +720,7 @@ namespace vgjs {
             uint32_t num_jobs = 0;
             while (Job_base* job = queue->pop()) {     //schedule all jobs from the phase queue
                 job->m_parent = parent;
-                schedule(job, ph);
+                schedule(job, phase{});
                 ++num_jobs;
             }
             return num_jobs;
