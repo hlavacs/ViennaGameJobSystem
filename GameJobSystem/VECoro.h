@@ -127,6 +127,25 @@ namespace vgjs {
     //Awaitables
 
 
+    /**
+    * \brief This can be called as co_await parameter. It constructs a tuple
+    * holding only references to the co_await parameters
+    *
+    * \param[in] t A generalized reference.
+    * \returns a tuple holding references to the co_await parameters.
+    *
+    */
+    template<typename T, typename... Ts>
+    auto await(T&& t, Ts&& ... args) {
+        if constexpr (sizeof...(Ts) > 0) {
+            return std::tuple_cat(std::make_tuple(std::ref(t)), await(std::forward<Ts>(args)...));
+        }
+        else {
+            return std::make_tuple(std::ref(t));
+        }
+    }
+
+
     using suspend_always = n_exp::suspend_always;
 
 
@@ -204,48 +223,6 @@ namespace vgjs {
         awaitable_tag( tag tg) noexcept : m_tag(tg) {};
     };
 
-
-    /**
-    * \brief Take an lvalue reference and put the reference into a tuple
-    *
-    * \param[in] t The lvalue reference
-    * \returns a tuple holding the reference.
-    *
-    */
-    template<typename T>
-    auto get_val( T& t ) {
-        return std::make_tuple(std::ref(t));
-    }
-
-    /**
-    * \brief Take an rvalue reference and move the data into a tuple
-    *
-    * \param[in] t The rvalue reference.
-    * \returns a tuple holding the moved value.
-    *
-    */
-    template<typename T>
-    auto get_val(T&& t) {
-        return std::make_tuple(std::move(t));
-    }
-
-    /**
-    * \brief This can be called as co_await parameter. It constructs a tuple
-    * using move semantics for rvalue references, or using a reference from references.
-    *
-    * \param[in] t A generalized reference.
-    * \returns a tuple holding the moved values or references.
-    *
-    */
-    template<typename T, typename... Ts>
-    auto await( T&& t, Ts&& ... args ) {
-        if constexpr ( sizeof...(Ts)>0 ) {
-            return std::tuple_cat( get_val(std::forward<T>(t)), await(std::forward<Ts>(args)...) );
-        }
-        else {
-            return get_val(std::forward<T>(t));
-        }
-    }
 
     /**
     * \brief Awaitable for scheduling jobs.

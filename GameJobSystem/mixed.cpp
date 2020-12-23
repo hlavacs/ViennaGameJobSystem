@@ -95,7 +95,7 @@ namespace mixed {
 
         schedule(Function([=]() { loop(i); }, thread_index{ i }, thread_type{ 4 }, thread_id{ 0 }));
 
-        //continuation( Function( F( vgjs::terminate() ), thread_index{}, phase{}, thread_type{ 3 }, thread_id {0}  ) );
+        //continuation( Function( F( vgjs::terminate() ), thread_index{}, tag{}, thread_type{ 3 }, thread_id {0}  ) );
     }
 
 

@@ -25,7 +25,7 @@ namespace docu {
 	void test(int);
 }
 
-namespace phases {
+namespace tags {
 	void test();
 }
 
@@ -35,7 +35,7 @@ void driver( int i ) {
 	vgjs::schedule( std::bind(coro::test) );
 	//vgjs::schedule (std::bind(func::test) );
 	//vgjs::schedule(std::bind(mixed::test) );
-	vgjs::schedule(std::bind(phases::test));
+	vgjs::schedule(std::bind(tags::test));
 
 	if (i <= 1) {
 		vgjs::continuation([]() { std::cout << "terminate()\n";  vgjs::terminate(); } );

@@ -13,7 +13,7 @@
 using namespace std::chrono;
 
 
-namespace phases {
+namespace tags {
 
     using namespace vgjs;
 
