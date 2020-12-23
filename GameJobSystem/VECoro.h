@@ -263,10 +263,7 @@ namespace vgjs {
             };
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
 
-            if (m_number == 0) {   //nothing to be done -> do not suspend
-                return true;
-            }
-            return false;
+            return m_number == 0;   //nothing to be done -> do not suspend
         }
 
         /**
