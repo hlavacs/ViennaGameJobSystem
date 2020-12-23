@@ -136,9 +136,9 @@ namespace vgjs {
     *
     */
     template<typename T, typename... Ts>
-    auto await(T&& t, Ts&& ... args) {
+    auto await_all(T&& t, Ts&& ... args) {
         if constexpr (sizeof...(Ts) > 0) {
-            return std::tuple_cat(std::make_tuple(std::ref(t)), await(std::forward<Ts>(args)...));
+            return std::tuple_cat(std::make_tuple(std::ref(t)), await_all(std::forward<Ts>(args)...));
         }
         else {
             return std::make_tuple(std::ref(t));
