@@ -206,6 +206,48 @@ namespace vgjs {
 
 
     /**
+    * \brief Take an lvalue reference and put the reference into a tuple
+    *
+    * \param[in] t The lvalue reference
+    * \returns a tuple holding the reference.
+    *
+    */
+    template<typename T>
+    auto get_val( T& t ) {
+        return std::make_tuple(std::ref(t));
+    }
+
+    /**
+    * \brief Take an rvalue reference and move the data into a tuple
+    *
+    * \param[in] t The rvalue reference.
+    * \returns a tuple holding the moved value.
+    *
+    */
+    template<typename T>
+    auto get_val(T&& t) {
+        return std::make_tuple(std::move(t));
+    }
+
+    /**
+    * \brief This can be called as co_await parameter. It constructs a tuple
+    * using move semantics for rvalue references, or using a reference from references.
+    *
+    * \param[in] t A generalized reference.
+    * \returns a tuple holding the moved values or references.
+    *
+    */
+    template<typename T, typename... Ts>
+    auto await( T&& t, Ts&& ... args ) {
+        if constexpr ( sizeof...(Ts)>0 ) {
+            return std::tuple_cat( get_val(std::forward<T>(t)), await(std::forward<Ts>(args)...) );
+        }
+        else {
+            return get_val(std::forward<T>(t));
+        }
+    }
+
+    /**
     * \brief Awaitable for scheduling jobs.
     * All jobs are put into std::tuples.
     * If one of the elements is a valid tag the jobs are scheduled for this
@@ -285,7 +327,7 @@ namespace vgjs {
         }
 
         /**
-        * \brief Collect the results and put thim into a tuple
+        * \brief Collect the results and put them into a tuple
         *
         * \param[in] t The current coro promise
         * \returns a tuple holding the return value.
@@ -310,6 +352,13 @@ namespace vgjs {
             }
         }
 
+        /**
+        * \brief Collect the results and put them into a tuple
+        *
+        * \param[in] t A vector of promises holding the values
+        * \returns a tuple with a vector holding the return value.
+        *
+        */
         template<typename T>
         auto get_val( std::pmr::vector<Coro<T>>& vec) {
             if constexpr ( !std::is_void_v<T> ) {

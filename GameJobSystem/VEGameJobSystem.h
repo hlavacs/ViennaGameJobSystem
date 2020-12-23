@@ -708,6 +708,7 @@ namespace vgjs {
                 if (children < 0) children = num_jobs;     //if the number of children is not given, then use queue size
                 parent->m_children.fetch_add((int)children);    //add this number to the number of children of parent
             }
+
             uint32_t num = num_jobs;        //schedule at most num_jobs, since someone could add more jobs now
             Job_base* job = queue->pop();
             while ( num>0 && job) {     //schedule all jobs from the tag queue
