@@ -324,8 +324,8 @@ namespace vgjs {
             if constexpr ( !std::is_void_v<T> ) {
                 n_pmr::vector<T> ret;
                 ret.reserve(vec.size());
-                for (auto& coro : vec) { ret.push_back(coro.get()); }
-                return std::move(ret);
+                for (auto& coro : vec) { ret.push_back(std::move(coro.get())); }
+                return ret;
             }
             else {
                 return std::make_tuple();
