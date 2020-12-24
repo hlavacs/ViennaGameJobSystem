@@ -296,6 +296,18 @@ namespace vgjs {
         }
 
         /**
+        * \brief Dummy for catching all functions that are not a coro
+        *
+        * \param[in] t Any function
+        * \returns a tuple holding nothing.
+        *
+        */
+        template<typename T>
+        auto get_val(T& t) {
+            return std::make_tuple();
+        }
+
+        /**
         * \brief Collect the results and put them into a tuple
         *
         * \param[in] t The current coro promise
@@ -303,13 +315,9 @@ namespace vgjs {
         *
         */
         template<typename T>
-        auto get_val(T& t) {
-            if constexpr (std::is_base_of_v<Coro_base, T> && !std::is_same_v<T, Coro<void>>) {
-                return t.get();
-            }
-            else {
-                return std::make_tuple();
-            }
+        requires !std::is_void_v<T>
+        auto get_val(Coro<T>& t) {
+            return t.get();
         }
 
         /**
@@ -320,16 +328,12 @@ namespace vgjs {
         *
         */
         template<typename T>
+        requires !std::is_void_v<T>
         auto get_val( std::pmr::vector<Coro<T>>& vec) {
-            if constexpr ( !std::is_void_v<T> ) {
-                n_pmr::vector<T> ret;
-                ret.reserve(vec.size());
-                for (auto& coro : vec) { ret.push_back(std::move(coro.get())); }
-                return ret;
-            }
-            else {
-                return std::make_tuple();
-            }
+            n_pmr::vector<T> ret;
+            ret.reserve(vec.size());
+            for (auto& coro : vec) { ret.push_back(coro.get()); }
+            return std::move(ret);
         }
 
         /**
