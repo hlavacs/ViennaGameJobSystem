@@ -131,18 +131,13 @@ namespace vgjs {
     * \brief This can be called as co_await parameter. It constructs a tuple
     * holding only references to the co_await parameters
     *
-    * \param[in] t A generalized reference.
-    * \returns a tuple holding references to the co_await parameters.
+    * \param[in] args Arguments to be put into tuple
+    * \returns a tuple holding references to the arguments.
     *
     */
-    template<typename T, typename... Ts>
-    auto all(T&& t, Ts&& ... args) {
-        if constexpr (sizeof...(Ts) > 0) {
-            return std::tuple_cat(std::make_tuple(std::ref(t)), all(std::forward<Ts>(args)...));
-        }
-        else {
-            return std::make_tuple(std::ref(t));
-        }
+    template<typename... Ts>
+    auto tuple(Ts&& ... args) {
+        return std::make_tuple(std::ref(args)...);
     }
 
 
