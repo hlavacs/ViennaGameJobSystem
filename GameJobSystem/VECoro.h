@@ -129,7 +129,7 @@ namespace vgjs {
 
     /**
     * \brief This can be called as co_await parameter. It constructs a tuple
-    * holding only references to the co_await parameters
+    * holding only references to the arguments
     *
     * \param[in] args Arguments to be put into tuple
     * \returns a tuple holding references to the arguments.
@@ -340,27 +340,6 @@ namespace vgjs {
             }
         }
 
-
-        /**
-        * \brief Collect the results and put thim into a tuple
-        *
-        * \param[in] t The first coro promise
-        * \param[in] args The other coro promises
-        * \returns a tuple holding all return values.
-        *
-        */
-        template<typename T, typename... Us>
-        auto func(T& t, Us&... args) {
-            using type = typename std::decay_t<T>;
-
-            if constexpr (sizeof... (Us) > 0) {
-                return std::tuple_cat(get_val(t), func(args...));
-            }
-            else {
-                return get_val(t);
-            }
-        }
-
         /**
         * \brief Return the results from the co_await
         * \returns the results from the co_await
@@ -368,7 +347,7 @@ namespace vgjs {
         */
         auto await_resume() {
             auto f = [&, this]<typename... Us>(Us&... args) {
-                return func(args...);       //call func with all parameters from the tuple
+                return std::make_tuple(get_val(args)...);
             };
             return std::apply(f, m_tuple);  //call f with all parameters from the tuple
         }
