@@ -276,7 +276,10 @@ namespace vgjs {
         * \returns the number of jobs (Coros and Jobs) currently in the queue.
         */
         uint32_t size() {
-            return m_size;
+            while (m_lock.test_and_set(std::memory_order::acquire));  // acquire lock
+            auto s =  m_size;
+            m_lock.clear(std::memory_order::release); //release lock
+            return s;
         }
 
         /**

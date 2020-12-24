@@ -85,7 +85,7 @@ namespace coro {
         vec2.push_back(compute(std::allocator_arg, &g_global_mem4, 4));
         vec2.push_back(compute(std::allocator_arg, &g_global_mem4, 5));
 
-        auto [ret1,ret2,ret3,ret4] = co_await await_all(compute(std::allocator_arg, &g_global_mem4, 1), vec, vec2, compute(std::allocator_arg, &g_global_mem4, 99));  //or std::move
+        auto [ret1,ret2,ret3,ret4] = co_await all(compute(std::allocator_arg, &g_global_mem4, 1), vec, vec2, compute(std::allocator_arg, &g_global_mem4, 99));  //or std::move
 
         co_return 0;
     }
