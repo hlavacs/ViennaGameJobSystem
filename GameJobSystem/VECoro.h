@@ -304,20 +304,11 @@ namespace vgjs {
         */
         template<typename T>
         auto get_val(T& t) {
-            using type = typename std::decay_t<T>;
-
-            if constexpr (std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
-                return std::make_tuple(t.get());
+            if constexpr (std::is_base_of_v<Coro_base, T> && !std::is_same_v<T, Coro<void>>) {
+                return t.get();
             }
             else {
-                if constexpr (is_pmr_vector<T>::value && std::is_base_of_v<Coro_base, type> && !std::is_same_v<type, Coro<void>>) {
-                    std::pmr::vector<type> ret;
-                    for (auto& co : t) { ret.emplace(co.get()); }
-                    return std::make_tuple(ret);
-                }
-                else {
-                    return std::make_tuple();
-                }
+                return std::make_tuple();
             }
         }
 
@@ -332,8 +323,9 @@ namespace vgjs {
         auto get_val( std::pmr::vector<Coro<T>>& vec) {
             if constexpr ( !std::is_void_v<T> ) {
                 n_pmr::vector<T> ret;
-                for (auto& co : vec) { ret.push_back(co.get()); }
-                return std::make_tuple(std::move(ret));
+                ret.reserve(vec.size());
+                for (auto& coro : vec) { ret.push_back(coro.get()); }
+                return std::move(ret);
             }
             else {
                 return std::make_tuple();
