@@ -127,9 +127,36 @@ namespace vgjs {
     //Awaitables
 
 
+
+    /**
+    * \brief returns a reference to any argument
+    *
+    * \param[in] t any argument.
+    * \returns a reference to the argument.
+    *
+    */
+    template<typename T>
+    auto get_ref(T&& t) {
+        return std::ref(t);
+    }
+
+    /**
+    * \brief returns a reference to a given lambda. The lambda is first turned into a std::function.
+    *
+    * \param[in] t A lambda.
+    * \returns a reference to the lambda turned into a std::function.
+    *
+    */
+    template<typename T>
+    requires is_constructible_v<std::function<void(void),T>>
+    auto get_ref(T&& t) {
+        return std::ref(std::function<void(void)>(std::move(t)));
+    }
+
     /**
     * \brief This can be called as co_await parameter. It constructs a tuple
-    * holding only references to the arguments
+    * holding only references to the arguments. The arguments are passed into a 
+    * function get_ref, which SFINAEs to either a lambda version or for any other parameter.
     *
     * \param[in] args Arguments to be put into tuple
     * \returns a tuple holding references to the arguments.
@@ -137,7 +164,7 @@ namespace vgjs {
     */
     template<typename... Ts>
     auto tuple(Ts&& ... args) {
-        return std::make_tuple(std::ref(args)...);
+        return std::make_tuple( get_ref(std::forward<Ts>(args))... );
     }
 
 
@@ -296,15 +323,16 @@ namespace vgjs {
         }
 
         /**
-        * \brief Dummy for catching all functions that are not a coro
+        * \brief Dummy for catching all functions that are not a coro.
+        * These will not be in the result tuple!
         *
-        * \param[in] t Any function
+        * \param[in] t Any function other than Coro. 
         * \returns a tuple holding nothing.
         *
         */
         template<typename T>
         auto get_val(T& t) {
-            return std::make_tuple();
+            return std::make_tuple(); //ignored by std::tuple_cat
         }
 
         /**
@@ -317,7 +345,7 @@ namespace vgjs {
         template<typename T>
         requires !std::is_void_v<T>
         auto get_val(Coro<T>& t) {
-            return t.get();
+            return std::make_tuple(t.get());
         }
 
         /**
@@ -333,7 +361,7 @@ namespace vgjs {
             n_pmr::vector<T> ret;
             ret.reserve(vec.size());
             for (auto& coro : vec) { ret.push_back(coro.get()); }
-            return std::move(ret);
+            return std::make_tuple(std::move(ret));
         }
 
         /**
@@ -343,7 +371,7 @@ namespace vgjs {
         */
         auto await_resume() {
             auto f = [&, this]<typename... Us>(Us&... args) {
-                return std::make_tuple(get_val(args)...);
+                return std::tuple_cat(get_val(args)...);
             };
             return std::apply(f, m_tuple);  //call f with all parameters from the tuple
         }
