@@ -33,8 +33,8 @@ namespace tags {
 void driver( int i ) {
 
 	vgjs::schedule( std::bind(coro::test) );
-	//vgjs::schedule (std::bind(func::test) );
-	//vgjs::schedule(std::bind(mixed::test) );
+	vgjs::schedule (std::bind(func::test) );
+	vgjs::schedule(std::bind(mixed::test) );
 	vgjs::schedule(std::bind(tags::test));
 
 	if (i <= 1) {
@@ -51,7 +51,7 @@ int main()
 
 	JobSystem::instance();
 
-	schedule( [](){ driver(1); });
+	schedule( [](){ driver(10); });
 
 	//schedule([=]() {docu::test(5); });
 	

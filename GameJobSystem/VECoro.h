@@ -315,11 +315,7 @@ namespace vgjs {
 
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
 
-            if ( m_tag.value >= 0 ) { //schedule for another tag
-                return false;   //do not suspend
-            }
-
-            return true;    //schedule now, so suspend
+            return m_tag.value < 0; //if tag value < 0 then schedule now, so return true to suspend
         }
 
         /**
