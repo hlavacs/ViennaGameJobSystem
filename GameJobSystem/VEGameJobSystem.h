@@ -61,6 +61,8 @@ namespace vgjs {
 
     template<typename T, typename P, int D = -1>
     struct int_type {
+        using type_name = T;
+
         T value{};
         int_type() {
             static_assert(!(std::is_unsigned_v<T> && static_cast<int>(D) < 0));
@@ -73,6 +75,14 @@ namespace vgjs {
         void operator=(const int_type&& rhs) { value = rhs.value; };
         auto operator<=>(const int_type& v) const = default;
         auto operator<=>(const T& v) { return value <=> v; };
+
+        struct hash {
+            std::size_t operator()(const int_type<T,P,D>& tg) const { return std::hash<T>()(tg.value); };
+        };
+
+        struct equal_to {
+            constexpr bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; };
+        };
     };
 
     using thread_index = int_type<int, struct P0>;
@@ -80,10 +90,6 @@ namespace vgjs {
     using thread_type = int_type<int, struct P2>;
     using thread_count = int_type<int, struct P3>;
     using tag = int_type<int, struct P4>;
-
-    struct hash_tag {
-        std::size_t operator()(const tag& tg) const { return (std::size_t)tg.value; };
-    };
 
     bool is_logging();
     void log_data(  std::chrono::high_resolution_clock::time_point& t1
@@ -355,7 +361,7 @@ namespace vgjs {
         std::vector<JobQueue<Job_base>>         m_global_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
         std::vector<JobQueue<Job_base>>         m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
 
-        std::unordered_map<tag,std::unique_ptr<JobQueue<Job_base>>,hash_tag>   m_tag_queues;
+        std::unordered_map<tag,std::unique_ptr<JobQueue<Job_base>>,tag::hash>   m_tag_queues;
 
         JobQueue<Job>                           m_recycle;              ///<save old jobs for recycling
         JobQueue<Job>                           m_delete;               ///<save old jobs for recycling
