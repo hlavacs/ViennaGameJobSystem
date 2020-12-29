@@ -163,7 +163,7 @@ namespace vgjs {
     *
     */
     template<typename... Ts>
-    auto tuple(Ts&& ... args) {
+    auto parallel(Ts&& ... args) {
         return std::make_tuple( get_ref(std::forward<Ts>(args))... );
     }
 

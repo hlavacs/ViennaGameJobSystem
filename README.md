@@ -18,7 +18,7 @@ If you additionally want coroutines then also include
 
     #include "VECoro.h"
 
-VGJS runs a number of *N* worker threads, EACH having TWO work queues, a local queue and a global queue. When scheduling jobs, a target thread can be specified or not. If the job is specified to run on thread *K* (using *vgjs::thread_index{K}* ), then the job is put into thread *K*'s **local** queue. Only thread *K* can take it from there. If no thread is specified or *vgjs::thread_index{}* is chosen, then a random thread *J* is chosen and the job is inserted into thread *J*'s **global** queue. Any thread can steal it from there, if it runs out of local jobs. This paradigm is called work stealing. By using multiple global queues, the amount of contention between threads is minimized.
+VGJS runs a number of *N* worker threads, EACH having TWO work queues, a local queue and a global queue. When scheduling jobs, a target thread can be specified or not. If the job is specified to run on thread *K* (using *vgjs\:\:thread_index{K}* ), then the job is put into thread *K*'s **local** queue. Only thread *K* can take it from there. If no thread is specified or *vgjs\:\:thread_index{}* is chosen, then a random thread *J* is chosen and the job is inserted into thread *J*'s **global** queue. Any thread can steal it from there, if it runs out of local jobs. This paradigm is called work stealing. By using multiple global queues, the amount of contention between threads is minimized.
 
 Each thread continuously grabs jobs from one of its queues and runs them. If the workload is split into a large number of small tasks then all CPU cores continuously do work and achieve a high degree of parallelism.
 
@@ -116,19 +116,20 @@ Finally, the third parameters specifies a memory resource to be used for allocat
 If none is specified, the job system uses standard new and delete.
 
 ## Functions
-There are two types of tasks that can be scheduled to the job system - C++ *functions* and *coroutines*. Scheduling is done via a call to the *vgjs::schedule()* function wrapper, which in turn calls the job system to schedule the function.
-Functions can be wrapped into *std::function<void(void)>* (e.g. create by using *std::bind()* or a lambda of type *\[=\](){})*, or into the class Function{}, the latter allowing to specify more parameters. Of course, a function can simply CALL another function any time without scheduling it.
+There are two types of tasks that can be scheduled to the job system - C++ *functions* and *coroutines*. It is important to note that both functions and coroutines can schedule both functions and coroutines. However, how tasks are scheduled depends on the type of task that does this.
+In a *function*, scheduling is done via a call to the *vgjs::schedule()* function wrapper, which in turn calls the job system to schedule the function. In a *coroutine*, scheduling is done with the *co_await* operator.
 
-    void any_function() {
-        schedule( std::bin(loop, 10) ); //schedule function loop(10) to random thread
-        schedule( [](){loop(10);} ); //schedule function loop(10) to random thread
+*Scheduled* functions can be wrapped into *std::function<void(void)>* (e.g. create by using *std::bind()* or a lambda of type *\[=\](){})*, or into the class *Function*, the latter allowing to specify more parameters. Of course, a function can simply *call* another function any time without scheduling it.
+
+    void any_function() { //this is a function, so we must use schedule()
+        schedule( std::bind(loop, 10) ); //schedule function loop(10) to random thread
+        schedule( [](){loop(10);} );     //schedule function loop(10) to random thread
 
         //schedule to run loop(10) and loop(100) sequentially on random thread
         schedule( [](){loop(10); loop(100);} );
 
         //Function to run on thread 1, with type 0 and id 999 (for logging)
         Function func{ [](){loop(10);}, thread_index{1}, thread_type{0}, thread_id{999} };
-
         schedule( func ); //lvalue, so do not move the function func, it can be reused afterwards
 
         //schedule to run on thread 2, use rvalue, so move semantics apply
@@ -136,7 +137,7 @@ Functions can be wrapped into *std::function<void(void)>* (e.g. create by using 
     }
 
 Functions scheduling other functions create a parent-child relationship. Functions are immediately scheduled to be run, *schedule()* can be called any number of times to start an arbitrary number of children to run in parallel.
-Function parameters should always be copied (see below)! Functions can also be member-functions, since they are wrapped into lambdas anyway. Just make sure that the class instance does not go out of scope!
+Function parameters should always be **called by value**, i.e., **copied** (see below)! Functions can also be *member-functions* of some class instance. In this case make sure that the class instance does not go out of scope while the function is running.
 
 ## Coroutines
 The second type of task to be scheduled are *coroutines*.
