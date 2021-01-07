@@ -340,7 +340,7 @@ namespace vgjs {
         */
         template<typename T>
         requires !std::is_void_v<T>
-        auto get_val(Coro<T>& t) {
+        decltype(auto) get_val(Coro<T>& t) {
             return std::make_tuple(t.get());
         }
 
@@ -353,7 +353,7 @@ namespace vgjs {
         */
         template<typename T>
         requires !std::is_void_v<T>
-        auto get_val( std::pmr::vector<Coro<T>>& vec) {
+        decltype(auto) get_val( std::pmr::vector<Coro<T>>& vec) {
             n_pmr::vector<T> ret;
             ret.reserve(vec.size());
             for (auto& coro : vec) { ret.push_back(coro.get()); }
@@ -365,11 +365,20 @@ namespace vgjs {
         * \returns the results from the co_await
         *
         */
-        auto await_resume() {
-            auto f = [&, this]<typename... Us>(Us&... args) {
+        decltype(auto) await_resume() {
+            decltype(auto) f = [&, this]<typename... Us>(Us&... args) {
                 return std::tuple_cat(get_val(args)...);
             };
-            return std::apply(f, m_tuple);  //call f with all parameters from the tuple
+            decltype(auto) ret = std::apply(f, m_tuple);
+            if constexpr (std::tuple_size_v < decltype(ret) > == 0) {
+                return;
+            }
+            else if constexpr (std::tuple_size_v < decltype(ret) > == 1) {
+                return std::get<0>(ret);
+            }
+            else {
+                return ret;
+            }
         }
 
         /**

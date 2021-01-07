@@ -28,12 +28,28 @@ namespace docu {
             for (int i = 0; i < N; ++i) {
                 schedule([=]() { printData(i); }); //all jobs are scheduled to run in parallel
             }
-
-            //after all children have finished, this function will be scheduled to thread 0
-            continuation(Function{ std::bind(vgjs::terminate), thread_index{0} });
         }
     }
 
+    namespace docu1_5 {
+        //a coroutine that uses a given memory resource to allocate its promise.
+        //the coro calls itself to compute i!
+        Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+            if (i == 0) co_return 1;
+            auto j = co_await do_compute(std::allocator_arg, mr, i - 1);   //call itself
+            std::cout << "Fact " << i*j << std::endl;
+            co_return i * j;   //return the promised value;
+        }
+
+        void other_fun(int i ) {
+            auto f = do_compute(std::allocator_arg, &docu::g_global_mem, i);
+            schedule(f); //schedule the coroutine
+            while (!f.ready()) { //wait for the result
+                std::this_thread::sleep_for(std::chrono::microseconds(1)); 
+            };
+            std::cout << "Result " << f.get() << std::endl;
+        }
+    }
 
     namespace docu2 {
         //the coro do_compute() uses g_global_mem to allocate its promise!
@@ -49,7 +65,6 @@ namespace docu {
                 co_await f;     //call do_compute() to create result
                 std::cout << "Result " << f.get() << std::endl;
             }
-            vgjs::terminate();
             co_return;
         }
     }
@@ -98,8 +113,6 @@ namespace docu {
             co_await fv; //await all elements of the std::function<void(void)> vector
             co_await jv; //await all elements of the Function{} vector
 
-            vgjs::terminate();
-
             co_return 0;
         }
     }
@@ -127,16 +140,19 @@ namespace docu {
                 co_await yt; //call the fiber and wait for it to complete
                 std::cout << "Yielding " << yt.get() << "\n";
             }
-            vgjs::terminate();
             co_return 0;
         }
     }
 
     void test(int N) {
-        //schedule([]() { docu1::loop(N);});
+        //schedule( [=]() { docu1::loop(N);});
+        schedule([=]() { docu1_5::other_fun(N); });
         //schedule( docu2::loop(std::allocator_arg, &docu::g_global_mem, N) );
         //schedule( docu::docu3::test(std::allocator_arg, &docu::g_global_mem, 1));
-        schedule( docu::docu4::loop(N));
+        //schedule( docu::docu4::loop(N));
+
+        vgjs::continuation([=]() { std::cout << "test(" << N << ")\n"; vgjs::terminate(); });
+
     }
 
 

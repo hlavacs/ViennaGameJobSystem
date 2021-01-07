@@ -18,7 +18,7 @@ If you additionally want coroutines then also include
 
     #include "VECoro.h"
 
-VGJS runs a number of *N* worker threads, EACH having TWO work queues, a local queue and a global queue. When scheduling jobs, a target thread can be specified or not. If the job is specified to run on thread *K* (using *vgjs\:\:thread_index{K}* ), then the job is put into thread *K*'s **local** queue. Only thread *K* can take it from there. If no thread is specified or *vgjs\:\:thread_index{}* is chosen, then a random thread *J* is chosen and the job is inserted into thread *J*'s **global** queue. Any thread can steal it from there, if it runs out of local jobs. This paradigm is called work stealing. By using multiple global queues, the amount of contention between threads is minimized.
+VGJS runs a number of *N* worker threads, *each* having *two* work queues, a *local* queue and a *global* queue. When scheduling jobs, a target thread *K* can be specified or not. If the job is specified to run on thread *K* (using *vgjs\:\:thread_index{K}* ), then the job is put into thread *K*'s **local** queue. Only thread *K* can take it from there. If no thread is specified or an empty *vgjs\:\:thread_index{}* is chosen, then a random thread *J* is chosen and the job is inserted into thread *J*'s **global** queue. Any thread can steal it from there, if it runs out of local jobs. This paradigm is called *work stealing*. By using multiple global queues, the amount of contention between threads is minimized.
 
 Each thread continuously grabs jobs from one of its queues and runs them. If the workload is split into a large number of small tasks then all CPU cores continuously do work and achieve a high degree of parallelism.
 
@@ -84,7 +84,7 @@ The call to *JobSystem::instance()* first creates the job system, and afterwards
     JobSystem(  uint32_t threadCount = 0, uint32_t start_idx = 0,
                 std::pmr::memory_resource *mr = std::pmr::new_delete_resource() )
 
-If *threadCount* = 0 then the number of threads to start is given by the call *std\:\:thread\:\:hardware_concurrency()*, which gives the number of hardware threads, NOT CPU cores. On modern hyperthreading architectures, the hardware concurrency is typically twice the number of CPU cores.
+If *threadCount* = 0 then the number of threads to start is given by the call *std\:\:thread\:\:hardware_concurrency()*, which gives the number of hardware threads, **not** CPU cores. On modern hyperthreading architectures, the hardware concurrency is typically twice the number of CPU cores.
 
 If the second parameter *start_idx* is not 0, then the main thread should enter the job system as thread 0 instead of waiting for its termination:
 
@@ -116,10 +116,10 @@ Finally, the third parameters specifies a memory resource to be used for allocat
 If none is specified, the job system uses standard new and delete.
 
 ## Functions
-There are two types of tasks that can be scheduled to the job system - C++ *functions* and *coroutines*. It is important to note that both functions and coroutines can schedule both functions and coroutines. However, how tasks are scheduled depends on the type of task that does this.
+There are two types of tasks that can be scheduled to the job system - C++ *functions* and *coroutines*. It is important to note that both functions and coroutines themselves can both schedule again functions and coroutines. However, how tasks are scheduled depends on the type of task that does this.
 In a *function*, scheduling is done via a call to the *vgjs::schedule()* function wrapper, which in turn calls the job system to schedule the function. In a *coroutine*, scheduling is done with the *co_await* operator.
 
-*Scheduled* functions can be wrapped into *std::function<void(void)>* (e.g. create by using *std::bind()* or a lambda of type *\[=\](){})*, or into the class *Function*, the latter allowing to specify more parameters. Of course, a function can simply *call* another function any time without scheduling it.
+*Scheduled* C++ functions can be wrapped into *std::function<void(void)>* (e.g. create by using *std::bind()* or a lambda of type *\[=\](){})*, or into the class *Function*, the latter allowing to specify more parameters. Of course, a function can simply *call* another function any time without scheduling it.
 
     void any_function() { //this is a function, so we must use schedule()
         schedule( std::bind(loop, 10) ); //schedule function loop(10) to random thread
@@ -132,25 +132,68 @@ In a *function*, scheduling is done via a call to the *vgjs::schedule()* functio
         Function func{ [](){loop(10);}, thread_index{1}, thread_type{0}, thread_id{999} };
         schedule( func ); //lvalue, so do not move the function func, it can be reused afterwards
 
-        //schedule to run on thread 2, use rvalue, so move semantics apply
+        //schedule to run on thread 2, use rvalue ref, so move semantics apply
         schedule( Function{ [](){loop(10);}, thread_index{2} } );
     }
 
-Functions scheduling other functions create a parent-child relationship. Functions are immediately scheduled to be run, *schedule()* can be called any number of times to start an arbitrary number of children to run in parallel.
-Function parameters should always be **called by value**, i.e., **copied** (see below)! Functions can also be *member-functions* of some class instance. In this case make sure that the class instance does not go out of scope while the function is running.
+Functions scheduling coroutines should simply call take the coroutine as parameter without packing it into a function wrapper.
+
+    Coro<int> do_compute(int i) {
+        //do something ...
+        co_return i;   //return the promised value;
+    }
+
+    void other_fun() {
+        schedule( do_compute(5) ); //schedule the coroutine
+    }
+
+Functions scheduling other functions or coroutines create a parent-child relationship. Functions are immediately scheduled to be run, *schedule()* can be called any number of times to start an arbitrary number of children to run in parallel.
+If the parent is a C++ function, parameters of scheduled other functions should always be **called by value**, i.e., **copied** (see below)! Functions can also be *member-functions* of some class instance. In this case make sure that the class instance does not go out of scope while the function is running.
 
 ## Coroutines
 The second type of task to be scheduled are *coroutines*.
 Coroutines can suspend their function body (by returning to their caller), and later on resume them where they had left. Any function that uses the keywords *co_await*, *co_yield*, or *co_return* is a coroutine (see e.g. https://lewissbaker.github.io/).
-In order to be compatible with the VGJS job system, coroutines must be of type *Coro\<T\>*, where *T* is any type to be computed. *T* must be copyable, references can be wrapped e.g. into *std::ref*. Alternatively, a coroutine of type *Coro<>* or *Coro<void>* does not return anything, and must have an empty *co_return*.
+In order to be compatible with the VGJS job system, coroutines must be of type *Coro\<T\>*, where *T* is any type to be computed and returned using *co_return*. Return type *T* must be copyable or moveable, references can be wrapped e.g. into *std::ref*. Alternatively, a coroutine of type *Coro<>* or *Coro<void>* does not return anything, and must have an empty *co_return*.
 
-An instance of *Coro\<T\>* acts like a *std\:\:future*, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling *get()* on it.
+An instance of *Coro\<T\>* acts like a *std\:\:future*, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling *get()* on it. Alternatively, the return value can be retrieved directly as return value from *co_await*.
 
-Additionally to this future, also a promise of type *Coro_promise\<T\>* is allocated from the same memory resource that is used by the job system instance to allocate job structures. The coro promise stores the coro's state, value and suspend points. It is possible to pass in a pointer to a different *std::pmr::memory_resource* to be used for allocation of coro promises.
+    //a memory resource
+    auto g_global_mem = ::n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 10 }, n_pmr::new_delete_resource());
 
-If the *parent* is a *function*, the parent might return any time and a *Coro_promise\<T\>* that reaches its end point automatically destroys. If the parent is still running it can access the return value by calling *get()* on the future *Coro\<T\>* because this value is kept in a *std::shared_ptr<std::pair<bool,T>>*, not in the *Coro_promise\<T\>* itself. You can check whether the result is  available by calling *ready()*.
+    //a coroutine that uses a given memory resource to allocate its promise.
+    //the coro calls itself recursively to compute i!
+    Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+        if( i==0 ) co_return 1;
+        int j = co_await do_compute(std::allocator_arg_t, mr, i-1);   //call itself
+        std::cout << "Fact " << i*j << std::endl;
+        co_return i*j;   //return the promised value;
+    }
 
-If the *parent* is a *coroutine* then the *Coro_promise\<T\>* only suspends at its end, and its own future *Coro\<T\>* must destroy it in its destructor. In this case the *std::pair<bool,T>* is kept in the *Coro_promise\<T\>*, and there is no shared pointer. It is also not necessary to call *ready()* to check on the availability of the result.
+    //no sync between other_fun() and do_compute()
+    //if you need the result be sure its is ready by calling ready()
+    void other_fun(int i ) {
+        auto f = do_compute(std::allocator_arg, &docu::g_global_mem, i);
+        schedule(f); //schedule the coroutine
+        while (!f.ready()) { //wait for the result
+          std::this_thread::sleep_for(std::chrono::microseconds(1));
+        };
+        std::cout << "Result " << f.get() << std::endl;
+    }
+
+Since the caller waits for the result, the output is
+
+    Fact 1
+    Fact 2
+    Fact 6
+    Fact 24
+    Fact 120
+    Result 120
+
+Additionally to this future, also a promise of type *Coro_promise\<T\>* is allocated from the same memory resource that is used by the job system instance to allocate job structures. The coro promise stores the coro's state, value and suspend points. It is possible to pass in a pointer to a different *std::pmr::memory_resource* to be used for allocation of coro promises (see the above example).
+
+If the *parent* is a *function*, the parent might return any time and a *Coro_promise\<T\>* that reaches its end point automatically destroys. If the parent is still running it can access the return value by calling *get()* on the future *Coro\<T\>* because this value is kept in a *std::shared_ptr<std::pair<bool,T>>*, not in the *Coro_promise\<T\>* itself. You can check whether the result is  available by calling *ready()* (see the above example).
+
+If the *parent* is a *coroutine* then the *Coro_promise\<T\>* only suspends at its end, and its own future *Coro\<T\>* must destroy it in its destructor. In this case both parent and children are synchronized, and the *std::pair<bool,T>* is kept in the *Coro_promise\<T\>*, so there is no shared pointer. It is also not necessary to call *ready()* to check on the availability of the result.
 
     //the coro do_compute() uses g_global_mem to allocate its promise!
     Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
