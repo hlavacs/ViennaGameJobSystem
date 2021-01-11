@@ -73,6 +73,12 @@ namespace docu {
     namespace docu3 {
 
         //A coro returning a float
+        Coro<int> coro_int(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
+            std::cout << "coro_int " << i << std::endl;
+            co_return i;
+        }
+
+        //A coro returning a float
         Coro<float> coro_float(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
             float f = (float)i;
             std::cout << "coro_float " << f << std::endl;
@@ -146,9 +152,9 @@ namespace docu {
 
     void test(int N) {
         //schedule( [=]() { docu1::loop(N);});
-        schedule([=]() { docu1_5::other_fun(N); });
+        //schedule([=]() { docu1_5::other_fun(N); });
         //schedule( docu2::loop(std::allocator_arg, &docu::g_global_mem, N) );
-        //schedule( docu::docu3::test(std::allocator_arg, &docu::g_global_mem, 1));
+        schedule( docu::docu3::test(std::allocator_arg, &docu::g_global_mem, 1));
         //schedule( docu::docu4::loop(N));
 
         vgjs::continuation([=]() { std::cout << "test(" << N << ")\n"; vgjs::terminate(); });

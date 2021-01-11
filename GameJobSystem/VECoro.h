@@ -154,9 +154,7 @@ namespace vgjs {
         return std::make_tuple( get_ref(std::forward<Ts>(args))... );
     }
 
-
     using suspend_always = n_exp::suspend_always;
-
 
     /**
     * \brief Awaitable for changing the thread that the coro is run on.
@@ -348,23 +346,63 @@ namespace vgjs {
         }
 
         /**
+        * \brief Count the number of return values
+        * \returns the number of return values
+        */
+
+        template<typename... Us>
+        struct count_val {
+            static size_t const value = 0;
+        };
+
+        template<typename U>
+        requires !std::is_void_v<U>
+        struct count_val<Coro<U>> {
+            static size_t const value = 1;
+        };
+
+        template<typename U>
+        requires !std::is_void_v<U>
+        struct count_val<std::pmr::vector<U>> {
+            static size_t const value = 1;
+        };
+
+        template<>
+        struct count_val<void> {
+            static size_t const value = 0;
+        };
+
+        template<typename U, typename... Us>
+        struct count_val<U,Us...> {
+            static size_t const value = 1 + count_val<Us...>::value;
+        };
+
+        /**
         * \brief Return the results from the co_await
         * \returns the results from the co_await
         *
         */
         decltype(auto) await_resume() {
+            //
+            //auto g = [&, this]<typename... Us>() -> size_t {
+            //    return (count_val( decltype(declval())) + ... + 0); //called for every tuple element
+            //};
+            //size_t n = g(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
+
+            //
             decltype(auto) f = [&, this]<typename... Us>(Us&... args) {
                 return std::tuple_cat(get_val(args)...);
             };
-            decltype(auto) ret = std::apply(f, m_tuple);
-            if constexpr (std::tuple_size_v < decltype(ret) > == 0) {
+            //decltype(auto) ret = std::apply(f, m_tuple);
+
+            if constexpr ( count_val<Ts...>::value == 0) {
                 return;
             }
-            else if constexpr (std::tuple_size_v < decltype(ret) > == 1) {
-                return std::get<0>(ret);
+            else if constexpr (count_val<Ts...>::value == 1) {
+                return std::get<0>(std::apply(f, m_tuple));
             }
             else {
-                return ret;
+                return std::apply(f, m_tuple);
             }
         }
 
