@@ -84,7 +84,7 @@ The call to *JobSystem::instance()* first creates the job system, and afterwards
     JobSystem(  uint32_t threadCount = 0, uint32_t start_idx = 0,
                 std::pmr::memory_resource *mr = std::pmr::new_delete_resource() )
 
-If *threadCount* = 0 then the number of threads to start is given by the call *std\:\:thread\:\:hardware_concurrency()*, which gives the number of hardware threads, **not** CPU cores. On modern hyperthreading architectures, the hardware concurrency is typically twice the number of CPU cores.
+If *threadCount* = 0 then the number of threads to start is given by the call *std\:\: thread \:\:hardware_concurrency()*, which gives the number of hardware threads, **not** CPU cores. On modern hyperthreading architectures, the hardware concurrency is typically twice the number of CPU cores.
 
 If the second parameter *start_idx* is not 0, then the main thread should enter the job system as thread 0 instead of waiting for its termination:
 
