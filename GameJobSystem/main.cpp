@@ -51,9 +51,9 @@ int main()
 
 	JobSystem::instance();
 
-	//schedule( [](){ driver(10); });
+	schedule( [](){ driver(10); });
 
-	schedule([=]() {docu::test(5); });
+	//schedule([=]() {docu::test(5); });
 	
 	wait_for_termination();
 	std::cout << "Exit\n";

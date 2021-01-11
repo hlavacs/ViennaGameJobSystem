@@ -37,7 +37,7 @@ The main thread can wait for this termination by calling *vgjs::wait_for_termina
         std::cout << "Print Data " << i << std::endl;
     }
 
-	void loop( int N ) {
+    void loop( int N ) {
         for( int i=0; i< N; ++i) { //all jobs run in parallel
             schedule( [=](){ printData(i); } ); //schedule a lambda
         }
@@ -46,8 +46,8 @@ The main thread can wait for this termination by calling *vgjs::wait_for_termina
         continuation( Function{ std::bind(vgjs::terminate), thread_index{0} } ); //schedule a Function
     }
 
-	void test( int N ) {
-        schedule( std::bind(loop, N ) ); //schedule a std::function
+    void test( int N ) {
+          schedule( std::bind(loop, N ) ); //schedule a std::function
     }
 
     int main()
@@ -246,20 +246,23 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
             , coro_void(1)        //no return value
             , coro_int(2.1)       //returns int
             , coro_float(true),   //returns float
-            Function([=](){ another_func(); } ); //no return value
+            Function{ [=](){ another_func(); } }; //no return value
 
 In this example, four children are started, one function and three coros. Only coros can return a value, but one of the coros returns void, so there are only two return values, *ret1* being of type *int*, and *ret2* being of type *float*. Internally, *parallel()* results in a *std::tuple* holding references to the parameters, and you can use *std::tuples* instead of *parallel()*.
 
 Second you can co_await *std::pmr::vectors* of the above types. This allows to start and await any number of children of arbitrary types, where the number of children is determined dynamically at run time. If the vectors contain instances of type *Coro<T>*, then the result values will be of type *std::pmr::vector<T>* and contain the return values of the coros. If the return values are not needed, then it is advisable to switch to *Coro<>* instead, since creating the return vectors come with some performance overhead.
 
-The following code shows how to start multiple children from a coro.
+The following code shows how to start multiple children from a coro to run in parallel.
 
-    auto g_global_mem4 =
-      std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
+    //A coro returning a float
+    Coro<int> coro_int(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
+        std::cout << "coro_int " << i << std::endl;
+        co_return i;
+    }
 
     //A coro returning a float
     Coro<float> coro_float(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
-        float f = (float)i;
+        float f = 1.5f*(float)i;
         std::cout << "coro_float " << f << std::endl;
         co_return f;
     }
@@ -276,44 +279,46 @@ The following code shows how to start multiple children from a coro.
     }
 
     Coro<int> test(std::allocator_arg_t, n_pmr::memory_resource* mr, int count) {
-
-        auto tv = n_pmr::vector<Coro<>>{ mr };  //vector of Coro<>
+        std::pmr::vector<Coro<>> tv{ mr };  //vector of Coro<>
         tv.emplace_back(coro_void(std::allocator_arg, &g_global_mem, 1));
 
-        auto tk = std::make_tuple(                     //tuple holding two vectors - Coro<int> and Coro<float>
-              n_pmr::vector<Coro<>>{mr},
-              n_pmr::vector<Coro<float>>{mr});
-        get<0>(tk).emplace_back(coro_void(std::allocator_arg, &g_global_mem, 2));
-        get<1>(tk).emplace_back(coro_float(std::allocator_arg, &g_global_mem, 3));
+        std::pmr::vector<Coro<int>> ti{ mr };
+        ti.emplace_back(coro_int(std::allocator_arg, &g_global_mem, 2));
 
-        auto fv = n_pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
+        std::pmr::vector<Coro<float>> tf{mr};
+        tf.emplace_back(coro_float(std::allocator_arg, &g_global_mem, 3));
+
+        std::pmr::vector<std::function<void(void)>> fv{ mr }; //vector of C++ functions
         fv.emplace_back([=]() {func(4); });
 
         n_pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
-        Function f = Function([=]() {func(5); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 }); //schedule to random thread, use type 0 and id 0
-        jv.push_back(f);
+        jv.emplace_back( Function{[=]() {func(5); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 }} );
 
-        co_await tv; //await all elements of the Coro<int> vector
-        co_await tk; //await all elements of the vectors in the tuples
-        co_await fv; //await all elements of the std::function<void(void)> vector
-        co_await jv; //await all elements of the Function{} vector
+        auto [ret1, ret2] = co_await parallel(tv, ti, tf, fv, jv);
 
-        vgjs::terminate();
+        std::cout << "ret1 " << ret1[0] << " ret2 " << ret2[0] << std::endl;
 
         co_return 0;
     }
 
 The output of the above code is
 
-    coro_int 1
-    coro_int coro_float 2
-    3
+    coro_void 1
     func 4
+    coro_float 4.5
+    coro_int 2
     func 5
+    ret1 2 ret2 4.5
 
-It can be seen that the *co_await*s are carried out sequentially, but the functions on the tuple are carried out in parallel, with mixed up output.
+The resturn values are stored in *ret1* and *ret2*, both are vectors containing only one value.
 
 ### Threads, Types, IDs
+
+Functions of type *Function{}* can be assigned a specific thread that the Function should run on. In this case the Function is scheduled to the thread's local queue.
+
+    schedule( Function{ [=]() {func(5); }, thread_index{0}, thread_type{11}, thread_id{99}} ); //run on thread 0, type 11, id 99
+
+If no thread is given then the Function is scheduled to the global queue of a random thread. Additionally, for debugging and performance measurement purposes, jobs can be assigned by a type and an id. Both can be used to trace the calls, e.g. by writing the data into a log file as described below.
 
 Coroutine futures *Coro\<T\>* are also "callable", and you can pass in parameters similar to the *Function{}* class, setting thread index, type and id:
 
@@ -343,7 +348,7 @@ accesses the result with calling *get()*.
       while (true) {          //a fiber never returns
         int res = value * input_parameter; //use internal and input parameters
         co_yield res;       //set std::pair<bool,T> value to indicate that this fiber is ready, and suspend
-        //here its std::pair<bool,T> value is set to (false, T{}) to indicate thet the fiber is working
+        //here its std::pair<bool,T> value is set to (false, T{}) to indicate that the fiber is working
         //co_await other(value, input_parameter);  //call any child
         ++value;            //do something useful
       }
@@ -356,8 +361,8 @@ accesses the result with calling *get()*.
     Coro<int> loop(int N) {
       for (int i = 0; i < N; ++i) {
         g_yt_in = i; //set input parameter
-        co_await yt; //call the fiber and wait for it to complete
-        std::cout << "Yielding " << yt.get() << "\n";
+        auto ret = co_await yt; //call the fiber and wait for it to complete
+        std::cout << "Yielding " << ret << "\n";
       }
       vgjs::terminate();
       co_return 0;
@@ -385,7 +390,7 @@ A parent synchronizes with its children through this non-blocking finishing proc
 
 In C++ *functions*, children are started with the *schedule()* command, which is non-blocking. The waiting occurs after the parent function returns and ends itself. The job related to the parent remains in the system, and waits for its children to finish (if there are any). After finishing, the job notifies its own parent, and may start a continuation, which is another job that was previously defined by calling *continuation()*.
 
-If the parent is a *coroutine*, then children are spawned by calling the *co_await* operator. Here the coro waits until all children have finished and resumes right after the *co_await*. Since the coro continues, it does not finish yet. Only after calling *co_return*, the coro finishes, and notifies its own parent. A coro should NOT call *schedule()* or *continuation()*!
+If the parent is a *coroutine*, then children are spawned by calling the *co_await* operator. Here the coro waits until all children have finished and resumes right after the *co_await*. Since the coro continues, it does not finish yet. Only after calling *co_return*, the coro finishes, and notifies its own parent. A coro should **not** call *schedule()* or *continuation()*!
 
 ## Tagged Jobs
 A unique feature of VGJS is allowing *tags*. Consider a game loop where things are done in parallel. While user callbacks work on the current state, they might share a common state and rely on the data integrity while running. Thus changing data or deleting entities should be done after the callbacks are finished. VGJS allows to schedule jobs for doing this for the future.
@@ -406,68 +411,45 @@ Tags act like barriers, and jobs can be prescheduled to do stuff later. E.g., ch
 
 Coroutines schedule functions and other coroutines for future runs also using the *schedule()* function. However, scheduling tag jobs must be done with *co_await*:
 
-    Coro<int> tag2() {
-        std::cout << "Tag 2" << std::endl;
-        co_await thread_index{ 1 };
-
-        co_return 0;
-    }
-
-    void printPar( int i) {
+    void printPar(int i) { //print something
         std::cout << "i: " << i << std::endl;
     }
 
     Coro<int> tag1() {
         std::cout << "Tag 1" << std::endl;
-
-        schedule([=]() { printPar(4); }, tag{ 1 });
-        schedule([=]() { printPar(5); }, tag{ 1 });
-        schedule([=]() { printPar(6); }, tag{ 1 });
-        co_await tag{ 1 };
-
-        co_await tag2();
-
+        co_await parallel(tag{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); }, tag{ 1 }, [=]() { printPar(6); }, tag{ 1 });
+        co_await tag{ 1 }; //runt jobs with tag 1
         co_return 0;
-    }
-
-
-    void tag0cont() {
-        schedule(tag1());
     }
 
     void tag0() {
         std::cout << "Tag 0" << std::endl;
-
         schedule([=]() { printPar(1); }, tag{ 0 });
         schedule([=]() { printPar(2); }, tag{ 0 });
         schedule([=]() { printPar(3); }, tag{ 0 });
-        schedule( tag{ 0 } );
-
-        continuation([]() { tag0cont(); });
+        schedule(tag{ 0 });   //run jobs with tag 0
+        continuation(tag1()); //continue with tag1()
     }
 
     void test() {
         std::cout << "Starting tag test()\n";
-
-        schedule([=](){ tag0(); });
-
+        schedule([=]() { tag0(); });
         std::cout << "Ending tag test()\n";
     }
 
 The example program above first schedules a function *tag0()* which runs tag 0 jobs. The output of this code is
 
+    Starting thread 11
     Starting tag test()
     Ending tag test()
     Tag 0
-    i: i: 2
-    i: 3
+    i: 2i: 3
+
+    i: 1
     Tag 1
     i: 4
-    Tag 2
-    i: 5
     i: 6
-    1
-
+    i: 5
 
 ## Breaking the Parent-Child Relationship
 Jobs having a parent will trigger a continuation of this parent after they have finished. This also means that these continuations depend on the children and have to wait. Starting a job that does not have a parent is easily done by using *nullptr* as the second argument of the *schedule()* call.

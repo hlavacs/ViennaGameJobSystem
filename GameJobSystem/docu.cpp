@@ -80,7 +80,7 @@ namespace docu {
 
         //A coro returning a float
         Coro<float> coro_float(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
-            float f = (float)i;
+            float f = 1.5f*(float)i;
             std::cout << "coro_float " << f << std::endl;
             co_return f;
         }
@@ -98,26 +98,24 @@ namespace docu {
 
         Coro<int> test(std::allocator_arg_t, n_pmr::memory_resource* mr, int count) {
 
-            auto tv = n_pmr::vector<Coro<>>{ mr };  //vector of Coro<>
+            n_pmr::vector<Coro<>> tv{ mr };  //vector of Coro<>
             tv.emplace_back(coro_void(std::allocator_arg, &g_global_mem, 1));
 
-            auto tk = std::make_tuple(                     //tuple holding two vectors - Coro<int> and Coro<float>
-                n_pmr::vector<Coro<>>{mr},
-                n_pmr::vector<Coro<float>>{mr});
-            get<0>(tk).emplace_back(coro_void(std::allocator_arg, &g_global_mem, 2));
-            get<1>(tk).emplace_back(coro_float(std::allocator_arg, &g_global_mem, 3));
+            n_pmr::vector<Coro<int>> ti{ mr };
+            ti.emplace_back(coro_int(std::allocator_arg, &g_global_mem, 2));
 
-            auto fv = n_pmr::vector<std::function<void(void)>>{ mr }; //vector of C++ functions
+            n_pmr::vector<Coro<float>> tf{mr};
+            tf.emplace_back(coro_float(std::allocator_arg, &g_global_mem, 3));
+
+            n_pmr::vector<std::function<void(void)>> fv{ mr }; //vector of C++ functions
             fv.emplace_back([=]() {func(4); });
 
             n_pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
-            Function f = Function([=]() {func(5); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 }); //schedule to random thread, use type 0 and id 0
-            jv.push_back(f);
+            jv.emplace_back(Function{ [=]() {func(5); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 } });
 
-            co_await tv; //await all elements of the Coro<int> vector
-            co_await tk; //await all elements of the vectors in the tuples
-            co_await fv; //await all elements of the std::function<void(void)> vector
-            co_await jv; //await all elements of the Function{} vector
+            auto [ret1, ret2] = co_await parallel(tv, ti, tf, fv, jv);
+
+            std::cout << "ret1 " << ret1[0] << " ret2 " << ret2[0] << std::endl;
 
             co_return 0;
         }
@@ -143,21 +141,52 @@ namespace docu {
         Coro<int> loop(int N) {
             for (int i = 0; i < N; ++i) {
                 g_yt_in = i; //set input parameter
-                co_await yt; //call the fiber and wait for it to complete
-                std::cout << "Yielding " << yt.get() << "\n";
+                auto ret = co_await yt; //call the fiber and wait for it to complete
+                std::cout << "Yielding " << ret << "\n";
             }
             co_return 0;
         }
+    }
+
+    namespace docu5 {
+
+        void printPar(int i) { //print something
+            std::cout << "i: " << i << std::endl;
+        }
+
+        Coro<int> tag1() {
+            std::cout << "Tag 1" << std::endl;
+            co_await parallel(tag{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); }, tag{ 1 }, [=]() { printPar(6); }, tag{ 1 });
+            co_await tag{ 1 }; //runt jobs with tag 1
+            co_return 0;
+        }
+
+        void tag0() {
+            std::cout << "Tag 0" << std::endl;
+            schedule([=]() { printPar(1); }, tag{ 0 });
+            schedule([=]() { printPar(2); }, tag{ 0 });
+            schedule([=]() { printPar(3); }, tag{ 0 });
+            schedule(tag{ 0 });   //run jobs with tag 0
+            continuation(tag1()); //continue with tag1()
+        }
+
+        void test() {
+            std::cout << "Starting tag test()\n";
+            schedule([=]() { tag0(); });
+            std::cout << "Ending tag test()\n";
+        }
+
     }
 
     void test(int N) {
         //schedule( [=]() { docu1::loop(N);});
         //schedule([=]() { docu1_5::other_fun(N); });
         //schedule( docu2::loop(std::allocator_arg, &docu::g_global_mem, N) );
-        schedule( docu::docu3::test(std::allocator_arg, &docu::g_global_mem, 1));
+        //schedule( docu::docu3::test(std::allocator_arg, &docu::g_global_mem, 1));
         //schedule( docu::docu4::loop(N));
+        schedule([=]() { docu::docu5::test(); });
 
-        vgjs::continuation([=]() { std::cout << "test(" << N << ")\n"; vgjs::terminate(); });
+        vgjs::continuation([=]() { vgjs::terminate(); });
 
     }
 

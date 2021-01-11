@@ -22,7 +22,6 @@ namespace tags {
     Coro<int> tag2() {
         std::cout << "Tag 2" << std::endl;
         co_await thread_index{ 1 };
-
         co_return 0;
     }
 
@@ -33,37 +32,24 @@ namespace tags {
     Coro<int> tag1() {
         std::cout << "Tag 1" << std::endl;
 
-        schedule([=]() { printPar(4); }, tag{ 1 });
-        schedule([=]() { printPar(5); }, tag{ 1 });
-        schedule([=]() { printPar(6); }, tag{ 1 });
+        co_await parallel(tag{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); }, tag{ 1 }, [=]() { printPar(6); }, tag{ 1 });
         co_await tag{ 1 };
-
         co_await tag2();
-
         co_return 0;
-    }
-
-
-    void tag0cont() {
-        schedule(tag1());
     }
 
     void tag0() {
         std::cout << "Tag 0" << std::endl;
-
         schedule([=]() { printPar(1); }, tag{ 0 });
         schedule([=]() { printPar(2); }, tag{ 0 });
         schedule([=]() { printPar(3); }, tag{ 0 });
-        schedule( tag{ 0 } );
-
-        continuation([]() { tag0cont(); });
+        schedule(tag{ 0 });   //run jobs with tag 0
+        continuation(tag1()); //continue with tag1()
     }
 
     void test() {
         std::cout << "Starting tag test()\n";
-
         schedule([=](){ tag0(); });
-
         std::cout << "Ending tag test()\n";
     }
 
