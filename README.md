@@ -153,34 +153,51 @@ If the parent is a C++ function, parameters of scheduled other functions should 
 ## Coroutines
 The second type of task to be scheduled are *coroutines*.
 Coroutines can suspend their function body (by returning to their caller), and later on resume them where they had left. Any function that uses the keywords *co_await*, *co_yield*, or *co_return* is a coroutine (see e.g. https://lewissbaker.github.io/).
-In order to be compatible with the VGJS job system, coroutines must be of type *Coro\<T\>*, where *T* is any type to be computed and returned using *co_return*. Return type *T* must be copyable or moveable, references can be wrapped e.g. into *std::ref*. Alternatively, a coroutine of type *Coro<>* or *Coro<void>* does not return anything, and must have an empty *co_return*.
 
-An instance of *Coro\<T\>* acts like a *std\:\:future*, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling *get()* on it. Alternatively, the return value can be retrieved directly as return value from *co_await*.
+In order to be compatible with the VGJS job system, coroutines must be of type *Coro\<T\>* (a.k.a. the "*future*"), where *T* is any type to be computed and returned using *co_return*. Return type *T* must be copyable or moveable, references can be wrapped e.g. into *std::ref*. Alternatively, a coroutine of type *Coro<>* or *Coro<void>* does not return anything, and must have an empty *co_return*.
+
+From a C++ *function*, a child *coroutine* can be scheduled by calling *schedule( Coro\<T\> &&coro, ... )*. **Do not pack coro into a lambda!**
+If you use coros, this must be done at least once, since any C++ program starts in the function *main()*.
+On the other hand, coros should not call *schedule()*! Instead they should use *co_await* and *co_return* for starting their own children and returning values. A coro acting as *fiber* can also call *co_yield* to return an intermediate value, but remain to exist. This will be explained later.
+
+Internally, additionally to the *future*, also a *promise* of type *Coro_promise\<T\>* is allocated from the same memory resource that is used by the job system instance to allocate job structures. The coro promise stores the coro's state, value and suspend points. It is possible to pass in a pointer to a different *std::pmr::memory_resource* to be used for allocation of coro promises (see the above example).
 
     //a memory resource
-    auto g_global_mem = ::n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 10 }, n_pmr::new_delete_resource());
+    auto g_global_mem = ::n_pmr::synchronized_pool_resource(
+      { .max_blocks_per_chunk = 20
+        , .largest_required_pool_block = 1 << 10 }
+        , n_pmr::new_delete_resource());
 
     //a coroutine that uses a given memory resource to allocate its promise.
-    //the coro calls itself recursively to compute i!
-    Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+    //the coro calls itself through co_await recursively to compute i!
+    Coro<int> factorial(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
         if( i==0 ) co_return 1;
-        int j = co_await do_compute(std::allocator_arg_t, mr, i-1);   //call itself
-        std::cout << "Fact " << i*j << std::endl;
+        int j = co_await factorial(std::allocator_arg_t, mr, i-1); //recurse
+        std::cout << "Fact " << i*j << std::endl; //print intermediate results
         co_return i*j;   //return the promised value;
     }
 
-    //no sync between other_fun() and do_compute()
+    //no sync between other_fun() and factorial()
     //if you need the result be sure its is ready by calling ready()
     void other_fun(int i ) {
-        auto f = do_compute(std::allocator_arg, &docu::g_global_mem, i);
-        schedule(f); //schedule the coroutine
+        auto f = factorial(std::allocator_arg, &docu::g_global_mem, i);
+        schedule(f); //schedule coroutine directly, do not pack into lambda!
         while (!f.ready()) { //wait for the result
           std::this_thread::sleep_for(std::chrono::microseconds(1));
         };
         std::cout << "Result " << f.get() << std::endl;
+        vgjs::continuation([=](){ vgjs::terminate(); }); //continuation
     }
 
-Since the caller waits for the result, the output is
+    //use schedule( [=](){...} ) from main()
+    int main() {
+      	using namespace vgjs;
+      	JobSystem::instance();               //create VGJS
+      	schedule([=]() { other_fun(5); });   //schedule function with lambda
+        wait_for_termination(); //wait until vgjs::terminate() was called
+    }
+
+In the above example, main() schedules a C++ function other_fun() using a lambda, and then waits until VGJS shuts down. The function other_fun() itself schedules a coro that calls itself to compute the factorial of a given parameter. other_fun() also schedules a continuation that is run once all children of other_fun() have finished. This continuation calls vgjs::terminate() to shut down VGJS. The output is
 
     Fact 1
     Fact 2
@@ -189,58 +206,53 @@ Since the caller waits for the result, the output is
     Fact 120
     Result 120
 
-Additionally to this future, also a promise of type *Coro_promise\<T\>* is allocated from the same memory resource that is used by the job system instance to allocate job structures. The coro promise stores the coro's state, value and suspend points. It is possible to pass in a pointer to a different *std::pmr::memory_resource* to be used for allocation of coro promises (see the above example).
+Coroutines should **not** call *vgjs::continuation()*, since they are their own continuation automatically. They wait until all children from a *co_await* call are finished, and then continue on with the next statement.
 
-If the *parent* is a *function*, the parent might return any time and a *Coro_promise\<T\>* that reaches its end point automatically destroys. If the parent is still running it can access the return value by calling *get()* on the future *Coro\<T\>* because this value is kept in a *std::shared_ptr<std::pair<bool,T>>*, not in the *Coro_promise\<T\>* itself. You can check whether the result is  available by calling *ready()* (see the above example).
+### Return Values
 
-If the *parent* is a *coroutine* then the *Coro_promise\<T\>* only suspends at its end, and its own future *Coro\<T\>* must destroy it in its destructor. In this case both parent and children are synchronized, and the *std::pair<bool,T>* is kept in the *Coro_promise\<T\>*, so there is no shared pointer. It is also not necessary to call *ready()* to check on the availability of the result.
+An instance of *Coro\<T\>* acts like a *std\:\:future*, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling *get()* on it. Alternatively, the return value can be retrieved directly as return value from *co_await* (see the above example).
 
-    //the coro do_compute() uses g_global_mem to allocate its promise!
-    Coro<int> do_compute(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
-        co_await thread_index{0};     //move this job to the thread with number 0
-        co_return i;    //return the promised value;
-    }
+If the *parent* is a *function*, the parent might return any time and a *Coro_promise\<T\>* that reaches its end point *automatically destroys*. If the parent is still running it can access the child's return value by calling *get()* on the future *Coro\<T\>* because this value is kept in a *std::shared_ptr<std::pair<bool,T>>*, not in the *Coro_promise\<T\>* itself. The parent can check whether the result is available by calling *ready()*.
 
-    //the coro loop() uses g_global_mem to allocate its promise!
-    Coro<> loop(std::allocator_arg_t, std::pmr::memory_resource* mr, int N) {
-        for( int i=0; i<N; ++i) {
-            auto f = do_compute(std::allocator_arg, mr, i );
-            co_await f;     //call do_compute() to create result
-            std::cout << "Result " << f.get() << std::endl;
-        }
-        vgjs::terminate(); //terminate the system
-        co_return;
-    }
+If the *parent* is *also* a *coroutine* then the *Coro_promise\<T\>* only suspends at its end (does not destroy automatically), and thus its future *Coro\<T\>* (living in the *parent* coro) destroys the promise (being the child) in the future's destructor. As long as the future lives, the promise also lives. In this case the *std::pair<bool,T>* is kept in the *Coro_promise\<T\>* itself, so there is no shared pointer (this increases the performance since no heap allocation for the shared pointer is necessary).
 
-    auto g_global_mem =      //my own memory pool
-        std::pmr::synchronized_pool_resource(
-            { .max_blocks_per_chunk = 1000, .largest_required_pool_block = 1 << 10 }, std::pmr::new_delete_resource());
-
-    int main() {
-        JobSystem::instance();
-
-        //pass on the memory resource to be used to allocate the promise, precede it with std::allocator_arg
-        schedule( loop(std::allocator_arg, &g_global_mem, 5) ); //schedule coro loop() from a function
-
-        wait_for_termination();
-        return 0;
-    }
-
-From a C++ *function*, a child *coroutine* can be scheduled by calling *schedule()*. If you use coros, this eventually must be done, since any C++ program starts in the function *main()*.
-On the other hand, coros should NOT call *schedule()*! Instead they MUST use *co_await* and *co_return* for starting their own children and returning values. The output of the above code is
-
-    Result 0
-    Result 1
-    Result 2
-    Result 3
-    Result 4
+Once *co_await* returns, all children have finished and the result values are available. Thus, both parent and children are synchronized, and it is not necessary for the parent to call *ready()* to check on the availability of the result.
 
 Coros can coawait a number of different types. Single types include
 * C++ function packed into lambdas *\[=\](){}*, *std::bind()* or *std::function<void(void)>*
 * Function{} class
 * *Coro\<T\>* for any return type *T*, or empty *Coro<>*
 
-Since the coro suspends and awaits the finishing of all of its children, this would allow only one child to await. Thus, coros can additionally await *std::pmr::vectors*, or even *std::tuples* containing *K* *std::pmr::vectors* of the above types. This allows to start and await any number of children of arbitrary types. The following code shows how to start multiple children from a coro.
+Since the coro suspends and awaits the finishing of all of its children, this would allow only one child to be awaited. Thus there are two ways to start more than one child in parallel. First, using the *parallel()* function, a static number of children can be started, given as parameters:
+
+    Coro<> coro_void(int x) {
+        //...
+        co_return; //return nothing
+    };
+
+    Coro<int> coro_int(float y) {
+        //...
+        co_return some_int; //return an int
+    };
+
+    Coro<float> coro_float(bool z) {
+        //...
+        co_return some_float; //return a float
+    };
+
+    auto [ret1, ret2]             //the return values
+        = co_await parallel(
+            [=](){ some_func(); } //no return value
+            , coro_void(1)        //no return value
+            , coro_int(2.1)       //returns int
+            , coro_float(true),   //returns float
+            Function([=](){ another_func(); } ); //no return value
+
+In this example, four children are started, one function and three coros. Only coros can return a value, but one of the coros returns void, so there are only two return values, *ret1* being of type *int*, and *ret2* being of type *float*. Internally, *parallel()* results in a *std::tuple* holding references to the parameters, and you can use *std::tuples* instead of *parallel()*.
+
+Second you can co_await *std::pmr::vectors* of the above types. This allows to start and await any number of children of arbitrary types, where the number of children is determined dynamically at run time. If the vectors contain instances of type *Coro<T>*, then the result values will be of type *std::pmr::vector<T>* and contain the return values of the coros. If the return values are not needed, then it is advisable to switch to *Coro<>* instead, since creating the return vectors come with some performance overhead.
+
+The following code shows how to start multiple children from a coro.
 
     auto g_global_mem4 =
       std::pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, std::pmr::new_delete_resource());
@@ -300,6 +312,8 @@ The output of the above code is
     func 5
 
 It can be seen that the *co_await*s are carried out sequentially, but the functions on the tuple are carried out in parallel, with mixed up output.
+
+### Threads, Types, IDs
 
 Coroutine futures *Coro\<T\>* are also "callable", and you can pass in parameters similar to the *Function{}* class, setting thread index, type and id:
 

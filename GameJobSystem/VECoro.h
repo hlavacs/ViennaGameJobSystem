@@ -66,13 +66,13 @@ namespace vgjs {
     /**
     * \brief Schedule a Coro into the job system.
     * Basic function for scheduling a coroutine Coro into the job system.
-    * \param[in] coro A coroutine Coro, whose promise is a job that is scheduled into the job system
+    * \param[in] coro A ref to coroutine Coro, whose promise is a job that is scheduled into the job system
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
     */
     template<typename T>
     requires CORO<T>   
-    void schedule( T& coro, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+    void schedule( T&& coro, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
         auto& js = JobSystem::instance();
 
         auto promise = coro.promise();
@@ -88,19 +88,6 @@ namespace vgjs {
             promise->m_parent = nullptr;
         }
         js.schedule( coro.promise(), tg );      //schedule the promise as job
-    };
-
-    /**
-    * \brief Schedule a Coro into the job system.
-    * Basic function for scheduling a coroutine Coro into the job system.
-    * \param[in] coro A coroutine Coro, whose promise is a job that is scheduled into the job system.
-    * \param[in] parent The parent of this Job.
-    * \param[in] children Number used to increase the number of children of the parent.
-    */
-    template<typename T>
-    requires CORO<T>
-    void schedule( T&& coro, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        schedule(coro, tg, parent, children);
     };
 
     //---------------------------------------------------------------------------------------------------
