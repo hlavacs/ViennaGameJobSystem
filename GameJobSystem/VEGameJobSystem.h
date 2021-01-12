@@ -690,7 +690,7 @@ namespace vgjs {
                 job->m_parent = parent;
                 if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
             }
-            schedule(job);
+            schedule(job, tg);
         };
 
         /**
