@@ -162,6 +162,7 @@
     <ClCompile Include="mixed.cpp" />
     <ClCompile Include="docu.cpp" />
     <ClCompile Include="tags.cpp" />
+    <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VECoro.h" />

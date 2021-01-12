@@ -8,6 +8,7 @@
 #include <chrono>
 
 #include "VEGameJobSystem.h"
+#include "VECoro.h"
 
 namespace coro {
 	void test();
@@ -45,16 +46,25 @@ void driver( int i ) {
 	}
 }
 
+
+using namespace vgjs;
+
+namespace test {
+	Coro<> start_test();
+}
+
 int main()
 {
-	using namespace vgjs;
 
 	JobSystem::instance();
 
-	schedule( [](){ driver(10); });
+	//schedule( [](){ driver(10); });
 
 	//schedule([=]() {docu::test(5); });
-	
+
+	schedule( test::start_test() );
+
+
 	wait_for_termination();
 	std::cout << "Exit\n";
 	std::string str;
