@@ -438,7 +438,7 @@ namespace vgjs {
             }
 
             for (uint32_t i = start_idx.value; i < m_thread_count; i++) {
-                std::cout << "Starting thread " << i << std::endl;
+                //std::cout << "Starting thread " << i << std::endl;
                 m_threads.push_back(std::thread(&JobSystem::thread_task, this, thread_index(i) ));	//spawn the pool threads
                 m_threads[i].detach();
             }

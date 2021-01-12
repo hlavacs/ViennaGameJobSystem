@@ -125,13 +125,13 @@ namespace test {
 		if (wrtfunc) {
 			double speedup0 = (double)duration0.count() / (double)duration2.count();
 			double efficiency0 = speedup0 / js.get_thread_count().value;
-			std::cout << "Wrt function calls: Work/job " << std::setw(3) << micro << " us Speedup " << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
+			std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
 			return;
 		}
 
 		double speedup1 = (double)duration1.count() / (double)duration2.count();
 		double efficiency1 = speedup1 / js.get_thread_count().value;
-		    std::cout << "Wrt single thread:  Work/job " << std::setw(3) << micro << " us Speedup " << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
+		    std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
 	}
 
 #define TESTRESULT(N, S, EXPR, B, C) \
@@ -321,8 +321,8 @@ namespace test {
 		TESTRESULT(++number, "Tagged jobs 2", co_await tag{ 2 }, counter.load() == 4, );
 		TESTRESULT(++number, "Tagged jobs 3", co_await tag{ 3 }, counter.load() == 10, counter = 0);
 
-		const int num = 10000;
-		std::cout << "\nPerformance for " << num << " function calls\n\n";
+		const int num = 5000;
+		std::cout << "\nPerformance for " << num << " function calls on " << js.get_thread_count().value << " threads\n\n";
 
 		for (double us = 1.0; us <= 8; us += 1.0) {
 			co_await performance(true, num, us);
