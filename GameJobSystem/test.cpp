@@ -123,10 +123,10 @@ namespace test {
 
 		//allocate functions
 		std::pmr::vector<Function> perfv1{mr};
-		std::pmr::vector<Function> perfv2{mr};
+		std::pmr::vector<std::function<void(void)>> perfv2{mr};
 		if constexpr (!WITHALLOCATE) {
 			perfv1.resize(num, Function{ [&]() { func_perf(micro); }, thread_index{0} });
-			perfv2.resize(num, Function{ [&]() { func_perf(micro); }});
+			perfv2.resize(num, std::function<void(void)>{[&]() { func_perf(micro); }});
 		}
 
 		auto start0 = high_resolution_clock::now();
@@ -144,7 +144,7 @@ namespace test {
 
 		auto start2 = high_resolution_clock::now();
 		if constexpr (WITHALLOCATE) {
-			perfv2.resize(num, Function{ [&]() { func_perf(micro); }});
+			perfv2.resize(num, std::function<void(void)>{ [&]() { func_perf(micro); }});
 		}
 		co_await perfv2;
 		auto duration2 = duration_cast<microseconds>(high_resolution_clock::now() - start2);
