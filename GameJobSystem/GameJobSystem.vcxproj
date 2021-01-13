@@ -156,12 +156,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="coro.cpp" />
-    <ClCompile Include="func.cpp" />
+    <ClCompile Include="example_coro.cpp" />
+    <ClCompile Include="example_func.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="mixed.cpp" />
+    <ClCompile Include="example_mixed.cpp" />
     <ClCompile Include="docu.cpp" />
-    <ClCompile Include="tags.cpp" />
+    <ClCompile Include="example_tags.cpp" />
     <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
