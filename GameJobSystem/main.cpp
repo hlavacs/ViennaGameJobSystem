@@ -28,7 +28,7 @@ int main()
 	
 	schedule( test::start_test() );
 
-	//schedule( [](){ examples::run_examples(1); } );
+	//schedule( [](){ examples::run_examples(10); } );
 
 	wait_for_termination();
 	std::cout << "Press Any Key + Return to Exit\n";

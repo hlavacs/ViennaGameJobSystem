@@ -757,8 +757,8 @@ namespace vgjs {
         * \param[in] id A unique ID of the call.
         * \returns a reference to this Coro so that it can be used with co_await.
         */
-        Coro<T>&& operator() (thread_index thread_index, thread_type type, thread_id id) {
-            m_promise->m_thread_index = thread_index;
+        Coro<T>&& operator() (thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{}) {
+            m_promise->m_thread_index = index;
             m_promise->m_type = type;
             m_promise->m_id = id;
             return std::move(*this);
@@ -922,14 +922,13 @@ namespace vgjs {
         * \param[in] id A unique ID of the call.
         * \returns a reference to this Coro so that it can be used with co_await.
         */
-        Coro<void>&& operator() (thread_index index, thread_type type, thread_id id) {
+        Coro<void>&& operator() (thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{}) {
             m_promise->m_thread_index = index;
             m_promise->m_type = type;
             m_promise->m_id = id;
             return std::move(*this);
         }
     };
-
 
 
     //---------------------------------------------------------------------------------------------------
