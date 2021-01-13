@@ -417,7 +417,7 @@ namespace test {
 		const int dt2 = 10;
 		const int dt3 = 25;
 		int mdt = dt1;
-		bool wrt_function = false; //speedup wrt to sequential function calls w/o JS
+		bool wrt_function = true; //speedup wrt to sequential function calls w/o JS
 
 		std::cout << "\nPerformance for " << num << " std::function calls (w/o allocate) on " << js.get_thread_count().value << " threads\n\n";
 
