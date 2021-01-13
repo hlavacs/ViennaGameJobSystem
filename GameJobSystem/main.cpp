@@ -31,7 +31,7 @@ int main()
 	//schedule( [](){ examples::run_examples(10); } );
 
 	wait_for_termination();
-	std::cout << "Press Any Key + Return to Exit\n";
+	std::cerr << "Press Any Key + Return to Exit\n";
 	std::string str;
 	std::cin >> str;
 }
