@@ -125,10 +125,8 @@ namespace test {
 		std::pmr::vector<Function> perfv1{mr};
 		std::pmr::vector<Function> perfv2{mr};
 		if constexpr (!WITHALLOCATE) {
-			perfv1.reserve(num);
-			for (int i = 0; i < num; ++i) perfv1.emplace_back(Function{ [&]() { func_perf(micro); }, thread_index{0} });
-			perfv2.reserve(num);
-			for (int i = 0; i < num; ++i) perfv2.emplace_back(Function{ [&]() { func_perf(micro); } });
+			perfv1.resize(num, Function{ [&]() { func_perf(micro); }, thread_index{0} });
+			perfv2.resize(num, Function{ [&]() { func_perf(micro); }});
 		}
 
 		auto start0 = high_resolution_clock::now();
@@ -138,8 +136,7 @@ namespace test {
 
 		auto start1 = high_resolution_clock::now();
 		if constexpr (WITHALLOCATE) {
-			perfv1.reserve(num);
-			for (int i = 0; i < num; ++i) perfv1.emplace_back(Function{ [&]() { func_perf(micro); }, thread_index{0} });
+			perfv1.resize(num, Function{ [&]() { func_perf(micro); }, thread_index{0} });
 		}
 		co_await perfv1;
 		auto duration1 = duration_cast<microseconds>(high_resolution_clock::now() - start1);
@@ -147,8 +144,7 @@ namespace test {
 
 		auto start2 = high_resolution_clock::now();
 		if constexpr (WITHALLOCATE) {
-			perfv2.reserve(num);
-			for (int i = 0; i < num; ++i) perfv2.emplace_back(Function{ [&]() { func_perf(micro); } });
+			perfv2.resize(num, Function{ [&]() { func_perf(micro); }});
 		}
 		co_await perfv2;
 		auto duration2 = duration_cast<microseconds>(high_resolution_clock::now() - start2);
@@ -178,7 +174,7 @@ namespace test {
 		std::pmr::vector<Coro<>> perfv2{};
 		if constexpr (!WITHALLOCATE) {
 			perfv1.reserve(num);
-			for (int i = 0; i < num; ++i) perfv1.push_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro)(thread_index{ 0 }));
+			for (int i = 0; i < num; ++i) perfv1.emplace_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro)(thread_index{ 0 }));
 			perfv2.reserve(num);
 			for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro));
 		}
@@ -192,7 +188,7 @@ namespace test {
 		auto start1 = high_resolution_clock::now();
 		if constexpr (WITHALLOCATE) {
 			perfv1.reserve(num);
-			for (int i = 0; i < num; ++i) perfv1.push_back(Coro_void(std::allocator_arg, mr, micro)(thread_index{ 0 }));
+			for (int i = 0; i < num; ++i) perfv1.emplace_back(Coro_void(std::allocator_arg, mr, micro)(thread_index{ 0 }));
 		}
 		co_await perfv1;
 		auto stop1 = high_resolution_clock::now();
@@ -416,43 +412,50 @@ namespace test {
 
 		const int num = 10000;
 		const int st = 0;
-		const int mt = 40;
+		const int mt = 100;
 		const int dt1 = 1;
-		const int dt2 = 5;
+		const int dt2 = 10;
+		const int dt3 = 25;
 		int mdt = dt1;
+		bool wrt_function = false; //speedup wrt to sequential function calls w/o JS
+
 		std::cout << "\nPerformance for " << num << " std::function calls (w/o allocate) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_function<false>(false, true, 100, 1); //heat up
+		co_await performance_function<false>(false, wrt_function, 100, 1); //heat up
 		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_function<false>(true, true, num, us);
+			co_await performance_function<false>(true, wrt_function, num, us);
 			if (us >= 10) mdt = dt2;
+			if (us >= 50) mdt = dt3;
 		}
 		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " std::function calls (with allocate new/delete) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_function<true>(false, true, 100, 1, std::pmr::new_delete_resource());
+		co_await performance_function<true>(false, wrt_function, 100, 1, std::pmr::new_delete_resource());
 		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_function<true>(true, true, num, us, std::pmr::new_delete_resource());
+			co_await performance_function<true>(true, wrt_function, num, us, std::pmr::new_delete_resource());
 			if (us >= 10) mdt = dt2;
+			if (us >= 50) mdt = dt3;
 		}
 		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " std::function calls (with allocate synchronized) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_function<true>(false, true, 100, 1, &g_global_mem_f);
+		co_await performance_function<true>(false, wrt_function, 100, 1, &g_global_mem_f);
 		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_function<true>(true, true, num, us, &g_global_mem_f);
+			co_await performance_function<true>(true, wrt_function, num, us, &g_global_mem_f);
 			if (us >= 10) mdt = dt2;
+			if (us >= 50) mdt = dt3;
 		}
 		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " std::function calls (with allocate unsynchronized) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_function<true>(false, true, 100, 1, &g_local_mem_f);
+		co_await performance_function<true>(false, wrt_function, 100, 1, &g_local_mem_f);
 		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_function<true>(true, true, num, us, &g_local_mem_f);
+			co_await performance_function<true>(true, wrt_function, num, us, &g_local_mem_f);
 			if (us >= 10) mdt = dt2;
+			if (us >= 50) mdt = dt3;
 		}
 		mdt = dt1;
 
@@ -460,37 +463,41 @@ namespace test {
 
 		std::cout << "\nPerformance for " << num << " Coro<> calls (w/o allocate) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_Coro_void<false>(false, true, 100, 1);
+		co_await performance_Coro_void<false>(false, wrt_function, 100, 1);
 		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_Coro_void<false>(true, true, num, us);
+			co_await performance_Coro_void<false>(true, wrt_function, num, us);
 			if (us >= 10) mdt = dt2;
+			if (us >= 50) mdt = dt3;
 		}
 		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " Coro<> calls (with allocate new/delete) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_Coro_void<true>(false, true, 100, 1, std::pmr::new_delete_resource());
+		co_await performance_Coro_void<true>(false, wrt_function, 100, 1, std::pmr::new_delete_resource());
 		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_Coro_void<true>(true, true, num, us, std::pmr::new_delete_resource());
+			co_await performance_Coro_void<true>(true, wrt_function, num, us, std::pmr::new_delete_resource());
 			if (us >= 10) mdt = dt2;
+			if (us >= 50) mdt = dt3;
 		}
 		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " Coro<> calls (with allocate synchronized) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_Coro_void<true>(false, true, 100, 1, &g_global_mem_c);
+		co_await performance_Coro_void<true>(false, wrt_function, 100, 1, &g_global_mem_c);
 		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_Coro_void<true>(true, true, num, us, &g_global_mem_c);
+			co_await performance_Coro_void<true>(true, wrt_function, num, us, &g_global_mem_c);
 			if (us >= 10) mdt = dt2;
+			if (us >= 50) mdt = dt3;
 		}
 		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " Coro<> calls (with allocate unsynchronized) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_Coro_void<true>(false, true, 100, 1, &g_local_mem_c);
+		co_await performance_Coro_void<true>(false, wrt_function, 100, 1, &g_local_mem_c);
 		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_Coro_void<true>(true, true, num, us, &g_local_mem_c);
+			co_await performance_Coro_void<true>(true, wrt_function, num, us, &g_local_mem_c);
 			if (us >= 10) mdt = dt2;
+			if (us >= 50) mdt = dt3;
 		}
 		mdt = dt1;
 
