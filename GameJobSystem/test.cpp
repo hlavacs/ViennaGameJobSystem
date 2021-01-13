@@ -117,16 +117,71 @@ namespace test {
 	};
 
 
-	Coro<> performance_function(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f) {
+	template<bool WITHALLOCATE = false>
+	Coro<> performance_function(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
 		auto& js = JobSystem::instance();
 
 		//allocate functions
-		std::pmr::vector<Function> perfv1{};
-		perfv1.reserve(num);
-		for (int i = 0; i < num; ++i) perfv1.emplace_back(Function{ [&]() { func_perf(micro); }, thread_index{0} });
-		std::pmr::vector<Function> perfv2{};
-		perfv2.reserve(num);
-		for (int i = 0; i < num; ++i) perfv2.emplace_back(Function{ [&]() { func_perf(micro); } });
+		std::pmr::vector<Function> perfv1{mr};
+		std::pmr::vector<Function> perfv2{mr};
+		if constexpr (!WITHALLOCATE) {
+			perfv1.reserve(num);
+			for (int i = 0; i < num; ++i) perfv1.emplace_back(Function{ [&]() { func_perf(micro); }, thread_index{0} });
+			perfv2.reserve(num);
+			for (int i = 0; i < num; ++i) perfv2.emplace_back(Function{ [&]() { func_perf(micro); } });
+		}
+
+		auto start0 = high_resolution_clock::now();
+		for (int i = 0; i < num; ++i) func_perf(micro);
+		auto duration0 = duration_cast<microseconds>(high_resolution_clock::now() - start0);
+		//std::cout << "Time for " << num << " function calls on SINGLE thread " << duration0.count() << " us" << std::endl;
+
+		auto start1 = high_resolution_clock::now();
+		if constexpr (WITHALLOCATE) {
+			perfv1.reserve(num);
+			for (int i = 0; i < num; ++i) perfv1.emplace_back(Function{ [&]() { func_perf(micro); }, thread_index{0} });
+		}
+		co_await perfv1;
+		auto duration1 = duration_cast<microseconds>(high_resolution_clock::now() - start1);
+		//std::cout << "Time for " << num << " calls on SINGLE thread " << duration1.count() << " us" << std::endl;
+
+		auto start2 = high_resolution_clock::now();
+		if constexpr (WITHALLOCATE) {
+			perfv2.reserve(num);
+			for (int i = 0; i < num; ++i) perfv2.emplace_back(Function{ [&]() { func_perf(micro); } });
+		}
+		co_await perfv2;
+		auto duration2 = duration_cast<microseconds>(high_resolution_clock::now() - start2);
+		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
+
+		if (wrtfunc) {
+			double speedup0 = (double)duration0.count() / (double)duration2.count();
+			double efficiency0 = speedup0 / js.get_thread_count().value;
+			if(print)
+				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
+			return;
+		}
+
+		double speedup1 = (double)duration1.count() / (double)duration2.count();
+		double efficiency1 = speedup1 / js.get_thread_count().value;
+		if(print)
+				std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
+	}
+
+
+	template<bool WITHALLOCATE = false>
+	Coro<> performance_Coro_void(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
+		auto& js = JobSystem::instance();
+
+		//functions
+		std::pmr::vector<Coro<>> perfv1{};
+		std::pmr::vector<Coro<>> perfv2{};
+		if constexpr (!WITHALLOCATE) {
+			perfv1.reserve(num);
+			for (int i = 0; i < num; ++i) perfv1.push_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro)(thread_index{ 0 }));
+			perfv2.reserve(num);
+			for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro));
+		}
 
 		auto start0 = high_resolution_clock::now();
 		for (int i = 0; i < num; ++i) func_perf(micro);
@@ -135,12 +190,20 @@ namespace test {
 		//std::cout << "Time for " << num << " function calls on SINGLE thread " << duration0.count() << " us" << std::endl;
 
 		auto start1 = high_resolution_clock::now();
+		if constexpr (WITHALLOCATE) {
+			perfv1.reserve(num);
+			for (int i = 0; i < num; ++i) perfv1.push_back(Coro_void(std::allocator_arg, mr, micro)(thread_index{ 0 }));
+		}
 		co_await perfv1;
 		auto stop1 = high_resolution_clock::now();
 		auto duration1 = duration_cast<microseconds>(stop1 - start1);
 		//std::cout << "Time for " << num << " calls on SINGLE thread " << duration1.count() << " us" << std::endl;
 
 		auto start2 = high_resolution_clock::now();
+		if constexpr (WITHALLOCATE) {
+			perfv2.reserve(num);
+			for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_void(std::allocator_arg, mr, micro));
+		}
 		co_await perfv2;
 		auto stop2 = high_resolution_clock::now();
 		auto duration2 = duration_cast<microseconds>(stop2 - start2);
@@ -159,310 +222,6 @@ namespace test {
 		if(print)
 				std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
 	}
-
-	//allocate with new / delete
-	Coro<> performance_function2(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f) {
-		auto& js = JobSystem::instance();
-
-		auto start0 = high_resolution_clock::now();
-		for (int i = 0; i < num; ++i) func_perf(micro);
-		auto stop0 = high_resolution_clock::now();
-		auto duration0 = duration_cast<microseconds>(stop0 - start0);
-		//std::cout << "Time for " << num << " function calls on SINGLE thread " << duration0.count() << " us" << std::endl;
-
-		auto start1 = high_resolution_clock::now();
-		std::pmr::vector<Function> perfv1{ std::pmr::new_delete_resource() };
-		perfv1.reserve(num);
-		for (int i = 0; i < num; ++i) perfv1.emplace_back(Function{ [&]() { func_perf(micro); }, thread_index{0} });
-		co_await perfv1;
-		auto stop1 = high_resolution_clock::now();
-		auto duration1 = duration_cast<microseconds>(stop1 - start1);
-		//std::cout << "Time for " << num << " calls on SINGLE thread " << duration1.count() << " us" << std::endl;
-
-		auto start2 = high_resolution_clock::now();
-		std::pmr::vector<Function> perfv2{ std::pmr::new_delete_resource() };
-		perfv2.reserve(num);
-		for (int i = 0; i < num; ++i) perfv2.emplace_back(Function{ [&]() { func_perf(micro); } });
-		co_await perfv2;
-		auto stop2 = high_resolution_clock::now();
-		auto duration2 = duration_cast<microseconds>(stop2 - start2);
-		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
-
-		if (wrtfunc) {
-			double speedup0 = (double)duration0.count() / (double)duration2.count();
-			double efficiency0 = speedup0 / js.get_thread_count().value;
-			if(print)
-				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
-			return;
-		}
-
-		double speedup1 = (double)duration1.count() / (double)duration2.count();
-		double efficiency1 = speedup1 / js.get_thread_count().value;
-		if(print)
-				std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
-	}
-
-	//synchronized
-	Coro<> performance_function3(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f) {
-		auto& js = JobSystem::instance();
-
-		auto start0 = high_resolution_clock::now();
-		for (int i = 0; i < num; ++i) func_perf(micro);
-		auto stop0 = high_resolution_clock::now();
-		auto duration0 = duration_cast<microseconds>(stop0 - start0);
-		//std::cout << "Time for " << num << " function calls on SINGLE thread " << duration0.count() << " us" << std::endl;
-
-		auto start1 = high_resolution_clock::now();
-		std::pmr::vector<Function> perfv1{ &g_global_mem_f };
-		perfv1.reserve(num);
-		for (int i = 0; i < num; ++i) perfv1.emplace_back(Function{ [&]() { func_perf(micro); }, thread_index{0} });
-		co_await perfv1;
-		auto stop1 = high_resolution_clock::now();
-		auto duration1 = duration_cast<microseconds>(stop1 - start1);
-		//std::cout << "Time for " << num << " calls on SINGLE thread " << duration1.count() << " us" << std::endl;
-
-		auto start2 = high_resolution_clock::now();
-		std::pmr::vector<Function> perfv2{ &g_global_mem_f };
-		perfv2.reserve(num);
-		for (int i = 0; i < num; ++i) perfv2.emplace_back(Function{ [&]() { func_perf(micro); } });
-		co_await perfv2;
-		auto stop2 = high_resolution_clock::now();
-		auto duration2 = duration_cast<microseconds>(stop2 - start2);
-		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
-
-		if (wrtfunc) {
-			double speedup0 = (double)duration0.count() / (double)duration2.count();
-			double efficiency0 = speedup0 / js.get_thread_count().value;
-			if (print)
-				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
-			return;
-		}
-
-		double speedup1 = (double)duration1.count() / (double)duration2.count();
-		double efficiency1 = speedup1 / js.get_thread_count().value;
-		if (print)
-			std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
-	}
-
-	//synchronized
-	Coro<> performance_function4(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f) {
-		auto& js = JobSystem::instance();
-
-		auto start0 = high_resolution_clock::now();
-		for (int i = 0; i < num; ++i) func_perf(micro);
-		auto stop0 = high_resolution_clock::now();
-		auto duration0 = duration_cast<microseconds>(stop0 - start0);
-		//std::cout << "Time for " << num << " function calls on SINGLE thread " << duration0.count() << " us" << std::endl;
-
-		auto start1 = high_resolution_clock::now();
-		std::pmr::vector<Function> perfv1{ &g_local_mem_f };
-		perfv1.reserve(num);
-		for (int i = 0; i < num; ++i) perfv1.emplace_back(Function{ [&]() { func_perf(micro); }, thread_index{0} });
-		co_await perfv1;
-		auto stop1 = high_resolution_clock::now();
-		auto duration1 = duration_cast<microseconds>(stop1 - start1);
-		//std::cout << "Time for " << num << " calls on SINGLE thread " << duration1.count() << " us" << std::endl;
-
-		auto start2 = high_resolution_clock::now();
-		std::pmr::vector<Function> perfv2{ &g_local_mem_f };
-		perfv2.reserve(num);
-		for (int i = 0; i < num; ++i) perfv2.emplace_back(Function{ [&]() { func_perf(micro); } });
-		co_await perfv2;
-		auto stop2 = high_resolution_clock::now();
-		auto duration2 = duration_cast<microseconds>(stop2 - start2);
-		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
-
-		if (wrtfunc) {
-			double speedup0 = (double)duration0.count() / (double)duration2.count();
-			double efficiency0 = speedup0 / js.get_thread_count().value;
-			if (print)
-				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
-			return;
-		}
-
-		double speedup1 = (double)duration1.count() / (double)duration2.count();
-		double efficiency1 = speedup1 / js.get_thread_count().value;
-		if (print)
-			std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
-	}
-
-
-	//w/o allocation
-	Coro<> performance_Coro_void(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f) {
-		auto& js = JobSystem::instance();
-
-		//functions
-		std::pmr::vector<Coro<>> perfv1{};
-		perfv1.reserve(num);
-		for (int i = 0; i < num; ++i) perfv1.push_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro)(thread_index{0}));
-		std::pmr::vector<Coro<>> perfv2{};
-		perfv2.reserve(num);
-		for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro));
-
-		auto start0 = high_resolution_clock::now();
-		for (int i = 0; i < num; ++i) func_perf(micro);
-		auto stop0 = high_resolution_clock::now();
-		auto duration0 = duration_cast<microseconds>(stop0 - start0);
-		//std::cout << "Time for " << num << " function calls on SINGLE thread " << duration0.count() << " us" << std::endl;
-
-		auto start1 = high_resolution_clock::now();
-		co_await perfv1;
-		auto stop1 = high_resolution_clock::now();
-		auto duration1 = duration_cast<microseconds>(stop1 - start1);
-		//std::cout << "Time for " << num << " calls on SINGLE thread " << duration1.count() << " us" << std::endl;
-
-		auto start2 = high_resolution_clock::now();
-		co_await perfv2;
-		auto stop2 = high_resolution_clock::now();
-		auto duration2 = duration_cast<microseconds>(stop2 - start2);
-		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
-
-		if (wrtfunc) {
-			double speedup0 = (double)duration0.count() / (double)duration2.count();
-			double efficiency0 = speedup0 / js.get_thread_count().value;
-			if(print)
-				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
-			return;
-		}
-
-		double speedup1 = (double)duration1.count() / (double)duration2.count();
-		double efficiency1 = speedup1 / js.get_thread_count().value;
-		if(print)
-				std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
-	}
-
-	//new delete
-	Coro<> performance_Coro_void2(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f) {
-		auto& js = JobSystem::instance();
-
-		//functions
-
-		auto start0 = high_resolution_clock::now();
-		for (int i = 0; i < num; ++i) func_perf(micro);
-		auto stop0 = high_resolution_clock::now();
-		auto duration0 = duration_cast<microseconds>(stop0 - start0);
-		//std::cout << "Time for " << num << " function calls on SINGLE thread " << duration0.count() << " us" << std::endl;
-
-		auto start1 = high_resolution_clock::now();
-		std::pmr::vector<Coro<>> perfv1{};
-		perfv1.reserve(num);
-		for (int i = 0; i < num; ++i) perfv1.push_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro)(thread_index{ 0 }));
-		co_await perfv1;
-		auto stop1 = high_resolution_clock::now();
-		auto duration1 = duration_cast<microseconds>(stop1 - start1);
-		//std::cout << "Time for " << num << " calls on SINGLE thread " << duration1.count() << " us" << std::endl;
-
-		auto start2 = high_resolution_clock::now();
-		std::pmr::vector<Coro<>> perfv2{};
-		perfv2.reserve(num);
-		for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro));
-		co_await perfv2;
-		auto stop2 = high_resolution_clock::now();
-		auto duration2 = duration_cast<microseconds>(stop2 - start2);
-		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
-
-		if (wrtfunc) {
-			double speedup0 = (double)duration0.count() / (double)duration2.count();
-			double efficiency0 = speedup0 / js.get_thread_count().value;
-			if(print)
-				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
-			return;
-		}
-
-		double speedup1 = (double)duration1.count() / (double)duration2.count();
-		double efficiency1 = speedup1 / js.get_thread_count().value;
-		if(print)
-				std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
-	}
-
-	//synchronized
-	Coro<> performance_Coro_void3(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f) {
-		auto& js = JobSystem::instance();
-
-		//functions
-
-		auto start0 = high_resolution_clock::now();
-		for (int i = 0; i < num; ++i) func_perf(micro);
-		auto stop0 = high_resolution_clock::now();
-		auto duration0 = duration_cast<microseconds>(stop0 - start0);
-		//std::cout << "Time for " << num << " function calls on SINGLE thread " << duration0.count() << " us" << std::endl;
-
-		auto start1 = high_resolution_clock::now();
-		std::pmr::vector<Coro<>> perfv1{};
-		perfv1.reserve(num);
-		for (int i = 0; i < num; ++i) perfv1.push_back(Coro_void(std::allocator_arg, &g_global_mem_c, micro)(thread_index{ 0 }));
-		co_await perfv1;
-		auto stop1 = high_resolution_clock::now();
-		auto duration1 = duration_cast<microseconds>(stop1 - start1);
-		//std::cout << "Time for " << num << " calls on SINGLE thread " << duration1.count() << " us" << std::endl;
-
-		auto start2 = high_resolution_clock::now();
-		std::pmr::vector<Coro<>> perfv2{};
-		perfv2.reserve(num);
-		for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_void(std::allocator_arg, &g_global_mem_c, micro));
-		co_await perfv2;
-		auto stop2 = high_resolution_clock::now();
-		auto duration2 = duration_cast<microseconds>(stop2 - start2);
-		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
-
-		if (wrtfunc) {
-			double speedup0 = (double)duration0.count() / (double)duration2.count();
-			double efficiency0 = speedup0 / js.get_thread_count().value;
-			if (print)
-				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
-			return;
-		}
-
-		double speedup1 = (double)duration1.count() / (double)duration2.count();
-		double efficiency1 = speedup1 / js.get_thread_count().value;
-		if (print)
-			std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
-	}
-
-	//unsynchronized
-	Coro<> performance_Coro_void4(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f) {
-		auto& js = JobSystem::instance();
-
-		//functions
-
-		auto start0 = high_resolution_clock::now();
-		for (int i = 0; i < num; ++i) func_perf(micro);
-		auto stop0 = high_resolution_clock::now();
-		auto duration0 = duration_cast<microseconds>(stop0 - start0);
-		//std::cout << "Time for " << num << " function calls on SINGLE thread " << duration0.count() << " us" << std::endl;
-
-		auto start1 = high_resolution_clock::now();
-		std::pmr::vector<Coro<>> perfv1{};
-		perfv1.reserve(num);
-		for (int i = 0; i < num; ++i) perfv1.push_back(Coro_void(std::allocator_arg, &g_local_mem_c, micro)(thread_index{ 0 }));
-		co_await perfv1;
-		auto stop1 = high_resolution_clock::now();
-		auto duration1 = duration_cast<microseconds>(stop1 - start1);
-		//std::cout << "Time for " << num << " calls on SINGLE thread " << duration1.count() << " us" << std::endl;
-
-		auto start2 = high_resolution_clock::now();
-		std::pmr::vector<Coro<>> perfv2{};
-		perfv2.reserve(num);
-		for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_void(std::allocator_arg, &g_local_mem_c, micro));
-		co_await perfv2;
-		auto stop2 = high_resolution_clock::now();
-		auto duration2 = duration_cast<microseconds>(stop2 - start2);
-		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
-
-		if (wrtfunc) {
-			double speedup0 = (double)duration0.count() / (double)duration2.count();
-			double efficiency0 = speedup0 / js.get_thread_count().value;
-			if (print)
-				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
-			return;
-		}
-
-		double speedup1 = (double)duration1.count() / (double)duration2.count();
-		double efficiency1 = speedup1 / js.get_thread_count().value;
-		if (print)
-			std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
-	}
-
 
 
 #define TESTRESULT(N, S, EXPR, B, C) \
@@ -656,65 +415,84 @@ namespace test {
 		*/
 
 		const int num = 10000;
-		const int mt = 41;
-		const int dt = 4;
+		const int st = 0;
+		const int mt = 40;
+		const int dt1 = 1;
+		const int dt2 = 5;
+		int mdt = dt1;
 		std::cout << "\nPerformance for " << num << " std::function calls (w/o allocate) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_function(false, true, num, 1); //heat up
-		for (int us = 1; us <= mt; us += dt) {
-			co_await performance_function(true, true, num, us);
+		co_await performance_function<false>(false, true, 100, 1); //heat up
+		for (int us = st; us <= mt; us += mdt) {
+			co_await performance_function<false>(true, true, num, us);
+			if (us >= 10) mdt = dt2;
 		}
+		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " std::function calls (with allocate new/delete) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_function2(false, true, num, 1);
-		for (int us = 1; us <= mt; us += dt) {
-			co_await performance_function2(true, true, num, us);
+		co_await performance_function<true>(false, true, 100, 1, std::pmr::new_delete_resource());
+		for (int us = st; us <= mt; us += mdt) {
+			co_await performance_function<true>(true, true, num, us, std::pmr::new_delete_resource());
+			if (us >= 10) mdt = dt2;
 		}
+		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " std::function calls (with allocate synchronized) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_function3(false, true, num, 1);
-		for (int us = 1; us <= mt; us += dt) {
-			co_await performance_function3(true, true, num, us);
+		co_await performance_function<true>(false, true, 100, 1, &g_global_mem_f);
+		for (int us = st; us <= mt; us += mdt) {
+			co_await performance_function<true>(true, true, num, us, &g_global_mem_f);
+			if (us >= 10) mdt = dt2;
 		}
+		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " std::function calls (with allocate unsynchronized) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_function4(false, true, num, 1);
-		for (int us = 1; us <= mt; us += dt) {
-			co_await performance_function4(true, true, num, us);
+		co_await performance_function<true>(false, true, 100, 1, &g_local_mem_f);
+		for (int us = st; us <= mt; us += mdt) {
+			co_await performance_function<true>(true, true, num, us, &g_local_mem_f);
+			if (us >= 10) mdt = dt2;
 		}
+		mdt = dt1;
 
 		//----------------------------------------------------------------------------------------
 
 		std::cout << "\nPerformance for " << num << " Coro<> calls (w/o allocate) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_Coro_void(false, true, 100, 1);
-		for (int us = 1; us <= mt; us += dt) {
-			co_await performance_Coro_void(true, true, num, us);
+		co_await performance_Coro_void<false>(false, true, 100, 1);
+		for (int us = st; us <= mt; us += mdt) {
+			co_await performance_Coro_void<false>(true, true, num, us);
+			if (us >= 10) mdt = dt2;
 		}
+		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " Coro<> calls (with allocate new/delete) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_Coro_void2(false, true, 100, 1);
-		for (int us = 1; us <= mt; us += dt) {
-			co_await performance_Coro_void2(true, true, num, us);
+		co_await performance_Coro_void<true>(false, true, 100, 1, std::pmr::new_delete_resource());
+		for (int us = st; us <= mt; us += mdt) {
+			co_await performance_Coro_void<true>(true, true, num, us, std::pmr::new_delete_resource());
+			if (us >= 10) mdt = dt2;
 		}
+		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " Coro<> calls (with allocate synchronized) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_Coro_void3(false, true, 100, 1);
-		for (int us = 1; us <= mt; us += dt) {
-			co_await performance_Coro_void3(true, true, num, us);
+		co_await performance_Coro_void<true>(false, true, 100, 1, &g_global_mem_c);
+		for (int us = st; us <= mt; us += mdt) {
+			co_await performance_Coro_void<true>(true, true, num, us, &g_global_mem_c);
+			if (us >= 10) mdt = dt2;
 		}
+		mdt = dt1;
 
 		std::cout << "\nPerformance for " << num << " Coro<> calls (with allocate unsynchronized) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_Coro_void4(false, true, 100, 1);
-		for (int us = 1; us <= mt; us += dt) {
-			co_await performance_Coro_void4(true, true, num, us);
+		co_await performance_Coro_void<true>(false, true, 100, 1, &g_local_mem_c);
+		for (int us = st; us <= mt; us += mdt) {
+			co_await performance_Coro_void<true>(true, true, num, us, &g_local_mem_c);
+			if (us >= 10) mdt = dt2;
 		}
+		mdt = dt1;
 
 		vgjs::terminate();
 		co_return;
