@@ -34,9 +34,11 @@ namespace test {
 		if (i > 0) (*atomic_int)++;
 	}
 
-	void func_perf( int micro) {
+	void func_perf( int micro, int i = 1) {
 		volatile unsigned int counter = 1;
 		volatile double root = 0.0f;
+
+		if (i > 1) schedule([=]() { func_perf( micro, i - 1); });
 
 		auto start = high_resolution_clock::now();
 		auto duration = duration_cast<microseconds>(high_resolution_clock::now() - start);
@@ -51,23 +53,10 @@ namespace test {
 		//std::cout << duration.count() << std::endl;
 	}
 
-	Coro<> Coro_void(std::allocator_arg_t, n_pmr::memory_resource* mr, double micro) {
-		volatile unsigned int counter = 0;
-		volatile double root = 0.0f;
-
-		auto start = high_resolution_clock::now();
-		auto duration = duration_cast<microseconds>(high_resolution_clock::now() - start);
-
-		while (duration.count() < micro) {
-			for (int i = 0; i < 1000; ++i) {
-				counter += counter;
-				root = sqrt((float)counter);
-			}
-			duration = duration_cast<microseconds>(high_resolution_clock::now() - start);
-		}
+	Coro<> Coro_perf(std::allocator_arg_t, n_pmr::memory_resource* mr, int micro) {
+		func_perf(micro, 1);
 		co_return;
 	}
-
 
 	Coro<> coro_void(std::allocator_arg_t, n_pmr::memory_resource* mr, std::atomic<int>* atomic_int, int i = 1) {
 		if (i > 1) co_await coro_void(std::allocator_arg, mr, atomic_int, i - 1);
@@ -119,7 +108,7 @@ namespace test {
 
 
 	template<bool WITHALLOCATE = false>
-	Coro<> performance_function(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
+	Coro<std::tuple<double,double>> performance_function(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
 		auto& js = JobSystem::instance();
 
 		//allocate functions
@@ -151,23 +140,56 @@ namespace test {
 		auto duration2 = duration_cast<microseconds>(high_resolution_clock::now() - start2);
 		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
 
+		double speedup0 = (double)duration0.count() / (double)duration2.count();
+		double efficiency0 = speedup0 / js.get_thread_count().value;
 		if (wrtfunc) {
-			double speedup0 = (double)duration0.count() / (double)duration2.count();
-			double efficiency0 = speedup0 / js.get_thread_count().value;
-			if(print)
+			if (print && efficiency0>0.8) {
 				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
-			return;
+			}
+			co_return std::make_tuple( speedup0, efficiency0 );
 		}
 
 		double speedup1 = (double)duration1.count() / (double)duration2.count();
 		double efficiency1 = speedup1 / js.get_thread_count().value;
-		if(print)
-				std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
+		if (print) {
+			std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
+		}
+		co_return std::make_tuple(speedup0, efficiency1);
+	}
+
+	template<bool WITHALLOCATE = false>
+	Coro<> performance_function_driver( std::string text, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
+		int runtime = 100000;
+		int num = runtime;
+		const int st = 0;
+		const int mt = 100;
+		const int dt1 = 1;
+		const int dt2 = 5;
+		const int dt3 = 10;
+		const int dt4 = 25;
+		int mdt = dt1;
+		bool wrt_function = true; //speedup wrt to sequential function calls w/o JS
+
+		auto& js = JobSystem::instance();
+
+		std::cout << "\nPerformance for std::function calls " << text << " on " << js.get_thread_count().value << " threads\n\n";
+
+		int step = 0;
+		co_await performance_function<WITHALLOCATE>(false, wrt_function, (int)(num), 0); //heat up, allocate enough jobs
+		for (int us = st; us <= mt; us += mdt) {
+			int loops = (us == 0 ? num : (runtime / us));
+			auto [speedup, eff] = co_await performance_function<WITHALLOCATE>(true, wrt_function, loops, us, mr);
+			if (eff > 0.9) co_return;
+			if (us >= 15) mdt = dt2;
+			if (us >= 20) mdt = dt3;
+			if (us >= 50) mdt = dt4;
+		}
+		co_return;
 	}
 
 
 	template<bool WITHALLOCATE = false>
-	Coro<> performance_Coro_void(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1.0f, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
+	Coro<std::tuple<double,double>> performance_Coro_void(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
 		auto& js = JobSystem::instance();
 
 		//functions
@@ -175,9 +197,9 @@ namespace test {
 		std::pmr::vector<Coro<>> perfv2{};
 		if constexpr (!WITHALLOCATE) {
 			perfv1.reserve(num);
-			for (int i = 0; i < num; ++i) perfv1.emplace_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro)(thread_index{ 0 }));
+			for (int i = 0; i < num; ++i) perfv1.emplace_back(Coro_perf(std::allocator_arg, std::pmr::new_delete_resource(), micro)(thread_index{ 0 }));
 			perfv2.reserve(num);
-			for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_void(std::allocator_arg, std::pmr::new_delete_resource(), micro));
+			for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_perf(std::allocator_arg, std::pmr::new_delete_resource(), micro));
 		}
 
 		auto start0 = high_resolution_clock::now();
@@ -189,7 +211,7 @@ namespace test {
 		auto start1 = high_resolution_clock::now();
 		if constexpr (WITHALLOCATE) {
 			perfv1.reserve(num);
-			for (int i = 0; i < num; ++i) perfv1.emplace_back(Coro_void(std::allocator_arg, mr, micro)(thread_index{ 0 }));
+			for (int i = 0; i < num; ++i) perfv1.emplace_back(Coro_perf(std::allocator_arg, mr, micro)(thread_index{ 0 }));
 		}
 		co_await perfv1;
 		auto stop1 = high_resolution_clock::now();
@@ -199,26 +221,59 @@ namespace test {
 		auto start2 = high_resolution_clock::now();
 		if constexpr (WITHALLOCATE) {
 			perfv2.reserve(num);
-			for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_void(std::allocator_arg, mr, micro));
+			for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_perf(std::allocator_arg, mr, micro));
 		}
 		co_await perfv2;
 		auto stop2 = high_resolution_clock::now();
 		auto duration2 = duration_cast<microseconds>(stop2 - start2);
 		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
 
+		double speedup0 = (double)duration0.count() / (double)duration2.count();
+		double efficiency0 = speedup0 / js.get_thread_count().value;
 		if (wrtfunc) {
-			double speedup0 = (double)duration0.count() / (double)duration2.count();
-			double efficiency0 = speedup0 / js.get_thread_count().value;
-			if(print)
+			if (print && efficiency0 > 0.8) {
 				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
-			return;
+			}
+			co_return std::make_tuple(speedup0, efficiency0);
 		}
 
 		double speedup1 = (double)duration1.count() / (double)duration2.count();
 		double efficiency1 = speedup1 / js.get_thread_count().value;
-		if(print)
-				std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
+		if (print) {
+			std::cout << "Wrt single thread:  Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup1 << " Efficiency " << std::setw(8) << efficiency1 << std::endl;
+		}
+		co_return std::make_tuple(speedup0, efficiency1);
 	}
+
+
+	template<bool WITHALLOCATE = false>
+	Coro<> performance_coro_driver(std::string text, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
+		int runtime = 100000;
+		int num = runtime;
+		const int st = 0;
+		const int mt = 100;
+		const int dt1 = 1;
+		const int dt2 = 5;
+		const int dt3 = 10;
+		const int dt4 = 25;
+		int mdt = dt1;
+		bool wrt_function = true; //speedup wrt to sequential function calls w/o JS
+
+		auto& js = JobSystem::instance();
+
+		std::cout << "\nPerformance for std::function calls " << text << " on " << js.get_thread_count().value << " threads\n\n";
+
+		co_await performance_function<WITHALLOCATE>(false, wrt_function, (int)(num), 0); //heat up, allocate enough jobs
+		for (int us = st; us <= mt; us += mdt) {
+			int loops = (us == 0 ? num : (runtime / us));
+			auto [speedup, eff] = co_await performance_Coro_void<WITHALLOCATE>(true, wrt_function, loops, us, mr);
+			if (eff > 0.9) co_return;
+			if (us >= 15) mdt = dt2;
+			if (us >= 20) mdt = dt3;
+			if (us >= 50) mdt = dt4;
+		}
+	}
+
 
 
 #define TESTRESULT(N, S, EXPR, B, C) \
@@ -411,96 +466,15 @@ namespace test {
 
 		*/
 
-		const int num = 10000;
-		const int st = 0;
-		const int mt = 100;
-		const int dt1 = 1;
-		const int dt2 = 10;
-		const int dt3 = 25;
-		int mdt = dt1;
-		bool wrt_function = true; //speedup wrt to sequential function calls w/o JS
+		co_await performance_function_driver<false>( "(w / o allocate)" );
+		co_await performance_function_driver<true>("(with allocate new/delete)", std::pmr::new_delete_resource());
+		co_await performance_function_driver<true>("(with allocate synchronized)", &g_global_mem_f);
+		co_await performance_function_driver<true>("(with allocate unsynchronized)", &g_local_mem_f);
 
-		std::cout << "\nPerformance for " << num << " std::function calls (w/o allocate) on " << js.get_thread_count().value << " threads\n\n";
-
-		co_await performance_function<false>(false, wrt_function, (int) (1.5*num), 1); //heat up, allocate enough jobs
-		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_function<false>(true, wrt_function, num, us);
-			if (us >= 10) mdt = dt2;
-			if (us >= 50) mdt = dt3;
-		}
-		mdt = dt1;
-
-		std::cout << "\nPerformance for " << num << " std::function calls (with allocate new/delete) on " << js.get_thread_count().value << " threads\n\n";
-
-		co_await performance_function<true>(false, wrt_function, 100, 1, std::pmr::new_delete_resource());
-		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_function<true>(true, wrt_function, num, us, std::pmr::new_delete_resource());
-			if (us >= 10) mdt = dt2;
-			if (us >= 50) mdt = dt3;
-		}
-		mdt = dt1;
-
-		std::cout << "\nPerformance for " << num << " std::function calls (with allocate synchronized) on " << js.get_thread_count().value << " threads\n\n";
-
-		co_await performance_function<true>(false, wrt_function, 100, 1, &g_global_mem_f);
-		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_function<true>(true, wrt_function, num, us, &g_global_mem_f);
-			if (us >= 10) mdt = dt2;
-			if (us >= 50) mdt = dt3;
-		}
-		mdt = dt1;
-
-		std::cout << "\nPerformance for " << num << " std::function calls (with allocate unsynchronized) on " << js.get_thread_count().value << " threads\n\n";
-
-		co_await performance_function<true>(false, wrt_function, 100, 1, &g_local_mem_f);
-		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_function<true>(true, wrt_function, num, us, &g_local_mem_f);
-			if (us >= 10) mdt = dt2;
-			if (us >= 50) mdt = dt3;
-		}
-		mdt = dt1;
-
-		//----------------------------------------------------------------------------------------
-
-		std::cout << "\nPerformance for " << num << " Coro<> calls (w/o allocate) on " << js.get_thread_count().value << " threads\n\n";
-
-		co_await performance_Coro_void<false>(false, wrt_function, 100, 1);
-		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_Coro_void<false>(true, wrt_function, num, us);
-			if (us >= 10) mdt = dt2;
-			if (us >= 50) mdt = dt3;
-		}
-		mdt = dt1;
-
-		std::cout << "\nPerformance for " << num << " Coro<> calls (with allocate new/delete) on " << js.get_thread_count().value << " threads\n\n";
-
-		co_await performance_Coro_void<true>(false, wrt_function, 100, 1, std::pmr::new_delete_resource());
-		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_Coro_void<true>(true, wrt_function, num, us, std::pmr::new_delete_resource());
-			if (us >= 10) mdt = dt2;
-			if (us >= 50) mdt = dt3;
-		}
-		mdt = dt1;
-
-		std::cout << "\nPerformance for " << num << " Coro<> calls (with allocate synchronized) on " << js.get_thread_count().value << " threads\n\n";
-
-		co_await performance_Coro_void<true>(false, wrt_function, 100, 1, &g_global_mem_c);
-		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_Coro_void<true>(true, wrt_function, num, us, &g_global_mem_c);
-			if (us >= 10) mdt = dt2;
-			if (us >= 50) mdt = dt3;
-		}
-		mdt = dt1;
-
-		std::cout << "\nPerformance for " << num << " Coro<> calls (with allocate unsynchronized) on " << js.get_thread_count().value << " threads\n\n";
-
-		co_await performance_Coro_void<true>(false, wrt_function, 100, 1, &g_local_mem_c);
-		for (int us = st; us <= mt; us += mdt) {
-			co_await performance_Coro_void<true>(true, wrt_function, num, us, &g_local_mem_c);
-			if (us >= 10) mdt = dt2;
-			if (us >= 50) mdt = dt3;
-		}
-		mdt = dt1;
+		co_await performance_coro_driver<false>("(w / o allocate)");
+		co_await performance_coro_driver<true>("(with allocate new/delete)", std::pmr::new_delete_resource());
+		co_await performance_coro_driver<true>("(with allocate synchronized)", &g_global_mem_f);
+		co_await performance_coro_driver<true>("(with allocate unsynchronized)", &g_local_mem_f);
 
 		vgjs::terminate();
 		co_return;

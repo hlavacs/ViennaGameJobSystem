@@ -347,7 +347,7 @@ namespace vgjs {
     * It can add new jobs, and wait until they are done.
     */
     class JobSystem {
-        const uint32_t                          c_queue_capacity = 100; ///<save at most N Jobs for recycling
+        const uint32_t                          c_queue_capacity = 1<<20; ///<save at most N Jobs for recycling
 
     private:
         n_pmr::memory_resource*                 m_mr;                   ///<use to allocate/deallocate Jobs
