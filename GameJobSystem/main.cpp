@@ -22,9 +22,10 @@ namespace examples {
 }
 
 
-int main()
+int main( int argc, char* argv[])
 {
-	JobSystem::instance();
+	int num = argc > 1 ? std::stoi(argv[1]) : 0;
+	JobSystem::instance(thread_count{num});
 	
 	schedule( test::start_test() );
 

@@ -17,6 +17,8 @@ namespace test {
 
 	using namespace vgjs;
 
+	auto				g_global_mem = n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 10000, .largest_required_pool_block = 1 << 10 }, n_pmr::new_delete_resource());
+
 	auto				g_global_mem_f = n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 10000, .largest_required_pool_block = 1 << 10 }, n_pmr::new_delete_resource());
 	thread_local auto	g_local_mem_f = n_pmr::unsynchronized_pool_resource({ .max_blocks_per_chunk = 10000, .largest_required_pool_block = 1 << 10 }, n_pmr::new_delete_resource());
 
@@ -164,7 +166,7 @@ namespace test {
 		double speedup0 = (double)duration0.count() / (double)duration2.count();
 		double efficiency0 = speedup0 / js.get_thread_count().value;
 		if (wrtfunc) {
-			if (print && efficiency0>0.8) {
+			if (print && efficiency0 > 0.85) {
 				std::cout << "Wrt function calls: Work/job " << std::right << std::setw(3) << micro << " us Speedup " << std::left << std::setw(8) << speedup0 << " Efficiency " << std::setw(8) << efficiency0 << std::endl;
 			}
 			co_return std::make_tuple( speedup0, efficiency0 );
@@ -181,7 +183,7 @@ namespace test {
 
 	template<bool WITHALLOCATE = false, typename FT1, typename FT2>
 	Coro<> performance_driver(std::string text, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
-		int runtime = 100000;
+		int runtime = 200000;
 		int num = runtime;
 		const int st = 0;
 		const int mt = 100;
@@ -200,7 +202,7 @@ namespace test {
 		for (int us = st; us <= mt; us += mdt) {
 			int loops = (us == 0 ? num : (runtime / us));
 			auto [speedup, eff] = co_await performance_function<WITHALLOCATE,FT1,FT2>(true, wrt_function, loops, us, mr);
-			if (eff > 0.9) co_return;
+			if (eff > 0.95) co_return;
 			if (us >= 15) mdt = dt2;
 			if (us >= 20) mdt = dt3;
 			if (us >= 50) mdt = dt4;
@@ -398,6 +400,8 @@ namespace test {
 		TESTRESULT(++number, "Tagged jobs 3", co_await tag{ 3 }, counter.load() == 10, counter = 0);
 
 		*/
+
+		std::cout << "\nPerformance: min work (in microsconds) per job so that efficiency is >0.85 or >0.95\n";
 
 		co_await performance_driver<false,Function, std::function<void(void)>>("std::function calls (w / o allocate)" );
 		co_await performance_driver<true, Function, std::function<void(void)>>("std::function calls (with allocate new/delete)", std::pmr::new_delete_resource());

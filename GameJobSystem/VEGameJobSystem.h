@@ -425,7 +425,7 @@ namespace vgjs {
             : m_mr(mr), m_start_idx(start_idx) {
 
             m_thread_count = threadCount.value;
-            if (m_thread_count == 0) {
+            if (m_thread_count <= 0) {
                 m_thread_count = std::thread::hardware_concurrency();		///< main thread is also running
             }
             if (m_thread_count == 0) {
