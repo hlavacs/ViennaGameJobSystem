@@ -29,7 +29,7 @@ int main( int argc, char* argv[])
 	
 	schedule( test::start_test() );
 
-	//schedule( [](){ examples::run_examples(10); } );
+	//schedule( [](){ examples::run_examples(100); } );
 
 	wait_for_termination();
 	std::cerr << "Press Any Key + Return to Exit\n";

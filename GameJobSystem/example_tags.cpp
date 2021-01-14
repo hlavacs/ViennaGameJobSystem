@@ -20,17 +20,17 @@ namespace tags {
     auto g_global_mem5 = ::n_pmr::synchronized_pool_resource({ .max_blocks_per_chunk = 20, .largest_required_pool_block = 1 << 20 }, n_pmr::new_delete_resource());
 
     Coro<int> tag2() {
-        std::cout << "Tag 2" << std::endl;
+        //std::cout << "Tag 2" << std::endl;
         co_await thread_index{ 1 };
         co_return 0;
     }
 
     void printPar( int i) {
-        std::cout << "i: " << i << std::endl;
+        //std::cout << "i: " << i << std::endl;
     }
 
     Coro<int> tag1() {
-        std::cout << "Tag 1" << std::endl;
+        //std::cout << "Tag 1" << std::endl;
 
         co_await parallel(tag{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); }, tag{ 1 }, [=]() { printPar(6); }, tag{ 1 });
         co_await tag{ 1 };
@@ -39,7 +39,7 @@ namespace tags {
     }
 
     void tag0() {
-        std::cout << "Tag 0" << std::endl;
+        //std::cout << "Tag 0" << std::endl;
         schedule([=]() { printPar(1); }, tag{ 0 });
         schedule([=]() { printPar(2); }, tag{ 0 });
         schedule([=]() { printPar(3); }, tag{ 0 });

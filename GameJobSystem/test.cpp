@@ -221,7 +221,7 @@ namespace test {
 		std::atomic<int> counter = 0;
 		auto& js = JobSystem::instance();
 		
-		/*
+		
 		//std::function<void(void)>
 		TESTRESULT(++number, "Single function",		co_await[&]() { func(&counter); }, counter.load() == 1, counter = 0);
 		TESTRESULT(++number, "10 functions",		co_await[&]() { func(&counter, 10); }, counter.load() == 10, counter = 0);
@@ -399,7 +399,7 @@ namespace test {
 		TESTRESULT(++number, "Tagged jobs 2", co_await tag{ 2 }, counter.load() == 4, );
 		TESTRESULT(++number, "Tagged jobs 3", co_await tag{ 3 }, counter.load() == 10, counter = 0);
 
-		*/
+		
 
 		std::cout << "\nPerformance: min work (in microsconds) per job so that efficiency is >0.85 or >0.95\n";
 
