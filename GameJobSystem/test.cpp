@@ -157,35 +157,6 @@ namespace test {
 		co_return std::make_tuple(speedup0, efficiency1);
 	}
 
-	template<bool WITHALLOCATE = false>
-	Coro<> performance_function_driver( std::string text, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
-		int runtime = 100000;
-		int num = runtime;
-		const int st = 0;
-		const int mt = 100;
-		const int dt1 = 1;
-		const int dt2 = 5;
-		const int dt3 = 10;
-		const int dt4 = 25;
-		int mdt = dt1;
-		bool wrt_function = true; //speedup wrt to sequential function calls w/o JS
-
-		auto& js = JobSystem::instance();
-
-		std::cout << "\nPerformance for std::function calls " << text << " on " << js.get_thread_count().value << " threads\n\n";
-
-		int step = 0;
-		co_await performance_function<WITHALLOCATE>(false, wrt_function, (int)(num), 0); //heat up, allocate enough jobs
-		for (int us = st; us <= mt; us += mdt) {
-			int loops = (us == 0 ? num : (runtime / us));
-			auto [speedup, eff] = co_await performance_function<WITHALLOCATE>(true, wrt_function, loops, us, mr);
-			if (eff > 0.9) co_return;
-			if (us >= 15) mdt = dt2;
-			if (us >= 20) mdt = dt3;
-			if (us >= 50) mdt = dt4;
-		}
-		co_return;
-	}
 
 
 	template<bool WITHALLOCATE = false>
@@ -246,8 +217,8 @@ namespace test {
 	}
 
 
-	template<bool WITHALLOCATE = false>
-	Coro<> performance_coro_driver(std::string text, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
+	template<bool WITHALLOCATE = false, bool FUNCTION = true>
+	Coro<> performance_driver(std::string text, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
 		int runtime = 100000;
 		int num = runtime;
 		const int st = 0;
@@ -261,19 +232,30 @@ namespace test {
 
 		auto& js = JobSystem::instance();
 
-		std::cout << "\nPerformance for std::function calls " << text << " on " << js.get_thread_count().value << " threads\n\n";
-
+		if constexpr (FUNCTION) {
+			std::cout << "\nPerformance for std::function calls " << text << " on " << js.get_thread_count().value << " threads\n\n";
+		}
+		else {
+			std::cout << "\nPerformance for Coro<> " << text << " on " << js.get_thread_count().value << " threads\n\n";
+		}
+		int step = 0;
 		co_await performance_function<WITHALLOCATE>(false, wrt_function, (int)(num), 0); //heat up, allocate enough jobs
 		for (int us = st; us <= mt; us += mdt) {
 			int loops = (us == 0 ? num : (runtime / us));
-			auto [speedup, eff] = co_await performance_Coro_void<WITHALLOCATE>(true, wrt_function, loops, us, mr);
-			if (eff > 0.9) co_return;
+			if constexpr (FUNCTION) {
+				auto [speedup, eff] = co_await performance_function<WITHALLOCATE>(true, wrt_function, loops, us, mr);
+				if (eff > 0.9) co_return;
+			}
+			else {
+				auto [speedup, eff] = co_await performance_Coro_void<WITHALLOCATE>(true, wrt_function, loops, us, mr);
+				if (eff > 0.9) co_return;
+			}
 			if (us >= 15) mdt = dt2;
 			if (us >= 20) mdt = dt3;
 			if (us >= 50) mdt = dt4;
 		}
+		co_return;
 	}
-
 
 
 #define TESTRESULT(N, S, EXPR, B, C) \
@@ -466,15 +448,15 @@ namespace test {
 
 		*/
 
-		co_await performance_function_driver<false>( "(w / o allocate)" );
-		co_await performance_function_driver<true>("(with allocate new/delete)", std::pmr::new_delete_resource());
-		co_await performance_function_driver<true>("(with allocate synchronized)", &g_global_mem_f);
-		co_await performance_function_driver<true>("(with allocate unsynchronized)", &g_local_mem_f);
+		co_await performance_driver<false, true>( "(w / o allocate)" );
+		co_await performance_driver<true, true>("(with allocate new/delete)", std::pmr::new_delete_resource());
+		co_await performance_driver<true, true>("(with allocate synchronized)", &g_global_mem_f);
+		co_await performance_driver<true, true>("(with allocate unsynchronized)", &g_local_mem_f);
 
-		co_await performance_coro_driver<false>("(w / o allocate)");
-		co_await performance_coro_driver<true>("(with allocate new/delete)", std::pmr::new_delete_resource());
-		co_await performance_coro_driver<true>("(with allocate synchronized)", &g_global_mem_f);
-		co_await performance_coro_driver<true>("(with allocate unsynchronized)", &g_local_mem_f);
+		co_await performance_driver<false, false>("(w / o allocate)");
+		co_await performance_driver<true, false>("(with allocate new/delete)", std::pmr::new_delete_resource());
+		co_await performance_driver<true, false>("(with allocate synchronized)", &g_global_mem_f);
+		co_await performance_driver<true, false>("(with allocate unsynchronized)", &g_local_mem_f);
 
 		vgjs::terminate();
 		co_return;
