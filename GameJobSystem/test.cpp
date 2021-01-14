@@ -34,20 +34,21 @@ namespace test {
 		if (i > 0) (*atomic_int)++;
 	}
 
-	void func_perf( double micro) {
-		volatile unsigned int counter = 0;
+	void func_perf( int micro) {
+		volatile unsigned int counter = 1;
 		volatile double root = 0.0f;
 
 		auto start = high_resolution_clock::now();
 		auto duration = duration_cast<microseconds>(high_resolution_clock::now() - start);
 
 		while (duration.count() < micro) {
-			for (int i = 0; i < 1000; ++i) {
+			for (int i = 0; i < 10; ++i) {
 				counter += counter;
 				root = sqrt( (float)counter );
 			}
 			duration = duration_cast<microseconds>(high_resolution_clock::now() - start);
 		}
+		//std::cout << duration.count() << std::endl;
 	}
 
 	Coro<> Coro_void(std::allocator_arg_t, n_pmr::memory_resource* mr, double micro) {
@@ -421,7 +422,7 @@ namespace test {
 
 		std::cout << "\nPerformance for " << num << " std::function calls (w/o allocate) on " << js.get_thread_count().value << " threads\n\n";
 
-		co_await performance_function<false>(false, wrt_function, 100, 1); //heat up
+		co_await performance_function<false>(false, wrt_function, (int) (1.5*num), 1); //heat up, allocate enough jobs
 		for (int us = st; us <= mt; us += mdt) {
 			co_await performance_function<false>(true, wrt_function, num, us);
 			if (us >= 10) mdt = dt2;
