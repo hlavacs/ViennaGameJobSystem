@@ -85,11 +85,11 @@ namespace vgjs {
         };
     };
 
-    using thread_index = int_type<int, struct P0>;
-    using thread_id = int_type<int, struct P1>;
-    using thread_type = int_type<int, struct P2>;
-    using thread_count = int_type<int, struct P3>;
-    using tag = int_type<int, struct P4>;
+    using thread_index = int_type<int, struct P0, -1>;
+    using thread_id = int_type<int, struct P1, -1>;
+    using thread_type = int_type<int, struct P2, -1>;
+    using thread_count = int_type<int, struct P3, -1>;
+    using tag = int_type<int, struct P4, -1>;
 
     bool is_logging();
     void log_data(  std::chrono::high_resolution_clock::time_point& t1
@@ -465,7 +465,7 @@ namespace vgjs {
         * \returns true if the instance exists, else false.
         */
         static bool is_instance_created() noexcept {
-            return m_thread_index.value >= 0;
+            return m_current_job != nullptr;
         };
 
         JobSystem(const JobSystem&) = delete;				// non-copyable,
@@ -851,7 +851,7 @@ namespace vgjs {
     * \returns the job that is currently executed.
     */
     inline Job_base* current_job() {
-        return (Job_base*)JobSystem::instance().current_job();
+        return JobSystem::is_instance_created() ? (Job_base*)JobSystem::instance().current_job() : nullptr;
     }
 
     /**
