@@ -570,7 +570,7 @@ namespace vgjs {
         awaitable_tuple<T, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
 
         template<typename... Ts>
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts&&...>>(tuple) }; };
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<decltype(tuple)>(tuple) }; };
 
         /**.
         * \brief Called by co_await to create an awaitable for migrating to another thread.
