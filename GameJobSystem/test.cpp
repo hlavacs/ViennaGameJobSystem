@@ -213,7 +213,7 @@ namespace test {
 
 #define TESTRESULT(N, S, EXPR, B, C) \
 		EXPR; \
-		std::cout << "Test " << std::right << std::setw(3) << N << "  " << std::left << std::setw(24) << S << " " << ( B ? "PASSED":"FAILED" ) << std::endl;\
+		std::cout << "Test " << std::right << std::setw(3) << N << "  " << std::left << std::setw(30) << S << " " << ( B ? "PASSED":"FAILED" ) << std::endl;\
 		C;
 
 	Coro<> start_test() {
@@ -230,12 +230,11 @@ namespace test {
 		auto f1 = [&]() { func(&counter); };
 		TESTRESULT(++number, "Single function ref", co_await f1, counter.load() == 1, counter = 0);
 		TESTRESULT(++number, "Single 2 functions ref", co_await parallel(f1, f1), counter.load() == 2, counter = 0);
+		TESTRESULT(++number, "Single 2 functions ref again", co_await parallel(f1, f1), counter.load() == 2, counter = 0);
 		auto f2 = std::function<void(void)>{ [&]() { func(&counter); }};
 		TESTRESULT(++number, "Single function ref", co_await f2, counter.load() == 1, counter = 0);
 		TESTRESULT(++number, "Single 2 functions ref", co_await parallel(f2, f2), counter.load() == 2, counter = 0);
-		auto f3 = Function{ [&]() { func(&counter); } };
-		TESTRESULT(++number, "Single function ref", co_await f3, counter.load() == 1, counter = 0);
-		TESTRESULT(++number, "Single 2 functions ref", co_await parallel(f3, f3), counter.load() == 2, counter = 0);
+		TESTRESULT(++number, "Single 2 functions ref again", co_await parallel(f2, f2), counter.load() == 2, counter = 0);
 
 		TESTRESULT(++number, "Single function c",	co_await [&]() { func2(&counter); }, counter.load() == 1, counter = 0);
 		TESTRESULT(++number, "10 functions c",		co_await [&]() { func2(&counter, 10); }, counter.load() == 10, counter = 0);
@@ -247,11 +246,9 @@ namespace test {
 		std::pmr::vector<std::function<void(void)>> vf1{ [&]() { func(&counter); }, [&]() { func(&counter); } };
 		TESTRESULT(++number, "Vector 2 functions",  co_await vf1, counter.load() == 2, counter = 0);
 		TESTRESULT(++number, "Vector 2 functions again", co_await vf1, counter.load() == 2, counter = 0);
-
 		std::pmr::vector<std::function<void(void)>> vf2{ [&]() { func(&counter, 10); }, [&]() { func(&counter, 10); } };
 		TESTRESULT(++number, "Vector 2x10 functions", co_await vf2, counter.load() == 20, counter = 0);
 		TESTRESULT(++number, "Vector 2x10 functions again", co_await vf2, counter.load() == 20, counter = 0);
-
 		std::pmr::vector<std::function<void(void)>> vf2_1{ [&]() { func(&counter, 10); }, [&]() { func(&counter, 10); } };
 		std::pmr::vector<std::function<void(void)>> vf2_2{ [&]() { func(&counter, 10); }, [&]() { func(&counter, 10); } };
 		TESTRESULT(++number, "Vector Par functions", co_await parallel( vf2_1, vf2_2) , counter.load() == 40, counter = 0);
@@ -272,16 +269,24 @@ namespace test {
 		TESTRESULT(++number, "10 Functions", co_await Function([&]() { func(&counter, 10); }), counter.load() == 10, counter = 0);
 		TESTRESULT(++number, "Parallel Functions", co_await parallel(Function([&]() { func(&counter); }), Function([&]() { func(&counter); })), counter.load() == 2, counter = 0);
 		TESTRESULT(++number, "Parallel Functions", co_await parallel(Function([&]() { func(&counter, 10); }), Function([&]() { func(&counter, 10); })), counter.load() == 20, counter = 0);
+		auto f3 = Function{ [&]() { func(&counter); } };
+		TESTRESULT(++number, "Single Function ref", co_await f3, counter.load() == 1, counter = 0);
+		TESTRESULT(++number, "Single 2 Functions ref", co_await parallel(f3, f3), counter.load() == 2, counter = 0);
+		TESTRESULT(++number, "Single 2 Functions ref again", co_await parallel(f3, f3), counter.load() == 2, counter = 0);
 
 		TESTRESULT(++number, "Vector Function", co_await std::pmr::vector<Function>{ Function{ [&]() { func(&counter); } } }, counter.load() == 1, counter = 0);
 		TESTRESULT(++number, "Vector 10 Functions", co_await std::pmr::vector<Function>{ Function{ [&]() { func(&counter, 10); } } }, counter.load() == 10, counter = 0);
 		std::pmr::vector<Function> vf3{ Function{[&]() { func(&counter); }}, Function{[&]() { func(&counter); }} };
-		TESTRESULT(++number, "Vector 2 Functions", co_await vf3, counter.load() == 2, counter = 0);
+		TESTRESULT(++number, "Vector Function ref", co_await vf3, counter.load() == 2, counter = 0);
+		TESTRESULT(++number, "Vector Function ref again", co_await vf3, counter.load() == 2, counter = 0);
+
 		std::pmr::vector<Function> vf4{ Function{[&]() { func(&counter, 10); }}, Function{[&]() { func(&counter, 10); }} };
 		TESTRESULT(++number, "Vector 2x10 Functions", co_await vf4, counter.load() == 20, counter = 0);
+		TESTRESULT(++number, "Vector 2x10 Functions again", co_await vf4, counter.load() == 20, counter = 0);
 		std::pmr::vector<Function> vf4_1{ Function{ [&]() { func(&counter, 10); }}, Function{ [&]() { func(&counter, 10); } } };
 		std::pmr::vector<Function> vf4_2{ Function{ [&]() { func(&counter, 10); }}, Function{ [&]() { func(&counter, 10); } } };
 		TESTRESULT(++number, "Vector Par Functions", co_await parallel(vf4_1, vf4_2), counter.load() == 40, counter = 0);
+		TESTRESULT(++number, "Vector Par Functions again", co_await parallel(vf4_1, vf4_2), counter.load() == 40, counter = 0);
 
 		//Coro
 		TESTRESULT(++number, "Single Coro<>", co_await coro_void(std::allocator_arg, &g_global_mem, &counter), counter.load() == 1, counter = 0);

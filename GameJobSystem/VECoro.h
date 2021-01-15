@@ -298,18 +298,18 @@ namespace vgjs {
         *
         */
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-            auto g = [&, this]<typename T>(T & children) {
+            auto g = [&, this]<typename T>(T && children) {
                 if constexpr (std::is_same_v<typename std::decay<T>::type, tag> ) { //never schedule tags here
                     return;
                 }
                 else {
-                    schedule(children, m_tag, &h.promise(), (int)m_number);   //in first call the number of children is the total number of all jobs
+                    schedule(std::forward<T>(children), m_tag, &h.promise(), (int)m_number);   //in first call the number of children is the total number of all jobs
                     m_number = 0;                                               //after this always 0
                 }
             };
 
             auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                (g(std::get<Idx>(m_tuple)), ...); //called for every tuple element
+                (g( std::forward<decltype(std::get<Idx>(m_tuple))>(std::get<Idx>(m_tuple)) ), ...); //called for every tuple element
             };
 
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1

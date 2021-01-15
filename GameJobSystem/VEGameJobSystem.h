@@ -700,10 +700,8 @@ namespace vgjs {
         * \param[in] parent The parent of this Job.
         * \param[in] children Number used to increase the number of children of the parent.
         */
-        //template<typename F>
-        //requires std::is_same_v<std::decay<F>,Function> || std::is_same_v<std::decay<F>, std::function<void(void)>>
         void schedule(Function&& source, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
-            Job *job = allocate_job( std::forward<Function>(source) );
+            Job *job = allocate_job( std::move(source) );
 
             job->m_parent = nullptr;
             if (tg.value < 0 ) { 
@@ -738,7 +736,7 @@ namespace vgjs {
         * \param[in] children Number used to increase the number of children of the parent.
         */
         void schedule(std::function<void(void)>&& f, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
-            schedule(Function{ std::forward<std::function<void(void)>>(f) }, tg, parent, children );
+            schedule(std::move(Function{ std::move(f) }), tg, parent, children );
         }
 
         /**
@@ -749,7 +747,7 @@ namespace vgjs {
         * \param[in] children Number used to increase the number of children of the parent.
         */
         void schedule(std::function<void(void)>& f, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
-            schedule(Function{ f }, tg, parent, children);
+            schedule( std::move(Function{ f }), tg, parent, children);
         }
 
         /**
@@ -909,7 +907,7 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     inline void schedule( Function&& f, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule( std::forward<Function>(f), tg, parent, children );
+        JobSystem::instance().schedule( std::move(f), tg, parent, children );
     }
 
     /**
@@ -929,7 +927,7 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     inline void schedule( std::function<void(void)>&& f, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), tg, parent, children); // forward to the job system
+        JobSystem::instance().schedule( std::move(f), tg, parent, children); // forward to the job system
     };
 
     /**
@@ -970,13 +968,36 @@ namespace vgjs {
     */
     template<typename T>
     inline void schedule( n_pmr::vector<T>& functions, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = -1) noexcept {
-        
         if (children < 0) {                     //default? use vector size.
             children = (int)functions.size(); 
         }
-
         for (auto& f : functions) { //schedule all elements, use the total number of children for the first call, then 0
-            schedule( std::forward<T>(f), tg, parent, children ); //might call the coro version, so do not call job system here!
+            schedule( f, tg, parent, children ); //might call the coro version, so do not call job system here!
+            children = 0;
+        }
+    };
+
+    /**
+    * \brief Schedule functions into the system. T can be a Function, std::function or a task<U>.
+    *
+    * The parameter children here is used to pre-increase the number of children to avoid races
+    * between more schedules and previous children finishing and destroying e.g. a coro.
+    * When a tuple of vectors is scheduled, in the first call children is the total number of all children
+    * in all vectors combined. After this children is set to 0 (by the caller).
+    * When a vector is scheduled, children should be the default -1, and setting the number of
+    * children is handled by the function itself.
+    *
+    * \param[in] functions A vector of functions to schedule
+    * \param[in] parent The parent of this Job.
+    * \param[in] children Number used to increase the number of children of the parent.
+    */
+    template<typename T>
+    inline void schedule(n_pmr::vector<T>&& functions, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = -1) noexcept {
+        if (children < 0) {                     //default? use vector size.
+            children = (int)functions.size();
+        }
+        for (auto& f : functions) { //schedule all elements, use the total number of children for the first call, then 0
+            schedule( std::move(f), tg, parent, children); //might call the coro version, so do not call job system here!
             children = 0;
         }
     };
