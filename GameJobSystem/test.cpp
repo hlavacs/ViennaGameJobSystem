@@ -265,10 +265,10 @@ namespace test {
 		TESTRESULT(++number, "Vector Par functions c", co_await parallel(vf2_1c, vf2_2c), counter.load() == 40, counter = 0);
 
 		//Function
-		TESTRESULT(++number, "Single Function", co_await Function([&]() { func(&counter); }), counter.load() == 1, counter = 0);
-		TESTRESULT(++number, "10 Functions", co_await Function([&]() { func(&counter, 10); }), counter.load() == 10, counter = 0);
-		TESTRESULT(++number, "Parallel Functions", co_await parallel(Function([&]() { func(&counter); }), Function([&]() { func(&counter); })), counter.load() == 2, counter = 0);
-		TESTRESULT(++number, "Parallel Functions", co_await parallel(Function([&]() { func(&counter, 10); }), Function([&]() { func(&counter, 10); })), counter.load() == 20, counter = 0);
+		TESTRESULT(++number, "Single Function", co_await Function{ [&]() { func(&counter); } }, counter.load() == 1, counter = 0);
+		TESTRESULT(++number, "10 Functions", co_await Function{ [&]() { func(&counter, 10); } }, counter.load() == 10, counter = 0);
+		TESTRESULT(++number, "Parallel Functions", co_await parallel(Function{ [&]() { func(&counter); } }, Function{ [&]() { func(&counter); } }), counter.load() == 2, counter = 0);
+		TESTRESULT(++number, "Parallel Functions", co_await parallel(Function{ [&]() { func(&counter, 10); } }, Function{ [&]() { func(&counter, 10); } }), counter.load() == 20, counter = 0);
 		auto f3 = Function{ [&]() { func(&counter); } };
 		TESTRESULT(++number, "Single Function ref", co_await f3, counter.load() == 1, counter = 0);
 		TESTRESULT(++number, "Single 2 Functions ref", co_await parallel(f3, f3), counter.load() == 2, counter = 0);
