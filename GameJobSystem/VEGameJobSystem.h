@@ -413,6 +413,24 @@ namespace vgjs {
             return job;
         }
 
+        /**
+        * \brief Allocate a job so that it can be scheduled.
+        * \param[in] f Function that should be executed by the job.
+        * \returns a pointer to the Job.
+        */
+        Job* allocate_job(Function& f) noexcept {
+            Job* job = allocate_job();
+            job->m_function = f.m_function;    //copy the job
+            if (!job->m_function) {
+                std::cout << "Empty function\n";
+                std::terminate();
+            }
+            job->m_thread_index = f.m_thread_index;
+            job->m_type = f.m_type;
+            job->m_id = f.m_id;
+            return job;
+        }
+
     public:
 
         /**
@@ -682,6 +700,8 @@ namespace vgjs {
         * \param[in] parent The parent of this Job.
         * \param[in] children Number used to increase the number of children of the parent.
         */
+        //template<typename F>
+        //requires std::is_same_v<std::decay<F>,Function> || std::is_same_v<std::decay<F>, std::function<void(void)>>
         void schedule(Function&& source, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
             Job *job = allocate_job( std::forward<Function>(source) );
 
@@ -695,6 +715,23 @@ namespace vgjs {
 
         /**
         * \brief Schedule a Job holding a function into the job system.
+        * \param[in] source An external function that is copied into the scheduled job.
+        * \param[in] parent The parent of this Job.
+        * \param[in] children Number used to increase the number of children of the parent.
+        */
+        void schedule(Function& source, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
+            Job* job = allocate_job( source );
+
+            job->m_parent = nullptr;
+            if (tg.value < 0) {
+                job->m_parent = parent;
+                if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
+            }
+            schedule(job, tg);
+        }
+
+        /**
+        * \brief Schedule a Job holding a function into the job system.
         * \param[in] f An external function that is copied into the scheduled job.
         * \param[in] tg The tag that is scheduled
         * \param[in] parent The parent of this Job.
@@ -702,6 +739,17 @@ namespace vgjs {
         */
         void schedule(std::function<void(void)>&& f, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
             schedule(Function{ std::forward<std::function<void(void)>>(f) }, tg, parent, children );
+        }
+
+        /**
+        * \brief Schedule a Job holding a function into the job system.
+        * \param[in] f An external function that is copied into the scheduled job.
+        * \param[in] tg The tag that is scheduled
+        * \param[in] parent The parent of this Job.
+        * \param[in] children Number used to increase the number of children of the parent.
+        */
+        void schedule(std::function<void(void)>& f, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
+            schedule(Function{ f }, tg, parent, children);
         }
 
         /**
@@ -871,7 +919,7 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     inline void schedule(Function& f, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule(std::forward<Function>(f), tg, parent, children);
+        JobSystem::instance().schedule(f, tg, parent, children);
     }
 
     /**
@@ -891,7 +939,7 @@ namespace vgjs {
     * \param[in] children Number used to increase the number of children of the parent.
     */
     inline void schedule(std::function<void(void)>& f, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        JobSystem::instance().schedule( std::forward<std::function<void(void)>>(f), tg, parent, children);   // forward to the job system
+        JobSystem::instance().schedule( f, tg, parent, children);   // forward to the job system
     };
 
 
