@@ -126,32 +126,6 @@ namespace vgjs {
     //Awaitables
 
 
-
-    /**
-    * \brief returns a reference to any argument
-    *
-    * \param[in] t any argument.
-    * \returns a reference to the argument.
-    *
-    */
-    template<typename T>
-    auto get_ref(T&& t) {
-        return std::ref(t);
-    }
-
-    /**
-    * \brief returns a reference to a given lambda. The lambda is first turned into a std::function.
-    *
-    * \param[in] t A lambda.
-    * \returns a reference to the lambda turned into a std::function.
-    *
-    */
-    template<typename T>
-    requires is_constructible_v<std::function<void(void),T>>
-    auto get_ref(T&& t) {
-        return std::ref(std::function<void(void)>(std::move(t)));
-    }
-
     /**
     * \brief This can be called as co_await parameter. It constructs a tuple
     * holding only references to the arguments. The arguments are passed into a 
@@ -162,10 +136,9 @@ namespace vgjs {
     *
     */
     template<typename... Ts>
-    auto parallel(Ts&& ... args) {
-        return std::make_tuple( get_ref(std::forward<Ts>(args))... );
+    decltype(auto) parallel(Ts&& ... args) {
+        return std::forward_as_tuple(args...);
     }
-
 
     using suspend_always = n_exp::suspend_always;
 
@@ -254,7 +227,7 @@ namespace vgjs {
     template<typename PT, typename... Ts>
     struct awaitable_tuple : suspend_always {
         tag                 m_tag;          ///<The tag to schedule to
-        std::tuple<Ts...>   m_tuple;          ///<vector with all children to start
+        std::tuple<Ts&&...> m_tuple;          ///<vector with all children to start
         std::size_t         m_number;         ///<total number of all new children to schedule
 
         /**
@@ -384,7 +357,7 @@ namespace vgjs {
         * \brief Awaiter constructor.
         * \parameter[in] tuple The tuple to schedule
         */
-        awaitable_tuple(std::tuple<Ts...>&& tuple) noexcept : m_tag{}, m_number{0}, m_tuple(std::forward<std::tuple<Ts...>>(tuple)) {};
+        awaitable_tuple(std::tuple<Ts&&...>&& tuple) noexcept : m_tag{}, m_number{0}, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
     };
 
 
