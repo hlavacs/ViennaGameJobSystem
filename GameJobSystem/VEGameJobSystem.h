@@ -400,9 +400,10 @@ namespace vgjs {
         * \param[in] f Function that should be executed by the job.
         * \returns a pointer to the Job.
         */
-        Job* allocate_job( Function&& f) noexcept {
+        template <typename F>
+        Job* allocate_job(F&& f) noexcept {
             Job* job            = allocate_job();
-            job->m_function     = std::move(f.m_function);    //move the job
+            job->m_function     = f.m_function;    //move the job
             if (!job->m_function) {
                 std::cout << "Empty function\n";
                 std::terminate();
@@ -413,23 +414,6 @@ namespace vgjs {
             return job;
         }
 
-        /**
-        * \brief Allocate a job so that it can be scheduled.
-        * \param[in] f Function that should be executed by the job.
-        * \returns a pointer to the Job.
-        */
-        Job* allocate_job(Function& f) noexcept {
-            Job* job = allocate_job();
-            job->m_function = f.m_function;    //copy the job
-            if (!job->m_function) {
-                std::cout << "Empty function\n";
-                std::terminate();
-            }
-            job->m_thread_index = f.m_thread_index;
-            job->m_type = f.m_type;
-            job->m_id = f.m_id;
-            return job;
-        }
 
     public:
 
