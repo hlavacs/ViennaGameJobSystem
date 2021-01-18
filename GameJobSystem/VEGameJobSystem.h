@@ -534,7 +534,6 @@ namespace vgjs {
             while (thread_counter.load() > 0) {}	                        //Continue only if all threads are running
 
             uint32_t next = rand() % m_thread_count;                        //initialize at random position for stealing
-            thread_local unsigned int noop = 0;                                 //number of empty loops until threads sleeps
             auto start = high_resolution_clock::now();
             while (!m_terminate) {			                                //Run until the job system is terminated
                 m_current_job = m_local_queues[m_thread_index.value].pop();       //try get a job from the local queue
