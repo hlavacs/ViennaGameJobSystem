@@ -109,6 +109,32 @@ namespace test {
 	};
 
 
+	Coro<> test_utilization_drop( int sec) {
+		auto start = high_resolution_clock::now();
+		auto duration = duration_cast<seconds>(high_resolution_clock::now() - start);
+		auto& js = JobSystem::instance();
+		auto num = js.get_thread_count().value / 3;
+		num = 1; // std::max(num, 1);
+		std::pmr::vector<Function> perfv{};
+		for (int i = 0; i < num; ++i) {
+			perfv.push_back(Function{ []() {func_perf(10000); }, thread_index{i} });
+		}
+		std::pmr::vector<Function> perfv2{};
+		for (int i = 0; i < js.get_thread_count().value; ++i) {
+			perfv2.push_back(Function{ []() {func_perf(10000); }, thread_index{i} });
+		}
+
+		do {		
+			co_await perfv;
+			duration = duration_cast<seconds>(high_resolution_clock::now() - start);
+		} while (duration.count() < sec);
+
+		co_await perfv2;		//wake up threads
+
+		co_return;
+	}
+
+
 	template<bool WITHALLOCATE = false, typename FT1 = Function, typename FT2 = std::function<void(void)>>
 	Coro<std::tuple<double,double>> performance_function(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
 		auto& js = JobSystem::instance();
@@ -182,8 +208,7 @@ namespace test {
 
 
 	template<bool WITHALLOCATE = false, typename FT1, typename FT2>
-	Coro<> performance_driver(std::string text, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
-		int runtime = 200000;
+	Coro<> performance_driver(std::string text, std::pmr::memory_resource* mr = std::pmr::new_delete_resource(), int runtime = 400000) {
 		int num = runtime;
 		const int st = 0;
 		const int mt = 100;
@@ -221,6 +246,10 @@ namespace test {
 		std::atomic<int> counter = 0;
 		auto& js = JobSystem::instance();
 
+		std::cout << "\n\nTest utilization drop\n";
+		co_await test_utilization_drop(10);
+
+		std::cout << "Unit Tests\n";
 
 		//std::function<void(void)>
 		TESTRESULT(++number, "Single function", co_await[&]() { func(&counter); }, counter.load() == 1, counter = 0);
@@ -418,9 +447,8 @@ namespace test {
 		TESTRESULT(++number, "Tagged jobs 2", co_await tag{ 2 }, counter.load() == 4, );
 		TESTRESULT(++number, "Tagged jobs 3", co_await tag{ 3 }, counter.load() == 10, counter = 0);
 
-		
 
-		std::cout << "\nPerformance: min work (in microsconds) per job so that efficiency is >0.85 or >0.95\n";
+		std::cout << "\n\nPerformance: min work (in microsconds) per job so that efficiency is >0.85 or >0.95\n";
 
 		co_await performance_driver<false,Function, std::function<void(void)>>("std::function calls (w / o allocate)" );
 		co_await performance_driver<true, Function, std::function<void(void)>>("std::function calls (with allocate new/delete)", std::pmr::new_delete_resource());
@@ -432,7 +460,9 @@ namespace test {
 		co_await performance_driver<true, Coro<>, Coro<>>("Coro<> calls (with allocate synchronized)", &g_global_mem_f);
 		co_await performance_driver<true, Coro<>, Coro<>>("Coro<> calls (with allocate unsynchronized)", &g_local_mem_f);
 
-		
+
+		std::cout << "\n\nTest utilization drop\n";
+		co_await test_utilization_drop(10);
 
 		vgjs::terminate();
 		co_return;
