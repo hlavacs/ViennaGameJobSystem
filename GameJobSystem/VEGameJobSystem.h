@@ -34,6 +34,9 @@
 #include <string>
 #include <sstream>
 
+using namespace std::chrono;
+
+
 #if(defined(_MSC_VER))
     #include <memory_resource>
     namespace n_exp = std::experimental;
@@ -523,7 +526,7 @@ namespace vgjs {
         * \param[in] threadIndex Number of this thread
         */
         void thread_task(thread_index threadIndex = thread_index(0) ) noexcept {
-            constexpr uint32_t NOOP = 1<<25;                                   //number of empty loops until garbage collection
+            constexpr uint32_t NOOP = 1<<10;                                   //number of empty loops until garbage collection
             m_thread_index = threadIndex;	                                //Remember your own thread index number
             static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
 
@@ -532,6 +535,7 @@ namespace vgjs {
 
             uint32_t next = rand() % m_thread_count;                        //initialize at random position for stealing
             thread_local unsigned int noop = 0;                                 //number of empty loops until threads sleeps
+            auto start = high_resolution_clock::now();
             while (!m_terminate) {			                                //Run until the job system is terminated
                 m_current_job = m_local_queues[m_thread_index.value].pop();       //try get a job from the local queue
                 if (m_current_job == nullptr) {
@@ -564,19 +568,15 @@ namespace vgjs {
                     if (is_function) {
                         child_finished((Job*)m_current_job);  //a job always finishes itself, a coro will deal with this itself
                     }
-                    noop = noop >> 2;
+                    start = high_resolution_clock::now();
                 }
-                else if (noop > NOOP) {                //if none found too longs let thread sleep
+                else if (duration_cast<microseconds>(high_resolution_clock::now() - start).count() > NOOP) {   //if none found too longs let thread sleep
                     if (m_thread_index.value == 0) {  //thread 0 is the garbage collector
                         m_delete.clear();       //delete jobs to reclaim memory
                     }
                     std::unique_lock<std::mutex> lk(*m_mutex[m_thread_index.value]);
                     m_cv[m_thread_index.value]->wait_for(lk, std::chrono::microseconds(500));
-
-                    //std::this_thread::sleep_for(std::chrono::microseconds(500));
-                    //std::cout << m_thread_index.value << "\n";
                 }
-                else ++noop;
             };
 
            //std::cout << "Thread " << m_thread_index << " left " << m_thread_count << "\n";
