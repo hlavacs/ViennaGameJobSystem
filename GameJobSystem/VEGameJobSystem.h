@@ -358,6 +358,10 @@ namespace vgjs {
         static inline thread_local thread_index	m_thread_index = thread_index{};  ///<each thread has its own number
         std::atomic<bool>						m_terminate = false;	///<Flag for terminating the pool
         static inline thread_local Job_base*    m_current_job = nullptr;///<Pointer to the current job of this thread0
+
+        std::vector<std::unique_ptr<std::condition_variable>>    m_cv;
+        std::vector<std::unique_ptr<std::mutex>>                 m_mutex;
+
         std::vector<JobQueue<Job_base>>         m_global_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
         std::vector<JobQueue<Job_base>>         m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
 
@@ -437,6 +441,8 @@ namespace vgjs {
             for (uint32_t i = 0; i < m_thread_count; i++) {
                 m_global_queues.push_back(JobQueue<Job_base>());     //global job queue
                 m_local_queues.push_back(JobQueue<Job_base>());     //local job queue
+                m_cv.emplace_back(std::make_unique<std::condition_variable>());
+                m_mutex.emplace_back(std::make_unique<std::mutex>());
             }
 
             for (uint32_t i = start_idx.value; i < m_thread_count; i++) {
@@ -531,7 +537,7 @@ namespace vgjs {
                 if (m_current_job == nullptr) {
                     m_current_job = m_global_queues[m_thread_index.value].pop();  //try get a job from the global queue
                 }
-                int num_try = m_thread_count;
+                int num_try = m_thread_count - 1;
                 while (m_current_job == nullptr && --num_try >0) {                             //try steal job from another thread
                     if (++next >= m_thread_count) next = 0;
                     m_current_job = m_global_queues[next].pop();
@@ -564,7 +570,10 @@ namespace vgjs {
                     if (m_thread_index.value == 0) {  //thread 0 is the garbage collector
                         m_delete.clear();       //delete jobs to reclaim memory
                     }
-                    std::this_thread::sleep_for(std::chrono::microseconds(500));
+                    std::unique_lock<std::mutex> lk(*m_mutex[m_thread_index.value]);
+                    m_cv[m_thread_index.value]->wait_for(lk, std::chrono::microseconds(500));
+
+                    //std::this_thread::sleep_for(std::chrono::microseconds(500));
                     //std::cout << m_thread_index.value << "\n";
                 }
                 else ++noop;
@@ -674,11 +683,14 @@ namespace vgjs {
             }
 
             if (job->m_thread_index.value < 0 || job->m_thread_index.value >= (int)m_thread_count ) {
-                 m_global_queues[rand() % m_thread_count].push(job);
-                 return;
+                unsigned int idx = rand() % m_thread_count;
+                m_global_queues[idx].push(job);
+                m_cv[idx]->notify_one();
+                return;
             }
 
             m_local_queues[job->m_thread_index.value].push(job);
+            m_cv[job->m_thread_index.value]->notify_one();
         };
 
         /**
