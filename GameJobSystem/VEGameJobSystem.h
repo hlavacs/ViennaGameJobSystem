@@ -100,6 +100,17 @@ namespace vgjs {
                     , thread_index exec_thread, bool finished, thread_type type, thread_id id);
     void save_log_file();
 
+    //---------------------------------------------------------------------------------------------------
+
+    //test whether a template parameter T is a std::pmr::vector
+    template<typename>
+    struct is_pmr_vector : std::false_type {};
+
+    template<typename T>
+    struct is_pmr_vector<n_pmr::vector<T>> : std::true_type {};
+
+    //---------------------------------------------------------------------------------------------------
+
     /**
     * \brief Function struct wraps a c++ function of type std::function<void(void)>.
     * 
@@ -410,7 +421,12 @@ namespace vgjs {
         template <typename F>
         Job* allocate_job(F&& f) noexcept {
             Job* job            = allocate_job();
-            job->m_function     = f.m_function;    //move the job
+            if constexpr (std::is_lvalue_reference_v<F>) {    //copy job
+                job->m_function = f.m_function; 
+            }
+            else {    //move the job
+                job->m_function = std::move(f.m_function); 
+            }
             if (!job->m_function) {
                 std::cout << "Empty function\n";
                 std::terminate();
@@ -514,7 +530,7 @@ namespace vgjs {
                     on_finished((Job*)job);     //if yes then finish this job
                 }
                 else {
-                    schedule(job);   //a coro just gets scheduled again so it can go on
+                    schedule_job(job);   //a coro just gets scheduled again so it can go on
                 }
                 return true;
             }
@@ -670,86 +686,29 @@ namespace vgjs {
         * 
         * \param[in] job A pointer to the job to schedule.
         */
-        uint32_t schedule(Job_base* job, tag tg = tag{}) noexcept {
+        uint32_t schedule_job(Job_base* job, tag tg = tag{}) noexcept {
             assert(job!=nullptr);
 
             if ( tg.value >= 0 ) {                  //tagged scheduling
                 if(!m_tag_queues.contains(tg)) {
                     m_tag_queues[tg] = std::make_unique<JobQueue<Job_base>>();
                 }
-                m_tag_queues.at(tg)->push(job);
+                m_tag_queues.at(tg)->push(job); //save for later
                 return 0;
             }
 
             if (job->m_thread_index.value < 0 || job->m_thread_index.value >= (int)m_thread_count ) {
-                unsigned int idx = rand() % m_thread_count;
+                unsigned int idx = rand() % m_thread_count; //to a random thread
                 m_global_queues[idx].push(job);
-                m_cv[idx]->notify_one();
+                m_cv[idx]->notify_one();                    //wake up the thread
                 return 1;
             }
 
-            m_local_queues[job->m_thread_index.value].push(job);
+            m_local_queues[job->m_thread_index.value].push(job); //to a specific thread
             m_cv[job->m_thread_index.value]->notify_one();
             return 1;
         };
 
-        /**
-        * \brief Schedule a Job holding a function into the job system.
-        * \param[in] source An external function that is copied into the scheduled job.
-        * \param[in] parent The parent of this Job.
-        * \param[in] children Number used to increase the number of children of the parent.
-        */
-        uint32_t schedule(Function&& source, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
-            Job *job = allocate_job( std::move(source) );
-
-            job->m_parent = nullptr;
-            if (tg.value < 0 ) { 
-                job->m_parent = parent;
-                if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
-            }
-            schedule(job, tg);
-            return 1;
-        };
-
-        /**
-        * \brief Schedule a Job holding a function into the job system.
-        * \param[in] source An external function that is copied into the scheduled job.
-        * \param[in] parent The parent of this Job.
-        * \param[in] children Number used to increase the number of children of the parent.
-        */
-        uint32_t schedule(Function& source, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
-            Job* job = allocate_job( source );
-
-            job->m_parent = nullptr;
-            if (tg.value < 0) {
-                job->m_parent = parent;
-                if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
-            }
-            schedule(job, tg);
-            return 1;
-        }
-
-        /**
-        * \brief Schedule a Job holding a function into the job system.
-        * \param[in] f An external function that is copied into the scheduled job.
-        * \param[in] tg The tag that is scheduled
-        * \param[in] parent The parent of this Job.
-        * \param[in] children Number used to increase the number of children of the parent.
-        */
-        uint32_t schedule(std::function<void(void)>&& f, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
-            return schedule(std::move(Function{ std::move(f) }), tg, parent, children );
-        }
-
-        /**
-        * \brief Schedule a Job holding a function into the job system.
-        * \param[in] f An external function that is copied into the scheduled job.
-        * \param[in] tg The tag that is scheduled
-        * \param[in] parent The parent of this Job.
-        * \param[in] children Number used to increase the number of children of the parent.
-        */
-        uint32_t schedule(std::function<void(void)>& f, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
-            return schedule( std::move(Function{ f }), tg, parent, children);
-        }
 
         /**
         * \brief Schedule all Jobs from a tag
@@ -758,7 +717,7 @@ namespace vgjs {
         * \param[in] children Number used to increase the number of children of the parent.
         * \returns the number of scheduled jobs.
         */
-        uint32_t schedule(const tag& tg, tag tg2 = tag{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule_tag(tag& tg, tag tg2 = tag{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
             if (!m_tag_queues.contains(tg)) return 0;
 
             JobQueue<Job_base>* queue = m_tag_queues[tg].get();   //get the queue for this tag
@@ -773,12 +732,43 @@ namespace vgjs {
             Job_base* job = queue->pop();
             while ( num>0 && job) {     //schedule all jobs from the tag queue
                 job->m_parent = parent;
-                schedule(job, tag{});
+                schedule_job(job, tag{});
                 --num;
                 job = queue->pop();
             }
             return num_jobs;
         };
+
+
+        /**
+        * \brief Schedule a function holding a function into the job system - or a tag
+        * \param[in] f An external function that is copied into the scheduled job.
+        * \param[in] tg The tag that is scheduled
+        * \param[in] parent The parent of this Job.
+        * \param[in] children Number used to increase the number of children of the parent.
+        */
+        template<typename F>
+        uint32_t schedule(F&& function, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
+            if constexpr (std::is_same_v<std::decay_t<F>, tag>) {
+                return schedule_tag(function, tg, parent, children);
+            }
+            else {
+                if constexpr (std::is_same_v<std::decay_t<F>, Function>) {
+                    Job* job = allocate_job(std::forward<F>(function));
+
+                    job->m_parent = nullptr;
+                    if (tg.value < 0) {
+                        job->m_parent = parent;
+                        if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
+                    }
+                    return schedule_job(job, tg);
+                }
+                else {
+                    return schedule(Function{ std::forward<F>(function) }, tg, parent, children);
+                }
+            }
+        };
+
 
         /**
         * \brief Store a continuation for the current Job. Will be scheduled once the current Job finishes.
@@ -790,8 +780,8 @@ namespace vgjs {
             if (current == nullptr || !current->is_function()) {
                 return;
             }
-            if constexpr (std::is_same_v< typename std::decay_t<F>, Function>) {
-                ((Job*)current)->m_continuation = allocate_job(std::forward<Function>(f));
+            if constexpr (std::is_same_v<std::decay_t<F>, Function>) {
+                ((Job*)current)->m_continuation = allocate_job(std::forward<F>(f));
             }
             else {
                 ((Job*)current)->m_continuation = allocate_job(Function{ std::forward<F>(f) });
@@ -886,7 +876,7 @@ namespace vgjs {
                 job->m_parent->m_children++;
                 job->m_continuation->m_parent = job->m_parent;   //add successor as child to the parent
             }
-            schedule(job->m_continuation);    //schedule the successor
+            schedule_job(job->m_continuation);    //schedule the successor
         }
 
         if (job->m_parent != nullptr) {		//if there is parent then inform it	
@@ -908,44 +898,6 @@ namespace vgjs {
     }
 
     /**
-    * \brief Schedule a function into the system.
-    * \param[in] f A function to schedule.
-    * \param[in] parent The parent of this Job.
-    * \param[in] children Number used to increase the number of children of the parent.
-    * \returns the number of children scheduled.
-    */
-    template <typename F>
-    inline uint32_t schedule(F&& f, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        return JobSystem::instance().schedule(std::forward<F>(f), tg, parent, children);
-    }
-
-
-    /**
-    * \brief Schedule functions into the system. T can be a Function, std::function or a task<U>.
-    * 
-    * The parameter children here is used to pre-increase the number of children to avoid races
-    * between more schedules and previous children finishing and destroying e.g. a coro.
-    * When a tuple of vectors is scheduled, in the first call children is the total number of all children
-    * in all vectors combined. After this children is set to 0 (by the caller).
-    * When a vector is scheduled, children should be the default -1, and setting the number of 
-    * children is handled by the function itself.
-    * 
-    * \param[in] functions A vector of functions to schedule
-    * \param[in] parent The parent of this Job.
-    * \param[in] children Number used to increase the number of children of the parent.
-    */
-    template<typename T>
-    inline void schedule( n_pmr::vector<T>& functions, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = -1) noexcept {
-        if (children < 0) {                     //default? use vector size.
-            children = (int)functions.size(); 
-        }
-        for (auto& f : functions) { //schedule all elements, use the total number of children for the first call, then 0
-            schedule( f, tg, parent, children ); //might call the coro version, so do not call job system here!
-            children = 0;
-        }
-    };
-
-    /**
     * \brief Schedule functions into the system. T can be a Function, std::function or a task<U>.
     *
     * The parameter children here is used to pre-increase the number of children to avoid races
@@ -958,17 +910,30 @@ namespace vgjs {
     * \param[in] functions A vector of functions to schedule
     * \param[in] parent The parent of this Job.
     * \param[in] children Number used to increase the number of children of the parent.
+    * \returns the number of scheduled functions
     */
-    template<typename T>
-    inline void schedule(n_pmr::vector<T>&& functions, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = -1) noexcept {
-        if (children < 0) {                     //default? use vector size.
-            children = (int)functions.size();
+    template <typename F>
+    inline uint32_t schedule(F&& functions, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+        if constexpr (is_pmr_vector<std::decay_t<F>>::value) {
+            if (children < 0) {                     //default? use vector size.
+                children = (int)functions.size();
+            }
+            auto ret = children;
+            for (auto&& f : functions) { //schedule all elements, use the total number of children for the first call, then 0
+                if constexpr (std::is_lvalue_reference_v<F>) {
+                    schedule(f, tg, parent, children); //might call the coro version, so do not call job system here!
+                }
+                else {
+                    schedule(std::move(f), tg, parent, children); //might call the coro version, so do not call job system here!
+                }
+                children = 0;
+            }
+            return ret;
         }
-        for (auto& f : functions) { //schedule all elements, use the total number of children for the first call, then 0
-            schedule( std::move(f), tg, parent, children); //might call the coro version, so do not call job system here!
-            children = 0;
+        else {
+            return JobSystem::instance().schedule(std::forward<F>(functions), tg, parent, children);
         }
-    };
+    }
 
 
     /**

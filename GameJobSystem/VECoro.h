@@ -48,20 +48,12 @@ namespace vgjs {
     template<typename T> class Coro;    //main promise class for all Ts
     template<> class Coro<void>;        //specializiation for T = void
 
-    //---------------------------------------------------------------------------------------------------
-
-    //test whether a template parameter T is a std::pmr::vector
-    template<typename>
-    struct is_pmr_vector : std::false_type {};
-
-    template<typename T>
-    struct is_pmr_vector<n_pmr::vector<T>> : std::true_type {};
-
+    
     //---------------------------------------------------------------------------------------------------
     //schedule functions for coroutines
 
     template<typename T>
-    concept CORO = std::is_base_of_v<Coro_base, typename std::decay<T>::type >; //resolve only for coroutines
+    concept CORO = std::is_base_of_v<Coro_base, std::decay_t<T> >; //resolve only for coroutines
 
     /**
     * \brief Schedule a Coro into the job system.
@@ -72,7 +64,7 @@ namespace vgjs {
     */
     template<typename T>
     requires CORO<T>   
-    void schedule( T&& coro, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+    uint32_t schedule( T&& coro, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
         auto& js = JobSystem::instance();
 
         auto promise = coro.promise();
@@ -87,7 +79,8 @@ namespace vgjs {
             promise->set_self_destruct(true);
             promise->m_parent = nullptr;
         }
-        js.schedule( promise, tg );      //schedule the promise as job
+        js.schedule_job( promise, tg );      //schedule the promise as job
+        return 1;
     };
 
 
@@ -165,7 +158,7 @@ namespace vgjs {
         */
         void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
             h.promise().m_thread_index = m_thread_index;
-            JobSystem::instance().schedule(&h.promise());
+            JobSystem::instance().schedule_job(&h.promise());
         }
 
         /**
@@ -198,7 +191,7 @@ namespace vgjs {
         * \returns true of the coro should be suspended, else false.
         */
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-            m_number = JobSystem::instance().schedule(m_tag);
+            m_number = JobSystem::instance().schedule_tag(m_tag);
             return m_number > 0;     //if jobs were scheduled - await them
         }
 
@@ -383,7 +376,7 @@ namespace vgjs {
                 else {  //parent is a coro
                     uint32_t num = promise.m_parent->m_children.fetch_sub(1);   //one less child
                     if (num == 1) {                                             //was it the last child?
-                        JobSystem::instance().schedule(promise.m_parent);      //if last reschedule the parent coro
+                        JobSystem::instance().schedule_job(promise.m_parent);      //if last reschedule the parent coro
                     }
                 }
             }
@@ -420,7 +413,7 @@ namespace vgjs {
                 else {
                     uint32_t num = parent->m_children.fetch_sub(1);        //one less child
                     if (num == 1) {                                             //was it the last child?
-                        JobSystem::instance().schedule(parent);      //if last reschedule the parent coro
+                        JobSystem::instance().schedule_job(parent);      //if last reschedule the parent coro
                     }
                 }
             }
@@ -955,7 +948,7 @@ namespace vgjs {
             else {  //parent is a coro
                 uint32_t num = parent->m_children.fetch_sub(1);   //one less child
                 if (num == 1) {                                   //was it the last child?
-                    JobSystem::instance().schedule(parent);       //if last reschedule the parent coro
+                    JobSystem::instance().schedule_job(parent);       //if last reschedule the parent coro
                 }
             }
         }
@@ -979,7 +972,7 @@ namespace vgjs {
             else {
                 uint32_t num = parent->m_children.fetch_sub(1);   //one less child
                 if (num == 1) {                                   //was it the last child?
-                    JobSystem::instance().schedule(parent);       //if last reschedule the parent coro
+                    JobSystem::instance().schedule_job(parent);       //if last reschedule the parent coro
                 }
             }
         }
