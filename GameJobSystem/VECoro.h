@@ -130,7 +130,7 @@ namespace vgjs {
     */
     template<typename... Ts>
     decltype(auto) parallel(Ts&& ... args) {
-        return std::forward_as_tuple(args...);
+        return std::forward_as_tuple(std::forward<Ts>(args)...);
     }
 
     using suspend_always = n_exp::suspend_always;
@@ -559,7 +559,6 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename U>
-        requires !std::is_integral_v<U>
         awaitable_tuple<T, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
 
         template<typename... Ts>
