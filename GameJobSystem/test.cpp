@@ -189,7 +189,7 @@ namespace test {
 				for (int i = 0; i < num; ++i) perfv2.emplace_back(Coro_perf(std::allocator_arg, mr, micro));
 			}
 		}
-		co_await perfv2;
+		co_await std::move(perfv2);
 		auto duration2 = duration_cast<microseconds>(high_resolution_clock::now() - start2);
 		//std::cout << "Time for " << num << " calls on " << js.get_thread_count().value << " threads " << duration2.count() << " us" << std::endl;
 

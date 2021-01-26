@@ -717,7 +717,7 @@ namespace vgjs {
         * \param[in] children Number used to increase the number of children of the parent.
         * \returns the number of scheduled jobs.
         */
-        uint32_t schedule_tag(tag& tg, tag tg2 = tag{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule_tag( tag& tg, tag tg2 = tag{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
             if (!m_tag_queues.contains(tg)) return 0;
 
             JobQueue<Job_base>* queue = m_tag_queues[tg].get();   //get the queue for this tag
