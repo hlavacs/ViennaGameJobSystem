@@ -130,7 +130,7 @@ namespace vgjs {
     */
     template<typename... Ts>
     decltype(auto) parallel(Ts&& ... args) {
-        return std::forward_as_tuple(std::forward<Ts>(args)...);
+        return std::forward_as_tuple(args...);
     }
 
     using suspend_always = n_exp::suspend_always;
@@ -350,7 +350,7 @@ namespace vgjs {
         * \brief Awaiter constructor.
         * \parameter[in] tuple The tuple to schedule
         */
-        awaitable_tuple(std::tuple<Ts&&...>&& tuple) noexcept : m_tag{}, m_number{0}, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
+        awaitable_tuple(std::tuple<Ts&&...> tuple) noexcept : m_tag{}, m_number{0}, m_tuple(std::forward<decltype(tuple)>(tuple)) {};
     };
 
 
