@@ -118,52 +118,18 @@ namespace vgjs {
     //---------------------------------------------------------------------------------------------------
     //Awaitables
 
-
     /**
     * \brief This can be called as co_await parameter. It constructs a tuple
-    * holding only references to the arguments. The arguments are passed into a 
+    * holding only references to the arguments. The arguments are passed into a
     * function get_ref, which SFINAEs to either a lambda version or for any other parameter.
     *
     * \param[in] args Arguments to be put into tuple
     * \returns a tuple holding references to the arguments.
     *
     */
-    /*template<typename... Ts>
-    decltype(auto) parallel(Ts... args) {
-        return std::tuple<Ts...>(std::forward<Ts>(args)...);
-    }*/
-
-    /*template<typename U>
-    awaitable_tuple<T, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
-
     template<typename... Ts>
-    awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
-
-    template<typename... Ts>
-    awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
-    */
-
-
-    template<typename T>
-    inline decltype(auto) get_val(T&& t) {
-        return std::forward_as_tuple(std::forward<T>(t));
-    }
-
-    inline decltype(auto) get_val(std::function<void(void)> t) {
-        return std::make_tuple(t);
-    }
-
-    template<typename T>
-    inline decltype(auto) parallel(T&& arg) {
-        return get_val(std::forward<T>(arg));
-    }
-
-    template<typename T, typename... Ts>
-    inline decltype(auto) parallel(T&& arg, Ts&& ... args) {
-        decltype(auto) te = get_val(std::forward<T>(arg));
-        decltype(auto) tu = parallel(std::forward<decltype(args)>(args)...);
-
-        return std::tuple_cat(std::forward<decltype(te)>(te), std::forward<decltype(tu)>(tu));
+    inline decltype(auto) parallel(Ts&& ... args) {
+        return std::forward_as_tuple(std::forward<Ts>(args)...);
     }
 
 
