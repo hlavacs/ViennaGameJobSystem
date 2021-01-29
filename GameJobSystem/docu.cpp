@@ -54,7 +54,7 @@ namespace docu {
     namespace docu2 {
         //the coro do_compute() uses g_global_mem to allocate its promise!
         Coro<int> do_compute(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
-            co_await thread_index{ 0 };     //move this job to the thread with number 0
+            co_await thread_index_t{ 0 };     //move this job to the thread with number 0
             co_return i;    //return the promised value;
         }
 
@@ -111,7 +111,7 @@ namespace docu {
             fv.emplace_back([=]() {func(4); });
 
             n_pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
-            jv.emplace_back(Function{ [=]() {func(5); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 } });
+            jv.emplace_back(Function{ [=]() {func(5); }, thread_index_t{}, thread_type_t{ 0 }, thread_id_t{ 0 } });
 
             auto [ret1, ret2] = co_await parallel(tv, ti, tf, fv, jv);
             std::cout << "ret1 " << ret1[0] << " ret2 " << ret2[0] << std::endl;
@@ -155,17 +155,17 @@ namespace docu {
 
         Coro<int> tag1() {
             std::cout << "Tag 1" << std::endl;
-            co_await parallel(tag{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); }, tag{ 1 }, [=]() { printPar(6); }, tag{ 1 });
-            co_await tag{ 1 }; //runt jobs with tag 1
+            co_await parallel(tag_t{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); }, tag_t{ 1 }, [=]() { printPar(6); }, tag_t{ 1 });
+            co_await tag_t{ 1 }; //runt jobs with tag 1
             co_return 0;
         }
 
         void tag0() {
             std::cout << "Tag 0" << std::endl;
-            schedule([=]() { printPar(1); }, tag{ 0 });
-            schedule([=]() { printPar(2); }, tag{ 0 });
-            schedule([=]() { printPar(3); }, tag{ 0 });
-            schedule(tag{ 0 });   //run jobs with tag 0
+            schedule([=]() { printPar(1); }, tag_t{ 0 });
+            schedule([=]() { printPar(2); }, tag_t{ 0 });
+            schedule([=]() { printPar(3); }, tag_t{ 0 });
+            schedule(tag_t{ 0 });   //run jobs with tag 0
             continuation(tag1()); //continue with tag1()
         }
 

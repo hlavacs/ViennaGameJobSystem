@@ -56,7 +56,7 @@ namespace coro {
 
     Coro<float> computeF(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
 
-        co_await thread_index{ 0 };
+        co_await thread_index_t{ 0 };
 
         float f = i + 0.5f;
         //std::cout << "ComputeF " << f << std::endl;
@@ -123,10 +123,10 @@ namespace coro {
 
             fv.emplace_back([=]() { FCompute(i); });
 
-            Function f([=]() { FuncCompute(i); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 });
+            Function f([=]() { FuncCompute(i); }, thread_index_t{}, thread_type_t{ 0 }, thread_id_t{ 0 });
             jv.push_back( f );
 
-            jv.push_back(Function([=](){ FuncCompute(i); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 }));
+            jv.push_back(Function([=](){ FuncCompute(i); }, thread_index_t{}, thread_type_t{ 0 }, thread_id_t{ 0 }));
         }
         
         if (printb) std::cout << "Before loop " << std::endl;
@@ -181,7 +181,7 @@ namespace coro {
 
     Coro<float> coroTest1(int i) {
         //std::cout << "Before coroTest1() " << std::endl;
-        co_await thread_index{ 1 };
+        co_await thread_index_t{ 1 };
 
         co_await coroTest2(i);
 
@@ -194,7 +194,7 @@ namespace coro {
         cnt++;
 
         //std::cout << "Begin coroTest() " << std::endl;
-        co_await coroTest1(i - 1)(thread_index{}, thread_type{ 0 }, thread_id{ 2 });
+        co_await coroTest1(i - 1)(thread_index_t{}, thread_type_t{ 0 }, thread_id_t{ 2 });
         //std::cout << "End coroTest() " << std::endl;
 
         co_return cnt;

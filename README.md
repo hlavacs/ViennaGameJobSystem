@@ -18,7 +18,7 @@ If you additionally want coroutines then also include
 
     #include "VECoro.h"
 
-VGJS runs a number of *N* worker threads, *each* having *two* work queues, a *local* queue and a *global* queue. When scheduling jobs, a target thread *K* can be specified or not. If the job is specified to run on thread *K* (using *vgjs\:\:thread_index{K}* ), then the job is put into thread *K*'s **local** queue. Only thread *K* can take it from there. If no thread is specified or an empty *vgjs\:\:thread_index{}* is chosen, then a random thread *J* is chosen and the job is inserted into thread *J*'s **global** queue. Any thread can steal it from there, if it runs out of local jobs. This paradigm is called *work stealing*. By using multiple global queues, the amount of contention between threads is minimized.
+VGJS runs a number of *N* worker threads, *each* having *two* work queues, a *local* queue and a *global* queue. When scheduling jobs, a target thread *K* can be specified or not. If the job is specified to run on thread *K* (using *vgjs\:\:thread_index_t{K}* ), then the job is put into thread *K*'s **local** queue. Only thread *K* can take it from there. If no thread is specified or an empty *vgjs\:\:thread_index_t{}* is chosen, then a random thread *J* is chosen and the job is inserted into thread *J*'s **global** queue. Any thread can steal it from there, if it runs out of local jobs. This paradigm is called *work stealing*. By using multiple global queues, the amount of contention between threads is minimized.
 
 Each thread continuously grabs jobs from one of its queues and runs them. If the workload is split into a large number of small tasks then all CPU cores continuously do work and achieve a high degree of parallelism.
 
@@ -43,7 +43,7 @@ The main thread can wait for this termination by calling *vgjs::wait_for_termina
         }
 
         //after all children have finished, this function will be scheduled to thread 0
-        continuation( Function{ std::bind(vgjs::terminate), thread_index{0} } ); //schedule a Function
+        continuation( Function{ std::bind(vgjs::terminate), thread_index_t{0} } ); //schedule a Function
     }
 
     void test( int N ) {
@@ -129,11 +129,11 @@ In a *function*, scheduling is done via a call to the *vgjs::schedule()* functio
         schedule( [](){loop(10); loop(100);} );
 
         //Function to run on thread 1, with type 0 and id 999 (for logging)
-        Function func{ [](){loop(10);}, thread_index{1}, thread_type{0}, thread_id{999} };
+        Function func{ [](){loop(10);}, thread_index_t{1}, thread_type_t{0}, thread_id_t{999} };
         schedule( func ); //lvalue, so do not move the function func, it can be reused afterwards
 
         //schedule to run on thread 2, use rvalue ref, so move semantics apply
-        schedule( Function{ [](){loop(10);}, thread_index{2} } );
+        schedule( Function{ [](){loop(10);}, thread_index_t{2} } );
     }
 
 Functions scheduling coroutines should simply call take the coroutine as parameter without packing it into a function wrapper.
@@ -292,7 +292,7 @@ The following code shows how to start multiple children from a coro to run in pa
         fv.emplace_back([=]() {func(4); });
 
         n_pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
-        jv.emplace_back( Function{[=]() {func(5); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 }} );
+        jv.emplace_back( Function{[=]() {func(5); }, thread_index_t{}, thread_type_t{ 0 }, thread_id_t{ 0 }} );
 
         auto [ret1, ret2] = co_await parallel(tv, ti, tf, fv, jv);
 
@@ -316,14 +316,14 @@ The resturn values are stored in *ret1* and *ret2*, both are vectors containing 
 
 Functions of type *Function{}* can be assigned a specific thread that the Function should run on. In this case the Function is scheduled to the thread's local queue.
 
-    schedule( Function{ [=]() {func(5); }, thread_index{0}, thread_type{11}, thread_id{99}} ); //run on thread 0, type 11, id 99
+    schedule( Function{ [=]() {func(5); }, thread_index_t{0}, thread_type_t{11}, thread_id_t{99}} ); //run on thread 0, type 11, id 99
 
 If no thread is given then the Function is scheduled to the global queue of a random thread. Additionally, for debugging and performance measurement purposes, jobs can be assigned by a type and an id. Both can be used to trace the calls, e.g. by writing the data into a log file as described below.
 
 Coroutine futures *Coro\<T\>* are also "callable", and you can pass in parameters similar to the *Function{}* class, setting thread index, type and id:
 
     //schedule to thread 0, set type to 11 and id to 99
-    co_await func(std::allocator_arg, &g_global_mem4, 1, 10)( thread_index{0}, thread_type{11}, thread_id{99} ) ;
+    co_await func(std::allocator_arg, &g_global_mem4, 1, 10)( thread_index_t{0}, thread_type_t{11}, thread_id_t{99} ) ;
 
 Coroutines can also change their thread by awaiting a thread index number:
 
@@ -331,7 +331,7 @@ Coroutines can also change their thread by awaiting a thread index number:
 
         //do something until here ...
 
-        co_await thread_index{0};   //move this job to thread 0
+        co_await thread_index_t{0};   //move this job to thread 0
 
         float f = i + 0.5f;     //continue on thread 0
         co_return 10.0f * i;
@@ -399,10 +399,10 @@ When scheduling a job without specifying a tag, the job is immediately put into 
 
     schedule([=](){ loop(1); });            //immediately scheduled
 
-    schedule([=](){ loop(3); }, tag{1});  //wait in queue of tag 1
-    schedule([=](){ loop(4); }, tag{1});  //wait in queue of tag 1
+    schedule([=](){ loop(3); }, tag_t{1});  //wait in queue of tag 1
+    schedule([=](){ loop(4); }, tag_t{1});  //wait in queue of tag 1
 
-    schedule(tag{1});                       //run all jobs with tag 1
+    schedule(tag_t{1});                       //run all jobs with tag 1
     schedule([=](){ loop(5); });            //immediately scheduled
 
     continuation([=](){ after_tag1(); }); //continuation waits for all jobs to finish
@@ -417,18 +417,18 @@ Coroutines schedule functions and other coroutines for future runs also using th
 
     Coro<int> tag1() {
         std::cout << "Tag 1" << std::endl;
-        co_await parallel(tag{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); }, tag{ 1 }, [=]() { printPar(6); }, tag{ 1 });
-        co_await tag{ 1 }; //runt jobs with tag 1
+        co_await parallel(tag_t{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); },[=]() { printPar(6); });
+        co_await tag_t{ 1 }; //runt jobs with tag 1
         co_return 0;
     }
 
     void tag0() {
         std::cout << "Tag 0" << std::endl;
-        schedule([=]() { printPar(1); }, tag{ 0 });
-        schedule([=]() { printPar(2); }, tag{ 0 });
-        schedule([=]() { printPar(3); }, tag{ 0 });
-        schedule(tag{ 0 });   //run jobs with tag 0
-        continuation(tag1()); //continue with tag1()
+        schedule([=]() { printPar(1); }, tag_t{ 0 });
+        schedule([=]() { printPar(2); }, tag_t{ 0 });
+        schedule([=]() { printPar(3); }, tag_t{ 0 });
+        schedule(tag_t{ 0 });   //run jobs with tag 0
+        continuation(tag1());   //continue with tag1()
     }
 
     void test() {
@@ -455,12 +455,12 @@ The example program above first schedules a function *tag0()* which runs tag 0 j
 Jobs having a parent will trigger a continuation of this parent after they have finished. This also means that these continuations depend on the children and have to wait. Starting a job that does not have a parent is easily done by using *nullptr* as the second argument of the *schedule()* call.
 
     void driver() {
-        schedule( loop(std::allocator_arg, &g_global_mem4, 90), tag{}, nullptr );
+        schedule( loop(std::allocator_arg, &g_global_mem4, 90), tag_t{}, nullptr );
     }
 
 The parameter will always be used if specified, also when scheduling tagged jobs. Therefore
 
-    schedule(tag{1}, nullptr);
+    schedule(tag_t{1}, nullptr);
 
 runs tag 0 jobs, but these jobs do not have any parent, and the current job does not depend on them.
 

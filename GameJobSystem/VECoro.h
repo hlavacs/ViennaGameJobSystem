@@ -64,7 +64,7 @@ namespace vgjs {
     */
     template<typename T>
     requires CORO<T>   
-    uint32_t schedule( T&& coro, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+    uint32_t schedule( T&& coro, tag_t tg = tag_t{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
         auto& js = JobSystem::instance();
 
         auto promise = coro.promise();
@@ -143,7 +143,7 @@ namespace vgjs {
     */
     template<typename PT>
     struct awaitable_resume_on : suspend_always {
-        thread_index m_thread_index; //the thread index to use
+        thread_index_t m_thread_index; //the thread index to use
 
         /**
         * \brief Test whether the job is already on the right thread.
@@ -165,7 +165,7 @@ namespace vgjs {
         * \brief Awaiter constructor
         * \parameter[in] thread_index Number of the thread to migrate to
         */
-        awaitable_resume_on(thread_index index) noexcept : m_thread_index(index) {};
+        awaitable_resume_on(thread_index_t index) noexcept : m_thread_index(index) {};
     };
 
 
@@ -174,7 +174,7 @@ namespace vgjs {
     */
     template<typename PT>
     struct awaitable_tag : suspend_always {
-        tag       m_tag;            //the tag to schedule
+        tag_t     m_tag;            //the tag to schedule
         uint32_t  m_number = 0;     //Number of scheduled jobs
 
         /**
@@ -207,7 +207,7 @@ namespace vgjs {
         * \brief Awaiter constructor
         * \parameter[in] tg The tag to schedule
         */
-        awaitable_tag( tag tg) noexcept : m_tag(tg) {};
+        awaitable_tag( tag_t tg) noexcept : m_tag(tg) {};
     };
 
 
@@ -219,7 +219,7 @@ namespace vgjs {
     */
     template<typename PT, typename... Ts>
     struct awaitable_tuple : suspend_always {
-        tag                 m_tag;          ///<The tag to schedule to
+        tag_t               m_tag;          ///<The tag to schedule to
         std::tuple<Ts&&...> m_tuple;          ///<vector with all children to start
         std::size_t         m_number;         ///<total number of all new children to schedule
 
@@ -232,7 +232,7 @@ namespace vgjs {
             if constexpr (is_pmr_vector< typename std::decay<U>::type >::value) { //if this is a vector
                 return children.size();
             }
-            if constexpr (std::is_same_v<typename std::decay<U>::type, tag>) { //if this is a tag
+            if constexpr (std::is_same_v<typename std::decay<U>::type, tag_t>) { //if this is a tag
                 m_tag = children;
                 return 0;
             }
@@ -270,7 +270,7 @@ namespace vgjs {
                 using T = decltype(std::get<Idx>(std::forward<tt>(m_tuple)));
                 decltype(auto) children = std::forward<T>(std::get<Idx>(std::forward<tt>(m_tuple)));
 
-                if constexpr (std::is_same_v<std::decay_t<T>, tag> ) { //never schedule tags here
+                if constexpr (std::is_same_v<std::decay_t<T>, tag_t> ) { //never schedule tags here
                     return;
                 }
                 else {
@@ -589,14 +589,14 @@ namespace vgjs {
         * \param[in] thread_index The thread to migrate to.
         * \returns the awaitable for this parameter type of the co_await operator.
         */
-        awaitable_resume_on<T> await_transform(thread_index index) noexcept { return { index }; };
+        awaitable_resume_on<T> await_transform(thread_index_t index) noexcept { return { index }; };
 
         /**.
         * \brief Called by co_await to create an awaitable for scheduling a tag
         * \param[in] tg The tag to schedule
         * \returns the awaitable for this parameter type of the co_await operator.
         */
-        awaitable_tag<T> await_transform(tag tg) noexcept { return { tg }; };
+        awaitable_tag<T> await_transform(tag_t tg) noexcept { return { tg }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
@@ -739,7 +739,7 @@ namespace vgjs {
         * \param[in] id A unique ID of the call.
         * \returns a reference to this Coro so that it can be used with co_await.
         */
-        decltype(auto) operator() (thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{}) {
+        decltype(auto) operator() (thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
             m_promise->m_thread_index = index;
             m_promise->m_type = type;
             m_promise->m_id = id;
@@ -821,14 +821,14 @@ namespace vgjs {
         * \param[in] thread_index The thread to migrate to.
         * \returns the awaitable for this parameter type of the co_await operator.
         */
-        awaitable_resume_on<void> await_transform(thread_index index ) noexcept { return { index }; };
+        awaitable_resume_on<void> await_transform(thread_index_t index ) noexcept { return { index }; };
 
         /**.
         * \brief Called by co_await to create an awaitable for scheduling a tag
         * \param[in] tg The tag to schedule
         * \returns the awaitable for this parameter type of the co_await operator.
         */
-        awaitable_tag<void> await_transform(tag tg) noexcept { return { tg }; };
+        awaitable_tag<void> await_transform(tag_t tg) noexcept { return { tg }; };
 
         /**
         * \brief Create the final awaiter. This awaiter makes sure that the parent is scheduled if there are no more children.
@@ -902,7 +902,7 @@ namespace vgjs {
         * \param[in] id A unique ID of the call.
         * \returns a reference to this Coro so that it can be used with co_await.
         */
-        Coro<void>&& operator() (thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{}) {
+        decltype(auto) operator() (thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
             m_promise->m_thread_index = index;
             m_promise->m_type = type;
             m_promise->m_id = id;
