@@ -450,7 +450,7 @@ namespace test {
 		TESTRESULT(++number, "Tagged jobs 1", co_await tag{ 1 }, counter.load() == 2, );
 		TESTRESULT(++number, "Tagged jobs 2", co_await tag{ 2 }, counter.load() == 4, );
 		TESTRESULT(++number, "Tagged jobs 3", co_await tag{ 3 }, counter.load() == 10, counter = 0);
-
+		
 
 		std::cout << "\n\nPerformance: min work (in microsconds) per job so that efficiency is >0.85 or >0.95\n";
 

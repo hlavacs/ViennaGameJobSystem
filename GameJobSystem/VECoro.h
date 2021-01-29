@@ -264,19 +264,54 @@ namespace vgjs {
         *
         */
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-            auto g = [&, this]<typename T>(T && children) {
-                if constexpr (std::is_same_v<typename std::decay<T>::type, tag> ) { //never schedule tags here
+            //auto g = [&, this]<typename T>(T && children) {
+            auto g = [&, this]<std::size_t Idx>() {
+
+                using tt = decltype(m_tuple);
+                using T = decltype(std::get<Idx>(std::forward<tt>(m_tuple)));
+                decltype(auto) children = std::forward<T>(std::get<Idx>(std::forward<tt>(m_tuple)));
+
+                if constexpr (std::is_same_v<std::decay_t<T>, tag> ) { //never schedule tags here
                     return;
                 }
                 else {
+                    if constexpr (std::is_reference_v<T>) {
+                        if constexpr (std::is_rvalue_reference_v<T>) {
+                            int i = 1;
+                        }
+                        else {
+                            int i = 2;
+                        }
+                    }
+                    else {
+                        int i = 3;
+                    }
+
                     schedule(std::forward<T>(children), m_tag, &h.promise(), (int)m_number);   //in first call the number of children is the total number of all jobs
                     m_number = 0;                                               //after this always 0
                 }
             };
 
             auto f = [&, this]<std::size_t... Idx>(std::index_sequence<Idx...>) {
-                (g( std::forward<decltype(std::get<Idx>(m_tuple))>(std::get<Idx>(m_tuple)) ), ...); //called for every tuple element
+                //using tt = decltype(m_tuple);
+                //( g( std::get<Idx>(std::forward<tt>(m_tuple)) ), ...); //called for every tuple element
+                ( g.template operator() <Idx> (), ...); //called for every tuple element
             };
+
+            using tt = decltype(m_tuple);
+            using te = decltype(std::get<0>(std::forward<tt>(m_tuple)));
+
+            if constexpr (std::is_reference_v<te>) {
+                if constexpr (std::is_rvalue_reference_v<te>) {
+                    int i = 1;
+                }
+                else {
+                    int i = 2;
+                }
+            }
+            else {
+                int i = 3;
+            }
 
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
 
@@ -350,7 +385,21 @@ namespace vgjs {
         * \brief Awaiter constructor.
         * \parameter[in] tuple The tuple to schedule
         */
-        awaitable_tuple(std::tuple<Ts&&...> tuple) noexcept : m_tag{}, m_number{0}, m_tuple(std::forward<decltype(tuple)>(tuple)) {};
+        awaitable_tuple(std::tuple<Ts&&...> tuple) noexcept : m_tag{}, m_number{0}, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {
+            using tf = decltype(std::get<0>(std::forward<std::tuple<Ts&&...>>(m_tuple)));
+            if constexpr (std::is_reference_v<tf>) {
+                if constexpr (std::is_rvalue_reference_v<tf>) {
+                    int i = 1;
+                }
+                else {
+                    int i = 2;
+                }
+            }
+            else {
+                int i = 3;
+            }
+
+        };
     };
 
 
@@ -562,7 +611,10 @@ namespace vgjs {
         awaitable_tuple<T, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
 
         template<typename... Ts>
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<decltype(tuple)>(tuple) }; };
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+
+        template<typename... Ts>
+        awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         /**.
         * \brief Called by co_await to create an awaitable for migrating to another thread.
@@ -726,7 +778,6 @@ namespace vgjs {
             return std::move(*this);
         }
     };
-
 
     //---------------------------------------------------------------------------------------------------
     //specializations for void
