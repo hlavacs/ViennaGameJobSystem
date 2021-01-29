@@ -114,7 +114,6 @@ namespace docu {
             jv.emplace_back(Function{ [=]() {func(5); }, thread_index{}, thread_type{ 0 }, thread_id{ 0 } });
 
             auto [ret1, ret2] = co_await parallel(tv, ti, tf, fv, jv);
-
             std::cout << "ret1 " << ret1[0] << " ret2 " << ret2[0] << std::endl;
 
             co_return 0;

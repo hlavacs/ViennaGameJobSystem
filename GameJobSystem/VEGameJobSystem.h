@@ -421,7 +421,7 @@ namespace vgjs {
         template <typename F>
         Job* allocate_job(F&& f) noexcept {
             Job* job            = allocate_job();
-            if constexpr (std::is_rvalue_reference_v<F>) {    //move the job
+            if constexpr (std::is_rvalue_reference_v<decltype(f)>) {    //move the job
                 job->m_function = std::move(f.m_function);
             }
             else {                                  //copy job
@@ -729,14 +729,16 @@ namespace vgjs {
             }
 
             uint32_t num = num_jobs;        //schedule at most num_jobs, since someone could add more jobs now
-            Job_base* job = queue->pop();
-            while ( num>0 && job) {     //schedule all jobs from the tag queue
+            int i = 0;
+            while ( num>0 ) {     //schedule all jobs from the tag queue
+                Job_base* job = queue->pop();
+                if (!job) return i;
                 job->m_parent = parent;
                 schedule_job(job, tag{});
                 --num;
-                job = queue->pop();
+                ++i;
             }
-            return num_jobs;
+            return i;
         };
 
 
@@ -748,7 +750,7 @@ namespace vgjs {
         * \param[in] children Number used to increase the number of children of the parent.
         */
         template<typename F>
-        uint32_t schedule(F&& function, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = 1) noexcept {
+        uint32_t schedule(F&& function, tag tg = tag{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
             if constexpr (std::is_same_v<std::decay_t<F>, tag>) {
                 return schedule_tag(function, tg, parent, children);
             }
@@ -759,12 +761,15 @@ namespace vgjs {
                     job->m_parent = nullptr;
                     if (tg.value < 0) {
                         job->m_parent = parent;
-                        if (parent != nullptr) { parent->m_children.fetch_add((int)children); }
+                        if (parent != nullptr) { 
+                            if (children < 0) children = 1;
+                            parent->m_children.fetch_add((int)children); 
+                        }
                     }
                     return schedule_job(job, tg);
                 }
                 else {
-                    return schedule(Function{ std::forward<F>(function) }, tg, parent, children);
+                    return schedule( Function{ std::forward<F>(function) }, tg, parent, children);
                 }
             }
         };
@@ -913,14 +918,14 @@ namespace vgjs {
     * \returns the number of scheduled functions
     */
     template <typename F>
-    inline uint32_t schedule(F&& functions, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
+    inline uint32_t schedule(F&& functions, tag tg = tag{}, Job_base* parent = current_job(), int32_t children = -1) noexcept {
         if constexpr (is_pmr_vector<std::decay_t<F>>::value) {
             if (children < 0) {                     //default? use vector size.
                 children = (int)functions.size();
             }
             auto ret = children;
             for (auto&& f : functions) { //schedule all elements, use the total number of children for the first call, then 0
-                if constexpr (std::is_lvalue_reference_v<F>) {
+                if constexpr (std::is_lvalue_reference_v<decltype(functions)>) {
                     schedule(f, tg, parent, children); //might call the coro version, so do not call job system here!
                 }
                 else {

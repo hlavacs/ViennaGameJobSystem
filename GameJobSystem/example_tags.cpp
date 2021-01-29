@@ -32,7 +32,7 @@ namespace tags {
     Coro<int> tag1() {
         //std::cout << "Tag 1" << std::endl;
 
-        co_await parallel(tag{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); }, tag{ 1 }, [=]() { printPar(6); }, tag{ 1 });
+        co_await parallel([=]() { printPar(4); }, [=]() { printPar(5); }, [=]() { printPar(6); });
         co_await tag{ 1 };
         co_await tag2();
         co_return 0;

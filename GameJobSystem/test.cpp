@@ -499,7 +499,7 @@ namespace tags {
 
 namespace examples {
 	void run_examples(int i) {
-
+		std::cout << "Loop " << i << "\n";
 		vgjs::schedule(std::bind(coro::test));
 		vgjs::schedule(std::bind(func::test));
 		vgjs::schedule(std::bind(mixed::test));
