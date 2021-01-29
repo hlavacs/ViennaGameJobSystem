@@ -421,11 +421,11 @@ namespace vgjs {
         template <typename F>
         Job* allocate_job(F&& f) noexcept {
             Job* job            = allocate_job();
-            if constexpr (std::is_lvalue_reference_v<F>) {    //copy job
-                job->m_function = f.m_function; 
+            if constexpr (std::is_rvalue_reference_v<F>) {    //move the job
+                job->m_function = std::move(f.m_function);
             }
-            else {    //move the job
-                job->m_function = std::move(f.m_function); 
+            else {                                  //copy job
+                job->m_function = f.m_function;
             }
             if (!job->m_function) {
                 std::cout << "Empty function\n";

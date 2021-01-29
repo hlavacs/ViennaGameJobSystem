@@ -719,7 +719,7 @@ namespace vgjs {
         * \param[in] id A unique ID of the call.
         * \returns a reference to this Coro so that it can be used with co_await.
         */
-        Coro<T>&& operator() (thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{}) {
+        decltype(auto) operator() (thread_index index = thread_index{}, thread_type type = thread_type{}, thread_id id = thread_id{}) {
             m_promise->m_thread_index = index;
             m_promise->m_type = type;
             m_promise->m_id = id;
