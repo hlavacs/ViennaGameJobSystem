@@ -229,10 +229,10 @@ namespace vgjs {
         */
         template<typename U>
         size_t size(U& children) {
-            if constexpr (is_pmr_vector< typename std::decay<U>::type >::value) { //if this is a vector
+            if constexpr (is_pmr_vector< std::decay_t<U> >::value) { //if this is a vector
                 return children.size();
             }
-            if constexpr (std::is_same_v<typename std::decay<U>::type, tag_t>) { //if this is a tag
+            if constexpr (std::is_same_v<std::decay_t<U>, tag_t>) { //if this is a tag
                 m_tag = children;
                 return 0;
             }

@@ -110,6 +110,9 @@ namespace vgjs {
     template<typename T>
     struct is_pmr_vector<n_pmr::vector<T>> : std::true_type {};
 
+    template<typename T>
+    concept STDFUNCTION = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> >;
+
     //---------------------------------------------------------------------------------------------------
 
     /**
@@ -125,35 +128,28 @@ namespace vgjs {
         thread_type_t               m_type;                //type of the call
         thread_id_t                 m_id;                  //unique identifier of the call
 
-        Function(std::function<void(void)>& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{})
+        Function(std::function<void(void)>& f, thread_index_t index = thread_index_t{}, 
+            thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{})
             : m_function(f), m_thread_index(index), m_type(type), m_id(id) {};
 
-        Function(std::function<void(void)>&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{})
+        Function(std::function<void(void)>&& f, thread_index_t index = thread_index_t{}, 
+            thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{})
             : m_function(std::move(f)), m_thread_index(index), m_type(type), m_id(id) {};
 
-        Function(const Function& f) 
-            : m_function(f.m_function), m_thread_index(f.m_thread_index), m_type(f.m_type), m_id(f.m_id) {};
+        Function(const Function& f) = default;
+        Function(Function&& f) = default;
+        Function& operator= (const Function& f) = default;
+        Function& operator= (Function&& f) = default;
 
-        Function(Function&& f)
-            : m_function(std::move(f.m_function)), m_thread_index(f.m_thread_index), m_type(f.m_type), m_id(f.m_id) {};
-
-        Function& operator= (const Function& f) {
-            m_function = f.m_function; 
-            m_thread_index = f.m_thread_index; 
-            m_type = f.m_type;  
-            m_id = f.m_id;
-            return *this;
-        };
-
-        Function& operator= (Function&& f) {
-            m_function = std::move(f.m_function); 
-            m_thread_index = f.m_thread_index; 
-            m_type = f.m_type;
-            m_id = f.m_id;
-            return *this;
-        };
+        decltype(auto) get_function() & { return m_function; }
+        decltype(auto) get_function() && { return std::move(m_function); }
     };
 
+    template<typename T>
+    concept FUNCTION = std::is_same_v<std::decay_t<T>, Function >;
+
+    template<typename T>
+    concept FUNCTOR = FUNCTION<T> || STDFUNCTION<T>;
 
     //-----------------------------------------------------------------------------------------
 
@@ -362,7 +358,7 @@ namespace vgjs {
     * It can add new jobs, and wait until they are done.
     */
     class JobSystem {
-        const uint32_t                          c_queue_capacity = 1<<20; ///<save at most N Jobs for recycling
+        const uint32_t c_queue_capacity = 1<<20; ///<save at most N Jobs for recycling
 
     private:
         n_pmr::memory_resource*                     m_mr;                   ///<use to allocate/deallocate Jobs
@@ -418,21 +414,23 @@ namespace vgjs {
         * \returns a pointer to the Job.
         */
         template <typename F>
+        requires FUNCTOR<F>
         Job* allocate_job(F&& f) noexcept {
-            Job* job            = allocate_job();
-            if constexpr (std::is_rvalue_reference_v<decltype(f)>) {    //move the job
-                job->m_function = std::move(f.m_function);
+            Job* job        = allocate_job();
+            if constexpr (std::is_same_v<std::decay_t<F>, Function>) {
+                job->m_function     = f.get_function();
+                job->m_thread_index = f.m_thread_index;
+                job->m_type         = f.m_type;
+                job->m_id           = f.m_id;
             }
-            else {                                  //copy job
-                job->m_function = f.m_function;
+            else {
+                job->m_function = f; //std::function<void(void)> or a lambda
             }
+            
             if (!job->m_function) {
                 std::cout << "Empty function\n";
                 std::terminate();
             }
-            job->m_thread_index = f.m_thread_index;
-            job->m_type         = f.m_type;
-            job->m_id           = f.m_id;
             return job;
         }
 
@@ -686,6 +684,8 @@ namespace vgjs {
         * \param[in] job A pointer to the job to schedule.
         */
         uint32_t schedule_job(Job_base* job, tag_t tg = tag_t{}) noexcept {
+            thread_local static thread_index_t thread_index(rand() % m_thread_count);
+
             assert(job!=nullptr);
 
             if ( tg.value >= 0 ) {                  //tagged scheduling
@@ -697,9 +697,9 @@ namespace vgjs {
             }
 
             if (job->m_thread_index.value < 0 || job->m_thread_index.value >= (int)m_thread_count ) {
-                unsigned int idx = rand() % m_thread_count; //to a random thread
-                m_global_queues[idx].push(job);
-                m_cv[idx]->notify_one();                    //wake up the thread
+                thread_index.value = (++thread_index.value) >= (decltype(thread_index.value))m_thread_count ? 0 : thread_index.value;
+                m_global_queues[thread_index.value].push(job);
+                m_cv[thread_index.value]->notify_one();                    //wake up the thread
                 return 1;
             }
 
@@ -749,27 +749,22 @@ namespace vgjs {
         * \param[in] children Number used to increase the number of children of the parent.
         */
         template<typename F>
+        requires FUNCTOR<F> || std::is_same_v<std::decay_t<F>, tag_t>
         uint32_t schedule(F&& function, tag_t tg = tag_t{}, Job_base* parent = m_current_job, int32_t children = -1) noexcept {
             if constexpr (std::is_same_v<std::decay_t<F>, tag_t>) {
                 return schedule_tag(function, tg, parent, children);
             }
             else {
-                if constexpr (std::is_same_v<std::decay_t<F>, Function>) {
-                    Job* job = allocate_job(std::forward<F>(function));
-
-                    job->m_parent = nullptr;
-                    if (tg.value < 0) {
-                        job->m_parent = parent;
-                        if (parent != nullptr) { 
-                            if (children < 0) children = 1;
-                            parent->m_children.fetch_add((int)children); 
-                        }
+                Job* job = allocate_job(std::forward<F>(function));
+                job->m_parent = nullptr;
+                if (tg.value < 0) {
+                    job->m_parent = parent;
+                    if (parent != nullptr) { 
+                        if (children < 0) children = 1;
+                        parent->m_children.fetch_add((int)children); 
                     }
-                    return schedule_job(job, tg);
                 }
-                else {
-                    return schedule( Function{ std::forward<F>(function) }, tg, parent, children);
-                }
+                return schedule_job(job, tg);
             }
         };
 
@@ -779,17 +774,13 @@ namespace vgjs {
         * \param[in] f The function to schedule as continuation.
         */
         template<typename F>
+        requires FUNCTOR<F>
         void continuation( F&& f ) noexcept {
             Job_base* current = current_job();
             if (current == nullptr || !current->is_function()) {
                 return;
             }
-            if constexpr (std::is_same_v<std::decay_t<F>, Function>) {
-                ((Job*)current)->m_continuation = allocate_job(std::forward<F>(f));
-            }
-            else {
-                ((Job*)current)->m_continuation = allocate_job(Function{ std::forward<F>(f) });
-            }
+            ((Job*)current)->m_continuation = allocate_job(std::forward<F>(f));
         }
 
         //-----------------------------------------------------------------------------------------
