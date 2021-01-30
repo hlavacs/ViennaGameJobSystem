@@ -128,8 +128,8 @@ namespace vgjs {
     *
     */
     template<typename... Ts>
-    inline decltype(auto) parallel(Ts&& ... args) {
-        return std::forward_as_tuple(std::forward<Ts>(args)...);
+    inline decltype(auto) parallel(Ts&&... args) {
+        return std::tuple<Ts&&...>(std::forward<Ts>(args)...);
     }
 
 

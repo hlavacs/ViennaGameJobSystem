@@ -154,7 +154,7 @@ If the parent is a C++ function, parameters of scheduled other functions should 
 The second type of task to be scheduled are *coroutines*.
 Coroutines can suspend their function body (by returning to their caller), and later on resume them where they had left. Any function that uses the keywords *co_await*, *co_yield*, or *co_return* is a coroutine (see e.g. https://lewissbaker.github.io/).
 
-In order to be compatible with the VGJS job system, coroutines must be of type *Coro\<T\>* (a.k.a. the "*future*"), where *T* is any type to be computed and returned using *co_return*. Return type *T* must be copyable or moveable, references can be wrapped e.g. into *std::ref*. Alternatively, a coroutine of type *Coro<>* or *Coro<void>* does not return anything, and must have an empty *co_return*.
+In order to be compatible with the VGJS job system, coroutines must be of type *Coro\<T\>* (a.k.a. the "*future*"), where *T* is any type to be computed and returned using *co_return*. Return type *T* must be copyable or moveable, references can be wrapped e.g. into *std::ref*. Alternatively, a coroutine of type *Coro\<\>* or *Coro\<void\>* does not return anything, and must have an empty *co_return*.
 
 From a C++ *function*, a child *coroutine* can be scheduled by calling *schedule( Coro\<T\> &&coro, ... )*. **Do not pack coro into a lambda!**
 If you use coros, this must be done at least once, since any C++ program starts in the function *main()*.
@@ -210,7 +210,7 @@ Coroutines should **not** call *vgjs::continuation()*, since they are their own 
 
 ### Return Values
 
-An instance of *Coro\<T\>* acts like a *std\:\:future*, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling *get()* on it. Alternatively, the return value can be retrieved directly as return value from *co_await* (see the above example).
+An instance of *Coro\<T\>* acts like a *std\:\:future*, in that it allows to create the coro, schedule it, and later on retrieve the promised value by calling *get()* on it. Alternatively, the return value can be retrieved directly as return value from *co_await* (see the above example). If there is only one coro that is awaited and that returns a value, then *co_await* only returns this value. If there are more than one coros returning a value (i.e., *parallel()* is used), then the *co_await* returns a *tuple* holding all return values, and the individual return values can be retrieved e.g. through structured binding.
 
 If the *parent* is a *function*, the parent might return any time and a *Coro_promise\<T\>* that reaches its end point *automatically destroys*. If the parent is still running it can access the child's return value by calling *get()* on the future *Coro\<T\>* because this value is kept in a *std::shared_ptr<std::pair<bool,T>>*, not in the *Coro_promise\<T\>* itself. The parent can check whether the result is available by calling *ready()*.
 
@@ -221,7 +221,7 @@ Once *co_await* returns, all children have finished and the result values are av
 Coros can coawait a number of different types. Single types include
 * C++ function packed into lambdas *\[=\](){}*, *std::bind()* or *std::function<void(void)>*
 * Function{} class
-* *Coro\<T\>* for any return type *T*, or empty *Coro<>*
+* *Coro\<T\>* for any return type *T*, or empty *Coro\<\>*
 
 Since the coro suspends and awaits the finishing of all of its children, this would allow only one child to be awaited. Thus there are two ways to start more than one child in parallel. First, using the *parallel()* function, a static number of children can be started, given as parameters:
 
@@ -240,7 +240,7 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
         co_return some_float; //return a float
     };
 
-    auto [ret1, ret2]             //the return values
+    auto [ret1, ret2] //two values -> tuple, use structured binding
         = co_await parallel(
             [=](){ some_func(); } //no return value
             , coro_void(1)        //no return value
@@ -248,9 +248,9 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
             , coro_float(true),   //returns float
             Function{ [=](){ another_func(); } }; //no return value
 
-In this example, four children are started, one function and three coros. Only coros can return a value, but one of the coros returns void, so there are only two return values, *ret1* being of type *int*, and *ret2* being of type *float*. Internally, *parallel()* results in a *std::tuple* holding references to the parameters, and you can use *std::tuples* instead of *parallel()*.
+In this example, four children are started, one function and three coros. Only coros can return a value, but one of the coros returns void, so there are only two return values (packed into a tuple), *ret1* being of type *int*, and *ret2* being of type *float*. Internally, *parallel()* results in a *std::tuple* holding references to the parameters, and you can use *std::tuple* instead of *parallel()* (see the implementation of *parallel()*).
 
-Second you can co_await *std::pmr::vectors* of the above types. This allows to start and await any number of children of arbitrary types, where the number of children is determined dynamically at run time. If the vectors contain instances of type *Coro<T>*, then the result values will be of type *std::pmr::vector<T>* and contain the return values of the coros. If the return values are not needed, then it is advisable to switch to *Coro<>* instead, since creating the return vectors come with some performance overhead.
+Second you can co_await *std::pmr::vectors* of the above types. This allows to start and await any number of children of arbitrary types, where the number of children is determined dynamically at run time. If the vectors contain instances of type *Coro\<T\>*, then the result values will be of type *std::pmr::vector<T>* and contain the return values of the coros. If the return values are not needed, then it is advisable to switch to *Coro\<\>* instead, since creating the return vectors come with some performance overhead.
 
 The following code shows how to start multiple children from a coro to run in parallel.
 
@@ -310,7 +310,7 @@ The output of the above code is
     func 5
     ret1 2 ret2 4.5
 
-The resturn values are stored in *ret1* and *ret2*, both are vectors containing only one value.
+The return values are stored in *ret1* and *ret2*, both are vectors containing only one value.
 
 ### Threads, Types, IDs
 
@@ -339,7 +339,7 @@ Coroutines can also change their thread by awaiting a thread index number:
 
 ## Generators and Fibers
 A coroutine can be used as a generator or fiber (https://en.wikipedia.org/wiki/Fiber_(computer_science)). Essentially, this is a coroutine that never coreturns but suspends and waits to be called, compute a value, return the value, and suspend again. The coro can call any other child with *co_await*, but it **must** return its result using *co_yield* in order to stay alive.
-In the below example, there is a fiber *yt* of type *Coro<int>*, which takes its input parameter from *g_yt_in*. Calling *co_await* on the fiber invokes the fiber, which
+In the below example, there is a fiber *yt* of type *Coro\<int\>*, which takes its input parameter from *g_yt_in*. Calling *co_await* on the fiber invokes the fiber, which
 eventually calls *co_yield*. Here the fiber exits and returns to the invoking coro, which
 accesses the result with calling *get()*.
 

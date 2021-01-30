@@ -471,7 +471,6 @@ namespace test {
 		std::cout << "\n\nTest utilization drop\n";
 		co_await test_utilization_drop(4);
 
-		vgjs::terminate();
 		co_return;
 	}
 }

@@ -62,9 +62,10 @@ namespace vgjs {
     class Job_base;
     class JobSystem;
 
-    template<typename T, typename P, int D = -1>
+    template<typename T, typename P, long int D = -1>
     struct int_type {
         using type_name = T;
+        const T null = static_cast<T>(D);
 
         T value{};
         int_type() {
@@ -110,9 +111,6 @@ namespace vgjs {
     template<typename T>
     struct is_pmr_vector<n_pmr::vector<T>> : std::true_type {};
 
-    template<typename T>
-    concept STDFUNCTION = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> >;
-
     //---------------------------------------------------------------------------------------------------
 
     /**
@@ -149,6 +147,9 @@ namespace vgjs {
     concept FUNCTION = std::is_same_v<std::decay_t<T>, Function >;
 
     template<typename T>
+    concept STDFUNCTION = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> >;
+
+    template<typename T>
     concept FUNCTOR = FUNCTION<T> || STDFUNCTION<T>;
 
     //-----------------------------------------------------------------------------------------
@@ -173,12 +174,12 @@ namespace vgjs {
     */
     class Job_base : public Queuable {
     public:
-        std::atomic<int>    m_children = 0;             //number of children this job is waiting for
-        Job_base*           m_parent = nullptr;         //parent job that created this job
-        thread_index_t      m_thread_index;             //thread that the job should run on and ran on
-        thread_type_t       m_type;                     //for logging performance
-        thread_id_t         m_id;                       //for logging performance
-        bool                m_is_function = false;      //default - this is not a function
+        std::atomic<int>    m_children;         //number of children this job is waiting for
+        Job_base*           m_parent;           //parent job that created this job
+        thread_index_t      m_thread_index;     //thread that the job should run on and ran on
+        thread_type_t       m_type;             //for logging performance
+        thread_id_t         m_id;               //for logging performance
+        bool                m_is_function;      //default - this is not a function
 
         Job_base() : m_children{ 0 }, m_parent{ nullptr }, m_thread_index{}, m_type{}, m_id{}, m_is_function{ false } {}
 
@@ -416,7 +417,7 @@ namespace vgjs {
         template <typename F>
         requires FUNCTOR<F>
         Job* allocate_job(F&& f) noexcept {
-            Job* job        = allocate_job();
+            Job* job = allocate_job();
             if constexpr (std::is_same_v<std::decay_t<F>, Function>) {
                 job->m_function     = f.get_function();
                 job->m_thread_index = f.m_thread_index;
