@@ -369,7 +369,8 @@ namespace vgjs {
     * It can add new jobs, and wait until they are done.
     */
     class JobSystem {
-        const uint32_t c_queue_capacity = 1<<20; ///<save at most N Jobs for recycling
+        static inline const uint32_t c_queue_capacity = 1<<20; ///<save at most N Jobs for recycling
+        static inline const bool c_enable_logging = true;
 
     private:
         n_pmr::memory_resource*                     m_mr;                   ///<use to allocate/deallocate Jobs
@@ -550,7 +551,8 @@ namespace vgjs {
         * \param[in] threadIndex Number of this thread
         */
         void thread_task(thread_index_t threadIndex = thread_index_t(0) ) noexcept {
-            constexpr uint32_t NOOP = 1<<10;                                   //number of empty loops until garbage collection
+            constexpr uint32_t NOOP = 1<<5;                                   //number of empty loops until garbage collection
+            thread_local static uint32_t noop_counter = 0;
             m_thread_index = threadIndex;	                                //Remember your own thread index number
             static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
 
@@ -572,31 +574,37 @@ namespace vgjs {
 
                 if (m_current_job != nullptr) {
                     std::chrono::high_resolution_clock::time_point t1, t2;	///< execution start and end
+                    thread_type_t type;
+                    thread_id_t id;
 
-                    if (is_logging()) {
-                        t1 = std::chrono::high_resolution_clock::now();	//time of finishing;
+                    if constexpr (c_enable_logging) {
+                        if (is_logging()) {
+                            t1 = std::chrono::high_resolution_clock::now();	//time of finishing;
+                        }
+                        type = m_current_job->m_type;
+                        id = m_current_job->m_id;
                     }
-
                     auto is_function = m_current_job->is_function();      //save certain info since a coro might be destroyed
-                    auto type = m_current_job->m_type;
-                    auto id = m_current_job->m_id;
 
                     (*m_current_job)();   //if any job found execute it - a coro might be destroyed here!
 
-                    if (is_logging()) {
-                        t2 = std::chrono::high_resolution_clock::now();	//time of finishing
-                        log_data(t1, t2, m_thread_index, false, type, id );
+                    if constexpr (c_enable_logging) {
+                        if (is_logging()) {
+                            t2 = std::chrono::high_resolution_clock::now();	//time of finishing
+                            log_data(t1, t2, m_thread_index, false, type, id);
+                        }
                     }
 
                     if (is_function) {
                         child_finished((Job*)m_current_job);  //a job always finishes itself, a coro will deal with this itself
                     }
-                    start = high_resolution_clock::now();     //last time I did something useful
+                    noop_counter = 0;
                 }
-                else if (duration_cast<microseconds>(high_resolution_clock::now() - start).count() > NOOP) {   //if none found too longs let thread sleep
+                else if (++noop_counter > NOOP) {   //if none found too longs let thread sleep
                     m_delete.clear();       //delete jobs to reclaim memory
                     std::unique_lock<std::mutex> lk(*m_mutex[m_thread_index.value]);
-                    m_cv[m_thread_index.value]->wait_for(lk, std::chrono::microseconds(500));
+                    m_cv[m_thread_index.value]->wait_for(lk, std::chrono::microseconds(100));
+                    noop_counter = noop_counter / 2;
                 }
             };
 
@@ -610,8 +618,10 @@ namespace vgjs {
            m_delete.clear();
 
            if (num == 1) {
-               if (m_logging) {         //dump trace file
-                   save_log_file();
+               if constexpr (c_enable_logging) {
+                   if (m_logging) {         //dump trace file
+                       save_log_file();
+                   }
                }
                //std::cout << "Last thread " << m_thread_index << " terminated\n";
                m_terminated = true;
