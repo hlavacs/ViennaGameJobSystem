@@ -576,7 +576,7 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename U>
-        awaitable_tuple<T, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
+        awaitable_tuple<T, U> await_transform(U&& func) noexcept { return { std::tuple<U&&>(std::forward<U>(func)) }; };
 
         template<typename... Ts>
         awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
@@ -808,7 +808,7 @@ namespace vgjs {
         * \returns the awaitable for this parameter type of the co_await operator.
         */
         template<typename U>
-        awaitable_tuple<void, U> await_transform(U&& func) noexcept { return { std::forward_as_tuple(std::forward<U>(func)) }; };
+        awaitable_tuple<void, U> await_transform(U&& func) noexcept { return { std::tuple<U&&>(std::forward<U>(func)) }; };
 
         template<typename... Ts>
         awaitable_tuple<void, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
