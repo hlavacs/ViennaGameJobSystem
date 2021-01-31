@@ -261,7 +261,7 @@ namespace vgjs {
     * The queue allows for multiple producers multiple consumers. It uses a lightweight
     * atomic flag as lock. 
     */
-    template<typename JOB = Queuable>
+    template<typename JOB = Queuable, bool SYNC = true>
     class JobQueue {
         friend JobSystem;
         std::atomic_flag m_lock = ATOMIC_FLAG_INIT;  //for locking the queue
@@ -298,9 +298,13 @@ namespace vgjs {
         * \returns the number of jobs (Coros and Jobs) currently in the queue.
         */
         uint32_t size() {
-            while (m_lock.test_and_set(std::memory_order::acquire));  // acquire lock
+            if constexpr (SYNC) {
+                while (m_lock.test_and_set(std::memory_order::acquire));  // acquire lock
+            }
             auto s =  m_size;
-            m_lock.clear(std::memory_order::release); //release lock
+            if constexpr (SYNC) {
+                m_lock.clear(std::memory_order::release); //release lock
+            }
             return s;
         }
 
@@ -309,8 +313,9 @@ namespace vgjs {
         * \param[in] job The job to be pushed into the queue.
         */
         void push(JOB* job) {
-            while (m_lock.test_and_set(std::memory_order::acquire));  // acquire lock
-
+            if constexpr (SYNC) {
+                while (m_lock.test_and_set(std::memory_order::acquire));  // acquire lock
+            }
             job->m_next = nullptr;      //clear pointer to successor
             if (m_head == nullptr) {    //if queue is empty
                 m_head = job;           //let m_head point to the job
@@ -324,7 +329,9 @@ namespace vgjs {
             }
 
             m_size++;                   //increase size
-            m_lock.clear(std::memory_order::release); //release lock
+            if constexpr (SYNC) {
+                m_lock.clear(std::memory_order::release); //release lock
+            }
         };
 
         /**
@@ -334,7 +341,9 @@ namespace vgjs {
         JOB* pop() {
             if (m_head == nullptr) return nullptr;
 
-            while (m_lock.test_and_set(std::memory_order::acquire));  // acquire lock
+            if constexpr (SYNC) {
+                while (m_lock.test_and_set(std::memory_order::acquire));  // acquire lock
+            }
 
             JOB* head = m_head;
             if (head != nullptr) {              //if there is a job at the head of the queue
@@ -344,8 +353,9 @@ namespace vgjs {
                     m_tail = nullptr;           //let m_tail point to nullptr
                 }
             }
-            m_lock.clear(std::memory_order::release);   //release lock
-
+            if constexpr (SYNC) {
+                m_lock.clear(std::memory_order::release);   //release lock
+            }
             return head;
         };
 
@@ -377,8 +387,8 @@ namespace vgjs {
         std::vector<std::unique_ptr<std::mutex>>                                  m_mutex;
         std::unordered_map<tag_t,std::unique_ptr<JobQueue<Job_base>>,tag_t::hash> m_tag_queues;
 
-        JobQueue<Job>                           m_recycle;              ///<save old jobs for recycling
-        JobQueue<Job>                           m_delete;               ///<save old jobs for recycling
+        static inline thread_local JobQueue<Job,false>    m_recycle;              ///<save old jobs for recycling
+        static inline thread_local JobQueue<Job,false>    m_delete;               ///<save old jobs for recycling
         n_pmr::vector<n_pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
         bool                                    m_logging = false;      ///< if true then jobs will be logged
         std::map<int32_t, std::string>          m_types;                ///<map types to a string for logging
@@ -584,9 +594,9 @@ namespace vgjs {
                     start = high_resolution_clock::now();
                 }
                 else if (duration_cast<microseconds>(high_resolution_clock::now() - start).count() > NOOP) {   //if none found too longs let thread sleep
-                    if (m_thread_index.value == 0) {  //thread 0 is the garbage collector
+                    //if (m_thread_index.value == 0) {  //thread 0 is the garbage collector
                         m_delete.clear();       //delete jobs to reclaim memory
-                    }
+                    //}
                     std::unique_lock<std::mutex> lk(*m_mutex[m_thread_index.value]);
                     m_cv[m_thread_index.value]->wait_for(lk, std::chrono::microseconds(500));
                 }
@@ -598,10 +608,10 @@ namespace vgjs {
            m_local_queues[m_thread_index.value].clear();  //clear your local queue
 
            uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears recycle and garbage queues
-           if (num == 1) {
-               m_recycle.clear();
-               m_delete.clear();
+           m_recycle.clear();
+           m_delete.clear();
 
+           if (num == 1) {
                if (m_logging) {         //dump trace file
                    save_log_file();
                }
