@@ -152,6 +152,8 @@ namespace vgjs {
     template<typename T>
     concept FUNCTOR = FUNCTION<T> || STDFUNCTION<T>;
 
+    using pfvoid = void(*)();
+
     //-----------------------------------------------------------------------------------------
 
     /**
@@ -200,6 +202,7 @@ namespace vgjs {
         n_pmr::memory_resource*     m_mr = nullptr;  //memory resource that was used to allocate this Job
         Job_base*                   m_continuation = nullptr;   //continuation follows this job (a coro is its own continuation)
         std::function<void(void)>   m_function;      //function to compute
+        pfvoid                      m_pfvoid=nullptr;
 
         Job( n_pmr::memory_resource* pmr) : Job_base(), m_mr(pmr), m_continuation(nullptr) {
             m_children = 1;
@@ -218,7 +221,8 @@ namespace vgjs {
 
         bool resume() noexcept {    //work is to call the function
             m_children = 1;         //job is its own child, so set to 1
-            m_function();           //run the function, can schedule more children here
+            if (m_pfvoid!=nullptr) m_pfvoid();
+            else m_function();           //run the function, can schedule more children here
             return true;
         }
 
@@ -431,15 +435,22 @@ namespace vgjs {
             Job* job = allocate_job();
             if constexpr (std::is_same_v<std::decay_t<F>, Function>) {
                 job->m_function     = f.get_function();
+                job->m_pfvoid       = nullptr;
                 job->m_thread_index = f.m_thread_index;
                 job->m_type         = f.m_type;
                 job->m_id           = f.m_id;
             }
             else {
-                job->m_function = f; //std::function<void(void)> or a lambda
+                if constexpr (std::is_pointer_v<std::remove_reference_t<decltype(f)>>) {
+                    job->m_pfvoid = f;
+                }
+                else {
+                    job->m_function = f; //std::function<void(void)> or a lambda
+                    job->m_pfvoid = nullptr;
+                }
             }
             
-            if (!job->m_function) {
+            if (!job->m_function && !job->m_pfvoid) {
                 std::cout << "Empty function\n";
                 std::terminate();
             }
