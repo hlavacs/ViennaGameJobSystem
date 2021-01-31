@@ -591,12 +591,10 @@ namespace vgjs {
                     if (is_function) {
                         child_finished((Job*)m_current_job);  //a job always finishes itself, a coro will deal with this itself
                     }
-                    start = high_resolution_clock::now();
+                    start = high_resolution_clock::now();     //last time I did something useful
                 }
                 else if (duration_cast<microseconds>(high_resolution_clock::now() - start).count() > NOOP) {   //if none found too longs let thread sleep
-                    //if (m_thread_index.value == 0) {  //thread 0 is the garbage collector
-                        m_delete.clear();       //delete jobs to reclaim memory
-                    //}
+                    m_delete.clear();       //delete jobs to reclaim memory
                     std::unique_lock<std::mutex> lk(*m_mutex[m_thread_index.value]);
                     m_cv[m_thread_index.value]->wait_for(lk, std::chrono::microseconds(500));
                 }

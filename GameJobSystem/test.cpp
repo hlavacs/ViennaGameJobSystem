@@ -499,13 +499,13 @@ namespace tags {
 namespace examples {
 	void run_examples(int i) {
 		std::cout << "Loop " << i << "\n";
-		vgjs::schedule(std::bind(coro::test));
-		vgjs::schedule(std::bind(func::test));
-		vgjs::schedule(std::bind(mixed::test));
-		vgjs::schedule(std::bind(tags::test));
+		vgjs::schedule(coro::test);
+		vgjs::schedule(func::test);
+		vgjs::schedule(mixed::test);
+		vgjs::schedule(tags::test);
 
 		if (i <= 1) {
-			vgjs::continuation([]() { vgjs::terminate(); });
+			vgjs::continuation( vgjs::terminate );
 		}
 		else {
 			vgjs::continuation([=]() { run_examples(i - 1); });

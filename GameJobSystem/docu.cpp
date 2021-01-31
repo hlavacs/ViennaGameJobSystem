@@ -183,9 +183,9 @@ namespace docu {
         //schedule( docu2::loop(std::allocator_arg, &docu::g_global_mem, N) );
         //schedule( docu::docu3::test(std::allocator_arg, &docu::g_global_mem, 1));
         //schedule( docu::docu4::loop(N));
-        schedule([=]() { docu::docu5::test(); });
+        schedule( docu::docu5::test );
 
-        vgjs::continuation([=]() { vgjs::terminate(); });
+        vgjs::continuation( vgjs::terminate );
 
     }
 
