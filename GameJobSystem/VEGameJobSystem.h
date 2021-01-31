@@ -266,6 +266,7 @@ namespace vgjs {
     * atomic flag as lock. 
     */
     template<typename JOB = Queuable, bool SYNC = true>
+    requires std::is_base_of_v<Queuable, JOB >
     class JobQueue {
         friend JobSystem;
         std::atomic_flag m_lock = ATOMIC_FLAG_INIT;  //for locking the queue
@@ -392,8 +393,8 @@ namespace vgjs {
         std::vector<std::unique_ptr<std::mutex>>                                  m_mutex;
         std::unordered_map<tag_t,std::unique_ptr<JobQueue<Job_base>>,tag_t::hash> m_tag_queues;
 
-        static inline thread_local JobQueue<Job,false>    m_recycle;              ///<save old jobs for recycling
-        static inline thread_local JobQueue<Job,false>    m_delete;               ///<save old jobs for recycling
+        static inline thread_local JobQueue<Job,false>    m_recycle;        ///<save old jobs for recycling
+        static inline thread_local JobQueue<Job,false>    m_delete;         ///<save old jobs for deleting
         n_pmr::vector<n_pmr::vector<JobLog>>	m_logs;				    ///< log the start and stop times of jobs
         bool                                    m_logging = false;      ///< if true then jobs will be logged
         std::map<int32_t, std::string>          m_types;                ///<map types to a string for logging
