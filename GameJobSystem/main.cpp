@@ -37,7 +37,7 @@ void driver1() {
 int main( int argc, char* argv[])
 {
 	int num = argc > 1 ? std::stoi(argv[1]) : 0;
-	JobSystem::instance(thread_count_t{num});
+	JobSystem js(thread_count_t{num});
 	
 	schedule(driver1);
 

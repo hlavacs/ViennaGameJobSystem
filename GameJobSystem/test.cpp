@@ -122,7 +122,7 @@ namespace test {
 	Coro<> test_utilization_drop( int sec) {
 		auto start = high_resolution_clock::now();
 		auto duration = duration_cast<seconds>(high_resolution_clock::now() - start);
-		auto& js = JobSystem::instance();
+		JobSystem js;
 		auto num = js.get_thread_count().value / 3;
 		num = 1; // std::max(num, 1);
 		std::pmr::vector<Function> perfv{};
@@ -147,7 +147,7 @@ namespace test {
 
 	template<bool WITHALLOCATE = false, typename FT1 = Function, typename FT2 = std::function<void(void)>>
 	Coro<std::tuple<double,double>> performance_function(bool print = true, bool wrtfunc = true, int num = 1000, int micro = 1, std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) {
-		auto& js = JobSystem::instance();
+		JobSystem js;
 
 		std::pmr::vector<FT2> perfv2{mr};
 		if constexpr (!WITHALLOCATE) {
@@ -213,7 +213,7 @@ namespace test {
 		int mdt = dt1;
 		bool wrt_function = true; //speedup wrt to sequential function calls w/o JS
 
-		auto& js = JobSystem::instance();
+		JobSystem js;
 
 		std::cout << "\nPerformance for " << text << " on " << js.get_thread_count().value << " threads\n\n";
 		int step = 0;
@@ -238,7 +238,7 @@ namespace test {
 	Coro<> start_test() {
 		int number = 0;
 		std::atomic<int> counter = 0;
-		auto& js = JobSystem::instance();
+		JobSystem js;
 
 		std::cout << "\n\nTest utilization drop\n";
 		co_await test_utilization_drop(4);

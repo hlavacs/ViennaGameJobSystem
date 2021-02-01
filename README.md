@@ -23,7 +23,7 @@ VGJS runs a number of *N* worker threads, *each* having *two* work queues, a *lo
 Each thread continuously grabs jobs from one of its queues and runs them. If the workload is split into a large number of small tasks then all CPU cores continuously do work and achieve a high degree of parallelism.
 
 ## Using the Job system
-The job system is started by accessing its singleton pointer with *vgjs::JobSystem::instance()*.
+The job system is started by creating an instance of class *vgjs::JobSystem*.
 The system is destroyed by calling *vgjs::terminate()*.
 The main thread can wait for this termination by calling *vgjs::wait_for_termination()*.
 
@@ -52,7 +52,7 @@ The main thread can wait for this termination by calling *vgjs::wait_for_termina
 
     int main()
     {
-        JobSystem::instance();      //create the job system
+        JobSystem js;               //create the job system
         schedule( [=](){test(5);} );//schedule a lambda function
         wait_for_termination();     //wait for the last thread to terminate
         return 0;
@@ -73,7 +73,7 @@ In the *main()* function, first the job system is initialized, then a single fun
 
 The function *printData()* is called 5 times, all runs are concurrent to each other, mingling the output somewhat.
 
-The call to *JobSystem::instance()* first creates the job system, and afterwards retrieves a reference to its singleton instance. It accepts three parameters, which can be provided or not. They are only used when the system is created:
+Instances of class *JobSystem* allow accessing the job system and are *monostate*. They accept three parameters, which can be provided or not. They are only used when the system is created, i.e. when the first instance is created. Afterwards, the parameters are ignored.
 
   	/**
     * \brief JobSystem class constructor
@@ -90,9 +90,9 @@ If the second parameter *start_idx* is not 0, then the main thread should enter 
 
     int main()
     {
-        JobSystem::instance(0, 1);  //start only N-1 threads, leave thread 0 for now
+        JobSystem js(0, 1);         //start only N-1 threads, leave thread 0 for now
         schedule( [=](){test(5);} );//schedule a lambda function
-        JobSystem::instance().thread_task(0); //main thread enters the job system as thread 0
+        js.thread_task(0);          //main thread enters the job system as thread 0
         wait_for_termination();     //wait for the last thread to terminate
         return 0;
     }
@@ -107,7 +107,7 @@ Finally, the third parameters specifies a memory resource to be used for allocat
 
     int main()
     {
-        JobSystem::instance(0, 0, &g_global_mem); //use the memory resource g_global_mem to allocate job structures
+        JobSystem js(0, 0, &g_global_mem); //use the memory resource g_global_mem to allocate job structures
         schedule( [=](){test(5);} );//schedule a lambda function
         wait_for_termination();     //wait for the last thread to terminate
         return 0;
@@ -192,9 +192,9 @@ Internally, additionally to the *future*, also a *promise* of type *Coro_promise
     //use schedule( [=](){...} ) from main()
     int main() {
       	using namespace vgjs;
-      	JobSystem::instance();               //create VGJS
+      	JobSystem js;                        //create VGJS
       	schedule([=]() { other_fun(5); });   //schedule function with lambda
-        wait_for_termination(); //wait until vgjs::terminate() was called
+        wait_for_termination();             //wait until vgjs::terminate() was called
     }
 
 In the above example, main() schedules a C++ function other_fun() using a lambda, and then waits until VGJS shuts down. The function other_fun() itself schedules a coro that calls itself to compute the factorial of a given parameter. other_fun() also schedules a continuation that is run once all children of other_fun() have finished. This continuation calls vgjs::terminate() to shut down VGJS. The output is

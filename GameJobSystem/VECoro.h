@@ -65,7 +65,7 @@ namespace vgjs {
     template<typename T>
     requires CORO<T>   
     uint32_t schedule( T&& coro, tag_t tg = tag_t{}, Job_base* parent = current_job(), int32_t children = 1) noexcept {
-        auto& js = JobSystem::instance();
+        JobSystem js;
 
         auto promise = coro.promise();
 
@@ -149,7 +149,7 @@ namespace vgjs {
         * \brief Test whether the job is already on the right thread.
         */
         bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
-            return (m_thread_index.value == JobSystem::instance().get_thread_index().value);
+            return (m_thread_index.value == JobSystem().get_thread_index().value);
         }
 
         /**
@@ -158,7 +158,7 @@ namespace vgjs {
         */
         void await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
             h.promise().m_thread_index = m_thread_index;
-            JobSystem::instance().schedule_job(&h.promise());
+            JobSystem().schedule_job(&h.promise());
         }
 
         /**
@@ -191,7 +191,7 @@ namespace vgjs {
         * \returns true of the coro should be suspended, else false.
         */
         bool await_suspend(n_exp::coroutine_handle<Coro_promise<PT>> h) noexcept {
-            m_number = JobSystem::instance().schedule_tag(m_tag);
+            m_number = JobSystem().schedule_tag(m_tag);
             return m_number > 0;     //if jobs were scheduled - await them
         }
 
@@ -388,12 +388,12 @@ namespace vgjs {
 
             if (promise.m_parent != nullptr) {          //if there is a parent
                 if (promise.m_is_parent_function) {       //if it is a Job
-                    JobSystem::instance().child_finished((Job*)promise.m_parent); //indicate that this child has finished
+                    JobSystem().child_finished((Job*)promise.m_parent); //indicate that this child has finished
                 }
                 else {  //parent is a coro
                     uint32_t num = promise.m_parent->m_children.fetch_sub(1);   //one less child
                     if (num == 1) {                                             //was it the last child?
-                        JobSystem::instance().schedule_job(promise.m_parent);      //if last reschedule the parent coro
+                        JobSystem().schedule_job(promise.m_parent);      //if last reschedule the parent coro
                     }
                 }
             }
@@ -425,12 +425,12 @@ namespace vgjs {
 
             if (parent != nullptr) {          //if there is a parent
                 if (is_parent_function) {       //if it is a Job
-                    JobSystem::instance().child_finished((Job*)parent);//indicate that this child has finished
+                    JobSystem().child_finished((Job*)parent);//indicate that this child has finished
                 }
                 else {
                     uint32_t num = parent->m_children.fetch_sub(1);        //one less child
                     if (num == 1) {                                             //was it the last child?
-                        JobSystem::instance().schedule_job(parent);      //if last reschedule the parent coro
+                        JobSystem().schedule_job(parent);      //if last reschedule the parent coro
                     }
                 }
             }
@@ -960,12 +960,12 @@ namespace vgjs {
 
         if (parent != nullptr) {          //if there is a parent
             if (is_parent_function) {       //if it is a Job
-                JobSystem::instance().child_finished((Job*)parent); //indicate that this child has suspended
+                JobSystem().child_finished((Job*)parent); //indicate that this child has suspended
             }
             else {  //parent is a coro
                 uint32_t num = parent->m_children.fetch_sub(1);   //one less child
                 if (num == 1) {                                   //was it the last child?
-                    JobSystem::instance().schedule_job(parent);       //if last reschedule the parent coro
+                    JobSystem().schedule_job(parent);       //if last reschedule the parent coro
                 }
             }
         }
@@ -984,12 +984,12 @@ namespace vgjs {
 
         if (parent != nullptr) {            //if there is a parent
             if (is_parent_function) {       //if it is a Job
-                JobSystem::instance().child_finished((Job*)promise.m_parent);//indicate that this child has finished
+                JobSystem().child_finished((Job*)promise.m_parent);//indicate that this child has finished
             }
             else {
                 uint32_t num = parent->m_children.fetch_sub(1);   //one less child
                 if (num == 1) {                                   //was it the last child?
-                    JobSystem::instance().schedule_job(parent);       //if last reschedule the parent coro
+                    JobSystem().schedule_job(parent);       //if last reschedule the parent coro
                 }
             }
         }
@@ -1053,7 +1053,7 @@ namespace vgjs {
     template<typename Class, typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Class, Args&&... args) noexcept {
         return operator new(sz, std::allocator_arg, 
-            JobSystem::is_instance_created() ? JobSystem::instance().memory_resource() : std::pmr::new_delete_resource(), 
+            JobSystem::is_instance_created() ? JobSystem().memory_resource() : std::pmr::new_delete_resource(), 
             args...);
     }
 
@@ -1066,7 +1066,7 @@ namespace vgjs {
     template<typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Args&&... args) noexcept {
         return operator new(sz, std::allocator_arg, 
-            JobSystem::is_instance_created() ? JobSystem::instance().memory_resource() : std::pmr::new_delete_resource(),
+            JobSystem::is_instance_created() ? JobSystem().memory_resource() : std::pmr::new_delete_resource(),
             args...);
     }
 

@@ -102,7 +102,7 @@ namespace mixed {
     void test() {
         std::cout << "Starting mixed test()\n";
 
-        auto& types = JobSystem::instance().types();
+        auto& types = JobSystem().types();
         types[0] = "Driver";
         types[1] = "printData";
         types[2] = "printDataCoro";
@@ -110,7 +110,7 @@ namespace mixed {
         types[4] = "loop";
         types[5] = "compute";
 
-        //JobSystem::instance().enable_logging();
+        //JobSystem().enable_logging();
 
         schedule(Function( [=]() { driver(5, "Driver"); }, thread_index_t{}, thread_type_t{ 0 }, thread_id_t{ 0 }));
         //schedule( F( driver(4, "Driver") ) );
