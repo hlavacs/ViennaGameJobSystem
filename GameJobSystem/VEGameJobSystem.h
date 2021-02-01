@@ -605,7 +605,7 @@ namespace vgjs {
                 }
             };
 
-           std::cout << "Thread " << m_thread_index.value << " left " << m_thread_count.load() << "\n";
+           //std::cout << "Thread " << m_thread_index.value << " left " << m_thread_count.load() << "\n";
 
            m_global_queues[m_thread_index.value].clear(); //clear your global queue
            m_local_queues[m_thread_index.value].clear();  //clear your local queue

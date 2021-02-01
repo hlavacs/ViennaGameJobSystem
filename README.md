@@ -27,7 +27,6 @@ The job system is started by creating an instance of class *vgjs::JobSystem*.
 The system is destroyed by calling *vgjs::terminate()*.
 The main thread can wait for this termination by calling *vgjs::wait_for_termination()*.
 
-
     #include "VEGameJobSystem.h"
     #include "VECoro.h"
 
@@ -59,7 +58,8 @@ The main thread can wait for this termination by calling *vgjs::wait_for_termina
     }
 
 In the above example we see the three main possibilities to schedule C++ functions:
-* using *std::bind()*,
+* using a function pointer of type *void (\*)()*
+* using *std::bind()* or *std::function<void(void)>*
 * using a lambda function *\[=\](){}* (always use '=' for copying the local parameters!), or
 * additionally using the class Function{}, which enables to pass on more parameters.
 
@@ -119,7 +119,7 @@ If none is specified, the job system uses standard new and delete.
 There are two types of tasks that can be scheduled to the job system - C++ *functions* and *coroutines*. It is important to note that both functions and coroutines themselves can both schedule again functions and coroutines. However, how tasks are scheduled depends on the type of task that does this.
 In a *function*, scheduling is done via a call to the *vgjs::schedule()* function wrapper, which in turn calls the job system to schedule the function. In a *coroutine*, scheduling is done with the *co_await* operator.
 
-*Scheduled* C++ functions can be wrapped into *std::function<void(void)>* (e.g. create by using *std::bind()* or a lambda of type *\[=\](){})*, or into the class *Function*, the latter allowing to specify more parameters. Of course, a function can simply *call* another function any time without scheduling it.
+*Scheduled* C++ functions can be either of type *void (\*)()* or wrapped into *std::function<void(void)>* (e.g. create by using *std::bind()* or a lambda of type *\[=\](){})*, or into the class *Function*, the latter allowing to specify more parameters. Of course, a function can simply *call* another function any time without scheduling it.
 
     void any_function() { //this is a function, so we must use schedule()
         schedule( std::bind(loop, 10) ); //schedule function loop(10) to random thread
@@ -240,13 +240,17 @@ Since the coro suspends and awaits the finishing of all of its children, this wo
         co_return some_float; //return a float
     };
 
+    void another_func() { //void (*)()
+      //...
+    }
+
     auto [ret1, ret2] //two values -> tuple, use structured binding
         = co_await parallel(
             [=](){ some_func(); } //no return value
             , coro_void(1)        //no return value
             , coro_int(2.1)       //returns int
-            , coro_float(true),   //returns float
-            Function{ [=](){ another_func(); } }; //no return value
+            , coro_float(true)    //returns float
+            , another_func );     //do not use () for void (*)()
 
 In this example, four children are started, one function and three coros. Only coros can return a value, but one of the coros returns void, so there are only two return values (packed into a tuple), *ret1* being of type *int*, and *ret2* being of type *float*. Internally, *parallel()* results in a *std::tuple* holding references to the parameters, and you can use *std::tuple* instead of *parallel()* (see the implementation of *parallel()*).
 
