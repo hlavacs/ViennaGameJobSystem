@@ -12,11 +12,11 @@ Important features are:
 ## Library Usage
 VGJS is a 2-header library that should be included in C++ source files where it is needed:
 
-    #include "VEGameJobSystem.h"
+    #include "VGJS.h"
 
 If you additionally want coroutines then also include
 
-    #include "VECoro.h"
+    #include "VGJSCoro.h"
 
 VGJS runs a number of *N* worker threads, *each* having *two* work queues, a *local* queue and a *global* queue. When scheduling jobs, a target thread *K* can be specified or not. If the job is specified to run on thread *K* (using *vgjs\:\:thread_index_t{K}* ), then the job is put into thread *K*'s **local** queue. Only thread *K* can take it from there. If no thread is specified or an empty *vgjs\:\:thread_index_t{}* is chosen, then a random thread *J* is chosen and the job is inserted into thread *J*'s **global** queue. Any thread can steal it from there, if it runs out of local jobs. This paradigm is called *work stealing*. By using multiple global queues, the amount of contention between threads is minimized.
 
@@ -27,8 +27,8 @@ The job system is started by creating an instance of class *vgjs::JobSystem*.
 The system is destroyed by calling *vgjs::terminate()*.
 The main thread can wait for this termination by calling *vgjs::wait_for_termination()*.
 
-    #include "VEGameJobSystem.h"
-    #include "VECoro.h"
+    #include "VGJS.h"
+    #include "VGJSCoro.h"
 
     using namespace vgjs;
 
