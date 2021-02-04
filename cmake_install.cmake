@@ -34,7 +34,10 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("C:/Users/hlavacs/Documents/GitHub/GameJobSystem/src/cmake_install.cmake")
+  include("C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/docu/cmake_install.cmake")
+  include("C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/examples/cmake_install.cmake")
+  include("C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/performance/cmake_install.cmake")
+  include("C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/test/cmake_install.cmake")
 
 endif()
 

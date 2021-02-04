@@ -66,7 +66,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\hlavacs\Documents\GitHub\GameJobSystem\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -76,7 +76,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\hlavacs\Documents\GitHub\GameJobSystem\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -86,7 +86,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <Midl>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\hlavacs\Documents\GitHub\GameJobSystem\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -96,7 +96,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <Midl>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\hlavacs\Documents\GitHub\GameJobSystem\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -169,9 +169,21 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </ProjectReference>
-    <ProjectReference Include="C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\vgjs.vcxproj">
-      <Project>{BD7DA471-EAD2-3D4F-95A3-65A72CE74524}</Project>
-      <Name>vgjs</Name>
+    <ProjectReference Include="C:\Users\hlavacs\Documents\GitHub\GameJobSystem\examples\docu\docu.vcxproj">
+      <Project>{78EDB690-4870-3D03-A6C4-7998C63CEA41}</Project>
+      <Name>docu</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\hlavacs\Documents\GitHub\GameJobSystem\examples\examples\examples.vcxproj">
+      <Project>{A961E99E-1144-3880-9F27-932AC6C82B97}</Project>
+      <Name>examples</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\hlavacs\Documents\GitHub\GameJobSystem\examples\performance\performance.vcxproj">
+      <Project>{0B677A66-C33E-3925-B427-2BA95E9C33DF}</Project>
+      <Name>performance</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\hlavacs\Documents\GitHub\GameJobSystem\examples\test\test.vcxproj">
+      <Project>{E22810E2-5471-3918-9BDA-DE3928E985E4}</Project>
+      <Name>test</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

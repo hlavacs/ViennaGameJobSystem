@@ -1,0 +1,10 @@
+^C:\USERS\HLAVACS\DOCUMENTS\GITHUB\GAMEJOBSYSTEM\EXAMPLES\EXAMPLES\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/hlavacs/Documents/GitHub/GameJobSystem -BC:/Users/hlavacs/Documents/GitHub/GameJobSystem --check-stamp-file C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/examples/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

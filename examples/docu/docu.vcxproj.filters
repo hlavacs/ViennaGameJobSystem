@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\hlavacs\Documents\GitHub\GameJobSystem\examples\docu\docu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\hlavacs\Documents\GitHub\GameJobSystem\include\VGJS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\hlavacs\Documents\GitHub\GameJobSystem\include\VGJSCoro.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\hlavacs\Documents\GitHub\GameJobSystem\examples\docu\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{99D3FFDD-F961-39DF-82AF-F2520B284CA1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4B0E1789-E1BE-32BF-99F4-FCE4B9DC006F}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
