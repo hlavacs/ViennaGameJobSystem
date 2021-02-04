@@ -1,0 +1,830 @@
+﻿  docu.cpp
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,35): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,49): error C2061: Syntaxfehler: Bezeichner "suspend_always"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,34): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(169): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(160,13): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,28): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(211): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(221,30): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(371): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tuple<PT,Ts...>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(381,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(402): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::yield_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(387,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(416,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(439): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::final_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(422,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,32): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,35): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,41): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,43): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,35): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C3646: "initial_suspend": Unbekannter Überschreibungsspezifizierer
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C2059: Syntaxfehler: "("
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,51): error C2334: Unerwartete(s) Token vor "{"; sichtbarer Funktionstext wird übersprungen
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,98): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,91): error C2614: "vgjs::Coro_promise_base": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,28): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(488,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(535,41): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(606): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro_promise<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(748): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,24): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2535: "vgjs::Coro<T>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(665): message : Siehe Deklaration von "vgjs::Coro<T>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,40): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "is_parent_function": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(678,31): error C3861: "value_ptr": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(687,43): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(697,13): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(706,42): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(707,21): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(708,17): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(720,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(731,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(757,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,48): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,41): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,58): error C2275: "vgjs::Coro_promise<void>": Ungültige Verwendung dieses Typs als Ausdruck
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,79): error C2039: "from_promise" ist kein Member von "`global namespace'".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(782,1): error C3861: "from_promise": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(824): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(831): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,21): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2535: "vgjs::Coro<void>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(859): message : Siehe Deklaration von "vgjs::Coro<void>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,26): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "is_parent_function": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,23): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,18): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,7): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,43): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,13): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,55): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,44): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(891,42): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(892,21): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(893,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(930,28): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(942,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(943,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,59): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,75): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): fatal error C1003: Mehr als 100 Fehler gefunden; Kompilierung wird abgebrochen.
+  example_coro.cpp
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,35): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,49): error C2061: Syntaxfehler: Bezeichner "suspend_always"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,34): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(169): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(160,13): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,28): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(211): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(221,30): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(371): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tuple<PT,Ts...>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(381,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(402): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::yield_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(387,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(416,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(439): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::final_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(422,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,32): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,35): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,41): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,43): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,35): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C3646: "initial_suspend": Unbekannter Überschreibungsspezifizierer
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C2059: Syntaxfehler: "("
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,51): error C2334: Unerwartete(s) Token vor "{"; sichtbarer Funktionstext wird übersprungen
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,98): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,91): error C2614: "vgjs::Coro_promise_base": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,28): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(488,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(535,41): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(606): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro_promise<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(748): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,24): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2535: "vgjs::Coro<T>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(665): message : Siehe Deklaration von "vgjs::Coro<T>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,40): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "is_parent_function": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(678,31): error C3861: "value_ptr": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(687,43): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(697,13): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(706,42): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(707,21): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(708,17): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(720,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(731,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(757,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,48): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,41): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,58): error C2275: "vgjs::Coro_promise<void>": Ungültige Verwendung dieses Typs als Ausdruck
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,79): error C2039: "from_promise" ist kein Member von "`global namespace'".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(782,1): error C3861: "from_promise": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(824): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(831): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,21): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2535: "vgjs::Coro<void>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(859): message : Siehe Deklaration von "vgjs::Coro<void>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,26): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "is_parent_function": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,23): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,18): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,7): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,43): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,13): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,55): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,44): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(891,42): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(892,21): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(893,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(930,28): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(942,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(943,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,59): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,75): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): fatal error C1003: Mehr als 100 Fehler gefunden; Kompilierung wird abgebrochen.
+  example_func.cpp
+  example_mixed.cpp
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,35): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,49): error C2061: Syntaxfehler: Bezeichner "suspend_always"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,34): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(169): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(160,13): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,28): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(211): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(221,30): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(371): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tuple<PT,Ts...>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(381,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(402): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::yield_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(387,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(416,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(439): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::final_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(422,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,32): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,35): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,41): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,43): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,35): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C3646: "initial_suspend": Unbekannter Überschreibungsspezifizierer
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C2059: Syntaxfehler: "("
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,51): error C2334: Unerwartete(s) Token vor "{"; sichtbarer Funktionstext wird übersprungen
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,98): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,91): error C2614: "vgjs::Coro_promise_base": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,28): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(488,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(535,41): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(606): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro_promise<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(748): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,24): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2535: "vgjs::Coro<T>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(665): message : Siehe Deklaration von "vgjs::Coro<T>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,40): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "is_parent_function": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(678,31): error C3861: "value_ptr": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(687,43): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(697,13): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(706,42): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(707,21): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(708,17): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(720,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(731,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(757,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,48): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,41): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,58): error C2275: "vgjs::Coro_promise<void>": Ungültige Verwendung dieses Typs als Ausdruck
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,79): error C2039: "from_promise" ist kein Member von "`global namespace'".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(782,1): error C3861: "from_promise": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(824): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(831): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,21): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2535: "vgjs::Coro<void>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(859): message : Siehe Deklaration von "vgjs::Coro<void>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,26): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "is_parent_function": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,23): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,18): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,7): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,43): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,13): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,55): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,44): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(891,42): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(892,21): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(893,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(930,28): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(942,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(943,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,59): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,75): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): fatal error C1003: Mehr als 100 Fehler gefunden; Kompilierung wird abgebrochen.
+  example_tags.cpp
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,35): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,49): error C2061: Syntaxfehler: Bezeichner "suspend_always"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,34): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(169): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(160,13): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,28): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(211): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(221,30): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(371): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tuple<PT,Ts...>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(381,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(402): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::yield_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(387,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(416,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(439): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::final_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(422,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,32): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,35): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,41): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,43): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,35): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C3646: "initial_suspend": Unbekannter Überschreibungsspezifizierer
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C2059: Syntaxfehler: "("
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,51): error C2334: Unerwartete(s) Token vor "{"; sichtbarer Funktionstext wird übersprungen
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,98): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,91): error C2614: "vgjs::Coro_promise_base": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,28): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(488,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(535,41): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(606): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro_promise<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(748): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,24): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2535: "vgjs::Coro<T>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(665): message : Siehe Deklaration von "vgjs::Coro<T>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,40): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "is_parent_function": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(678,31): error C3861: "value_ptr": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(687,43): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(697,13): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(706,42): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(707,21): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(708,17): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(720,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(731,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(757,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,48): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,41): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,58): error C2275: "vgjs::Coro_promise<void>": Ungültige Verwendung dieses Typs als Ausdruck
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,79): error C2039: "from_promise" ist kein Member von "`global namespace'".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(782,1): error C3861: "from_promise": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(824): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(831): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,21): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2535: "vgjs::Coro<void>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(859): message : Siehe Deklaration von "vgjs::Coro<void>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,26): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "is_parent_function": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,23): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,18): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,7): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,43): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,13): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,55): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,44): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(891,42): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(892,21): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(893,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(930,28): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(942,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(943,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,59): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,75): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): fatal error C1003: Mehr als 100 Fehler gefunden; Kompilierung wird abgebrochen.
+  main.cpp
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,35): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,49): error C2061: Syntaxfehler: Bezeichner "suspend_always"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,34): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(169): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(160,13): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,28): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(211): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(221,30): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(371): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tuple<PT,Ts...>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(381,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(402): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::yield_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(387,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(416,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(439): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::final_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(422,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,32): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,35): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,41): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,43): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,35): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C3646: "initial_suspend": Unbekannter Überschreibungsspezifizierer
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C2059: Syntaxfehler: "("
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,51): error C2334: Unerwartete(s) Token vor "{"; sichtbarer Funktionstext wird übersprungen
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,98): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,91): error C2614: "vgjs::Coro_promise_base": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,28): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(488,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(535,41): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(606): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro_promise<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(748): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,24): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2535: "vgjs::Coro<T>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(665): message : Siehe Deklaration von "vgjs::Coro<T>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,40): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "is_parent_function": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(678,31): error C3861: "value_ptr": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(687,43): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(697,13): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(706,42): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(707,21): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(708,17): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(720,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(731,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(757,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,48): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,41): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,58): error C2275: "vgjs::Coro_promise<void>": Ungültige Verwendung dieses Typs als Ausdruck
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,79): error C2039: "from_promise" ist kein Member von "`global namespace'".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(782,1): error C3861: "from_promise": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(824): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(831): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,21): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2535: "vgjs::Coro<void>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(859): message : Siehe Deklaration von "vgjs::Coro<void>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,26): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "is_parent_function": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,23): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,18): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,7): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,43): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,13): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,55): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,44): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(891,42): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(892,21): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(893,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(930,28): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(942,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(943,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,59): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,75): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): fatal error C1003: Mehr als 100 Fehler gefunden; Kompilierung wird abgebrochen.
+  test.cpp
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,35): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(136,49): error C2061: Syntaxfehler: Bezeichner "suspend_always"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,34): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(169): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(159,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(160,13): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(161,39): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,28): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(211): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<PT>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(193,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(221,30): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(371): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tuple<PT,Ts...>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(266,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(289,65): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(381,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(402): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::yield_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(386,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(387,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(416,35): error C3861: "suspend_always": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(439): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::final_awaiter<U>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(421,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(422,29): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,32): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,35): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(457,41): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,43): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,35): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C3646: "initial_suspend": Unbekannter Überschreibungsspezifizierer
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,39): error C2059: Syntaxfehler: "("
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(477,51): error C2334: Unerwartete(s) Token vor "{"; sichtbarer Funktionstext wird übersprungen
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,98): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(467,91): error C2614: "vgjs::Coro_promise_base": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(487,28): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(488,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(535,41): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(606): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro_promise<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(748): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::Coro<T>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(659,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,24): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(673,1): error C2535: "vgjs::Coro<T>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(665): message : Siehe Deklaration von "vgjs::Coro<T>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C2065: "h": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,26): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,40): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "h": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(676,2): error C3861: "is_parent_function": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(678,31): error C3861: "value_ptr": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(687,43): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(697,13): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(706,42): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(707,21): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(708,17): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(720,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(731,20): error C3861: "m_coro": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(757,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(758,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,48): error C2039: "suspend_always" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(765,1): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,35): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(766,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,41): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,58): error C2275: "vgjs::Coro_promise<void>": Ungültige Verwendung dieses Typs als Ausdruck
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(783,79): error C2039: "from_promise" ist kein Member von "`global namespace'".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(782,1): error C3861: "from_promise": Bezeichner wurde nicht gefunden.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(145,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(824): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_resume_on<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(176,5): error C2504: "suspend_always": Basisklasse undefiniert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(831): message : Siehe Verweis auf die gerade kompilierte Klasse Vorlage-Instanziierung "vgjs::awaitable_tag<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,16): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(853,1): error C2238: Unerwartete(s) Token vor ";"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,21): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2061: Syntaxfehler: Bezeichner "coroutine_handle"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(866,1): error C2535: "vgjs::Coro<void>::Coro(void) noexcept": Memberfunktion bereits definiert oder deklariert
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(859): message : Siehe Deklaration von "vgjs::Coro<void>::Coro"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,26): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "is_parent_function": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,2): error C2065: "coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(867,23): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,18): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,7): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(874,43): error C2614: "vgjs::Coro<void>": Unzulässige Elementinitialisierung: "m_coro" ist weder Basis noch Element
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,13): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,55): error C2039: "m_coro" ist kein Member von "vgjs::Coro<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(845): message : Siehe Deklaration von "vgjs::Coro<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(883,44): error C2672: "std::exchange": keine übereinstimmende überladene Funktion gefunden
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(891,42): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(892,21): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(893,17): error C2065: "m_coro": nichtdeklarierter Bezeichner
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(930,28): error C2039: "coroutine_handle" ist kein Member von "n_exp".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VEGameJobSystem.h(42): message : Siehe Deklaration von "n_exp"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(942,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(943,27): error C2039: "m_coro" ist kein Member von "vgjs::Coro_promise<void>".
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(773): message : Siehe Deklaration von "vgjs::Coro_promise<void>"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,59): error C2039: "coroutine_handle" ist kein Member von "std::experimental".
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.28.29333\include\fstream(42): message : Siehe Deklaration von "std::experimental"
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,75): error C7568: Nach der angenommenen Funktionsvorlage "coroutine_handle" fehlt die Argumentliste.
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): error C2062: "unknown-type"-Typ unerwartet
+C:\Users\hlavacs\Documents\GitHub\GameJobSystem\src\VECoro.h(956,96): fatal error C1003: Mehr als 100 Fehler gefunden; Kompilierung wird abgebrochen.
+  Code wird generiert...
