@@ -1,0 +1,5 @@
+var searchData=
+[
+  ['final_5fsuspend_218',['final_suspend',['../classvgjs_1_1_coro__promise.html#a4ce6aef779d645f3fc301ac212bc8100',1,'vgjs::Coro_promise::final_suspend()'],['../classvgjs_1_1_coro__promise_3_01void_01_4.html#a95fa2317be8e09b51b960db6c6013c80',1,'vgjs::Coro_promise&lt; void &gt;::final_suspend()']]],
+  ['function_219',['Function',['../structvgjs_1_1_function.html#afa0c320ef134a17d0950104e24e7369b',1,'vgjs::Function::Function(std::function&lt; void(void)&gt; &amp;f, thread_index_t index=thread_index_t{}, thread_type_t type=thread_type_t{}, thread_id_t id=thread_id_t{})'],['../structvgjs_1_1_function.html#a972a08724f9b496bdcea60ac17f7b155',1,'vgjs::Function::Function(std::function&lt; void(void)&gt; &amp;&amp;f, thread_index_t index=thread_index_t{}, thread_type_t type=thread_type_t{}, thread_id_t id=thread_id_t{})'],['../structvgjs_1_1_function.html#a1ecf0fe6d4f0183a27b7f1466e66b2b7',1,'vgjs::Function::Function(const Function &amp;f)=default'],['../structvgjs_1_1_function.html#a13d9e711754c57a2e87323af9354d515',1,'vgjs::Function::Function(Function &amp;&amp;f)=default']]]
+];
