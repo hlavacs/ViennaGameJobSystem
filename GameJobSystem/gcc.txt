@@ -1,2 +1,0 @@
-g++ *.cpp -pthread -std=c++20 -fconcepts -fcoroutines
-
