@@ -2,8 +2,6 @@
 cmake_minimum_required (VERSION 3.1.0)
 project (VGJS)
 
-set(default_build_type "Debug")
-#set(CMAKE_CXX_FLAGS "/await" "/EHsc")
 set(CMAKE_CXX_FLAGS_RELEASE /O2)
 
 add_compile_options(/await)
