@@ -1,7 +1,0 @@
-C:/Users/hlavacs/Documents/GitHub/GameJobSystem/CMakeFiles/doxygen.dir
-C:/Users/hlavacs/Documents/GitHub/GameJobSystem/CMakeFiles/ALL_BUILD.dir
-C:/Users/hlavacs/Documents/GitHub/GameJobSystem/CMakeFiles/ZERO_CHECK.dir
-C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/docu/CMakeFiles/docu.dir
-C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/examples/CMakeFiles/examples.dir
-C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/performance/CMakeFiles/performance.dir
-C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/test/CMakeFiles/test.dir
