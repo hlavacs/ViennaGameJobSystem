@@ -37,6 +37,7 @@ tests/.DS_Store
 # database files
 *.VC.db
 *.VC.opendb
+*.sln
 
 # Assembler output
 *.asm
