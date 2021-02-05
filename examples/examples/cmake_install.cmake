@@ -1,8 +1,8 @@
-# Install script for directory: C:/Users/hlavacs/Documents/GitHub/GameJobSystem/examples/examples
+# Install script for directory: D:/data/Vulkan/GameJobSystem/examples/examples
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "C:/Program Files (x86)/VGJS")
+  set(CMAKE_INSTALL_PREFIX "C:/Program Files/VGJS")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 

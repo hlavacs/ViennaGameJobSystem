@@ -20,6 +20,8 @@ CTestTestfile.cmake
 CMakeDoxyfile.in
 CMakeDoxygenDefaults.cmake
 _deps
+examples.dir
+*.cmake
 
 #CLion files
 .idea/
@@ -147,6 +149,7 @@ ALL_BUILD.vcxproj.filters
 ZERO_CHECK.vcxproj.filters
 doxygen.vcxproj.filters
 Doxyfile.doxygen
+*.vcxproj*
 
 # Visual C++ cache files
 ipch/
