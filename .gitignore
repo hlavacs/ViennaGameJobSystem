@@ -21,6 +21,7 @@ CMakeDoxyfile.in
 CMakeDoxygenDefaults.cmake
 _deps
 **/examples.dir
+**/*.dir
 **/*.cmake
 
 # MSVC cmake project files
