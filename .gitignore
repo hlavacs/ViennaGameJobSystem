@@ -29,6 +29,7 @@ _deps
 # MSVC cmake project files
 ALL_BUILD.vcxproj
 ZERO_CHECK.vcxproj
+**/Doxyfile.doxygen
 doxygen.vcxproj
 **/src/vve.vcxproj
 ALL_BUILD.vcxproj.filters
