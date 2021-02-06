@@ -87,6 +87,10 @@ namespace vgjs {
         struct equal_to {
             constexpr bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; };
         };
+
+        bool is_null() {
+            return value == null;
+        }
     };
 
     using parent_t = int_type<int, struct P0, -1>;
