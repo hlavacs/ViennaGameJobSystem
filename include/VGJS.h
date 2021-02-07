@@ -62,14 +62,14 @@ namespace vgjs {
     class Job_base;
     class JobSystem;
 
-    template<typename T, typename P, long int D = -1>
+    template<typename T, typename P, auto D = -1>
     struct int_type {
         using type_name = T;
         const T null = static_cast<T>(D);
 
         T value{};
         int_type() {
-            static_assert(!(std::is_unsigned_v<T> && static_cast<int>(D) < 0));
+            static_assert(!(std::is_unsigned_v<T> && std::is_signed_v<decltype(D)> && static_cast<int>(D) < 0));
             value = static_cast<T>(D);
         };
         explicit int_type(const T& t) : value(t) {};
@@ -93,12 +93,12 @@ namespace vgjs {
         }
     };
 
-    using parent_t = int_type<int, struct P0, -1>;
     using thread_index_t = int_type<int, struct P0, -1>;
     using thread_id_t = int_type<int, struct P1, -1>;
     using thread_type_t = int_type<int, struct P2, -1>;
     using thread_count_t = int_type<int, struct P3, -1>;
     using tag_t = int_type<int, struct P4, -1>;
+    using parent_t = int_type<int, struct P5, -1>;
 
     bool is_logging();
     void log_data(  std::chrono::high_resolution_clock::time_point& t1
