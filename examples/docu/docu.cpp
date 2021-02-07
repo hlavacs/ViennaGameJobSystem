@@ -34,7 +34,7 @@ namespace docu {
     namespace docu1_5 {
         //a coroutine that uses a given memory resource to allocate its promise.
         //the coro calls itself to compute i!
-        Coro<int> factorial(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+        Coro<int> factorial(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
             if (i == 0) co_return 1;
             auto j = co_await factorial(std::allocator_arg, mr, i - 1);   //call itself
             std::cout << "Fact " << i*j << std::endl;
