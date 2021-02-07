@@ -321,7 +321,7 @@ namespace vgjs {
         *
         */
         template<typename T>
-        requires !std::is_void_v<T>
+        requires (!std::is_void_v<T>)
         decltype(auto) get_val(Coro<T>& t) {
             return std::make_tuple(t.get());
         }
@@ -334,7 +334,7 @@ namespace vgjs {
         *
         */
         template<typename T>
-        requires !std::is_void_v<T>
+        requires (!std::is_void_v<T>)
         decltype(auto) get_val( n_pmr::vector<Coro<T>>& vec) {
             n_pmr::vector<T> ret;
             ret.reserve(vec.size());

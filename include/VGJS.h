@@ -33,6 +33,8 @@
 #include <chrono>
 #include <string>
 #include <sstream>
+#include <compare>
+#include <unordered_map>
 
 using namespace std::chrono;
 
@@ -42,7 +44,7 @@ using namespace std::chrono;
     namespace n_exp = std::experimental;
     namespace n_pmr = std::pmr;
 #elif(defined(__clang__))
-    #include <coroutine>
+    #include <experimental/coroutine>
     #include <experimental/memory_resource>
     #include <experimental/vector>
     namespace n_exp = std::experimental;
