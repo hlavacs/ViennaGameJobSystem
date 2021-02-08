@@ -321,7 +321,7 @@ namespace vgjs {
         *
         */
         template<typename T>
-        requires !std::is_void_v<T>
+        requires (!std::is_void_v<T>)
         decltype(auto) get_val(Coro<T>& t) {
             return std::make_tuple(t.get());
         }
@@ -334,8 +334,8 @@ namespace vgjs {
         *
         */
         template<typename T>
-        requires !std::is_void_v<T>
-        decltype(auto) get_val( std::pmr::vector<Coro<T>>& vec) {
+        requires (!std::is_void_v<T>)
+        decltype(auto) get_val( n_pmr::vector<Coro<T>>& vec) {
             n_pmr::vector<T> ret;
             ret.reserve(vec.size());
             for (auto& coro : vec) { ret.push_back(coro.get()); }
@@ -1053,7 +1053,7 @@ namespace vgjs {
     template<typename Class, typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Class, Args&&... args) noexcept {
         return operator new(sz, std::allocator_arg, 
-            JobSystem::is_instance_created() ? JobSystem().memory_resource() : std::pmr::new_delete_resource(), 
+            JobSystem::is_instance_created() ? JobSystem().memory_resource() : n_pmr::new_delete_resource(), 
             args...);
     }
 
@@ -1066,7 +1066,7 @@ namespace vgjs {
     template<typename... Args>
     inline void* Coro_promise_base::operator new(std::size_t sz, Args&&... args) noexcept {
         return operator new(sz, std::allocator_arg, 
-            JobSystem::is_instance_created() ? JobSystem().memory_resource() : std::pmr::new_delete_resource(),
+            JobSystem::is_instance_created() ? JobSystem().memory_resource() : n_pmr::new_delete_resource(),
             args...);
     }
 
