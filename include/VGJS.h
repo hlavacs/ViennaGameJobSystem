@@ -74,13 +74,13 @@ namespace vgjs {
             static_assert(!(std::is_unsigned_v<T> && std::is_signed_v<decltype(D)> && static_cast<int>(D) < 0));
             value = static_cast<T>(D);
         };
-        explicit int_type(const T& t) : value(t) {};
-        int_type(const int_type<T, P>& t) : value(t.value) {};
-        int_type(const int_type<T, P>&& t) : value(t.value) {};
-        void operator=(const int_type& rhs) { value = rhs.value; };
-        void operator=(const int_type&& rhs) { value = rhs.value; };
-        auto operator<=>(const int_type& v) const = default;
-        auto operator<=>(const T& v) { return value <=> v; };
+        explicit int_type(const T& t) noexcept : value{t} {};
+        int_type(const int_type<T, P, D>& t) noexcept : value{ t.value } {};
+        int_type(int_type<T, P, D>&& t) noexcept : value{ std::move(t.value) } {};
+        void operator=(const int_type& rhs) noexcept { value = rhs.value; };
+        void operator=(int_type<T, P, D>&& rhs) noexcept { value = std::move(rhs.value); };
+        auto operator<=>(const int_type<T, P, D>& v) const = default;
+        auto operator<=>(const T& v) noexcept { return value <=> v; };
 
         struct hash {
             std::size_t operator()(const int_type<T,P,D>& tg) const { return std::hash<T>()(tg.value); };
