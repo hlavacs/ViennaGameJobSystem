@@ -77,7 +77,7 @@ namespace vgjs {
         explicit int_type(const T& t) noexcept : value{t} {};
         int_type(const int_type<T, P, D>& t) noexcept : value{ t.value } {};
         int_type(int_type<T, P, D>&& t) noexcept : value{ std::move(t.value) } {};
-        void operator=(const int_type& rhs) noexcept { value = rhs.value; };
+        void operator=(const int_type<T, P, D>& rhs) noexcept { value = rhs.value; };
         void operator=(int_type<T, P, D>&& rhs) noexcept { value = std::move(rhs.value); };
         auto operator<=>(const int_type<T, P, D>& v) const = default;
         auto operator<=>(const T& v) noexcept { return value <=> v; };
