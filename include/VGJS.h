@@ -475,8 +475,9 @@ namespace vgjs {
         JobSystem(thread_count_t threadCount = thread_count_t(0), thread_index_t start_idx = thread_index_t(0)
             , n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept {
 
+            if (m_init_counter > 0) return;
             auto cnt = m_init_counter.fetch_add(1);
-            if(cnt>0) return;
+            if (cnt > 0) return;
 
             m_mr = mr;
             m_start_idx = start_idx;
