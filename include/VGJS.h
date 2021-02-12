@@ -67,7 +67,7 @@ namespace vgjs {
     template<typename T, typename P, auto D = -1>
     struct int_type {
         using type_name = T;
-        const T null = static_cast<T>(D);
+        static const T null = static_cast<T>(D);
 
         T value{};
         int_type() {
