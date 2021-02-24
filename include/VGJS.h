@@ -90,7 +90,7 @@ namespace vgjs {
             constexpr bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; };
         };
 
-        bool is_null() {
+        bool is_null() const {
             return value == null;
         }
     };
@@ -121,7 +121,7 @@ namespace vgjs {
 
     /**
     * \brief Function struct wraps a c++ function of type std::function<void(void)>.
-    * 
+    *
     * It can hold a function, and additionally a thread index where the function should
     * be executed, a type and an id for dumping a trace file to be shown by
     * Google Chrome about::tracing.
@@ -132,11 +132,11 @@ namespace vgjs {
         thread_type_t               m_type;                //type of the call
         thread_id_t                 m_id;                  //unique identifier of the call
 
-        Function(std::function<void(void)>& f, thread_index_t index = thread_index_t{}, 
+        Function(std::function<void(void)>& f, thread_index_t index = thread_index_t{},
             thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{})
             : m_function(f), m_thread_index(index), m_type(type), m_id(id) {};
 
-        Function(std::function<void(void)>&& f, thread_index_t index = thread_index_t{}, 
+        Function(std::function<void(void)>&& f, thread_index_t index = thread_index_t{},
             thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{})
             : m_function(std::move(f)), m_thread_index(index), m_type(type), m_id(id) {};
 
@@ -269,7 +269,7 @@ namespace vgjs {
     * \brief General FIFO queue class.
     *
     * The queue allows for multiple producers multiple consumers. It uses a lightweight
-    * atomic flag as lock. 
+    * atomic flag as lock.
     */
     template<typename JOB = Queuable, bool SYNC = true>
     requires std::is_base_of_v<Queuable, JOB >
@@ -331,7 +331,7 @@ namespace vgjs {
             if (m_head == nullptr) {    //if queue is empty
                 m_head = job;           //let m_head point to the job
             }
-            if (m_tail == nullptr) {    //if queue was empty 
+            if (m_tail == nullptr) {    //if queue was empty
                 m_tail = job;           //let m_tail point to the job
             }
             else {
@@ -359,7 +359,7 @@ namespace vgjs {
             JOB* head = m_head;
             if (head != nullptr) {              //if there is a job at the head of the queue
                 m_head = (JOB*)head->m_next;    //let point m_head to its successor
-                m_size--;                       //decrease number of jobs 
+                m_size--;                       //decrease number of jobs
                 if (head == m_tail) {           //if this is the only job
                     m_tail = nullptr;           //let m_tail point to nullptr
                 }
@@ -407,10 +407,10 @@ namespace vgjs {
 
         /**
         * \brief Allocate a job so that it can be scheduled.
-        * 
+        *
         * If there is a job in the recycle queue we use this. Else a new
         * new Job struct is allocated from the memory resource m_mr.
-        * 
+        *
         * \returns a pointer to the job.
         */
         Job* allocate_job() {
@@ -455,7 +455,7 @@ namespace vgjs {
                     job->m_pfvoid = nullptr;
                 }
             }
-            
+
             if (!job->m_function && !job->m_pfvoid) {
                 std::cout << "Empty function\n";
                 std::terminate();
@@ -633,11 +633,11 @@ namespace vgjs {
         };
 
         /**
-        * \brief An old Job can be recycled. 
-        * 
-        * There is one recycle queue that can store old Jobs. 
+        * \brief An old Job can be recycled.
+        *
+        * There is one recycle queue that can store old Jobs.
         * If it is full then put the Job to the delete queue.
-        * 
+        *
         * \param[in] job Pointer to the finished Job.
         */
         void recycle(Job* job) noexcept {
@@ -703,7 +703,7 @@ namespace vgjs {
         /**
         * \brief Schedule a job into the job system.
         * The Job will be put into a thread's queue for consumption.
-        * 
+        *
         * \param[in] job A pointer to the job to schedule.
         */
         uint32_t schedule_job(Job_base* job, tag_t tg = tag_t{}) noexcept {
@@ -745,7 +745,7 @@ namespace vgjs {
             JobQueue<Job_base>* queue = m_tag_queues[tg].get();   //get the queue for this tag
             uint32_t num_jobs = queue->size();
 
-            if (parent != nullptr) { 
+            if (parent != nullptr) {
                 if (children < 0) children = num_jobs;     //if the number of children is not given, then use queue size
                 parent->m_children.fetch_add((int)children);    //add this number to the number of children of parent
             }
@@ -782,9 +782,9 @@ namespace vgjs {
                 job->m_parent = nullptr;
                 if (tg.value < 0) {
                     job->m_parent = parent;
-                    if (parent != nullptr) { 
+                    if (parent != nullptr) {
                         if (children < 0) children = 1;
-                        parent->m_children.fetch_add((int)children); 
+                        parent->m_children.fetch_add((int)children);
                     }
                 }
                 return schedule_job(job, tg);
@@ -864,7 +864,7 @@ namespace vgjs {
 
         /**
         * \brief Get the mapping between type number and a string explaining the type.
-        * 
+        *
         * Jobs can have a type integer that ids the type, like a function or a coro.
         * If logging is to be used, this map should be filled with strings explaining the types.
         * This should be done before using the job system.
@@ -889,15 +889,15 @@ namespace vgjs {
     inline void JobSystem::on_finished(Job *job) noexcept {
 
         if (job->m_continuation != nullptr) {		//is there a successor Job?
-            
-            if (job->m_parent != nullptr) {         //is there is a parent?                
+
+            if (job->m_parent != nullptr) {         //is there is a parent?
                 job->m_parent->m_children++;
                 job->m_continuation->m_parent = job->m_parent;   //add successor as child to the parent
             }
             schedule_job(job->m_continuation);    //schedule the successor
         }
 
-        if (job->m_parent != nullptr) {		//if there is parent then inform it	
+        if (job->m_parent != nullptr) {		//if there is parent then inform it
             child_finished((Job*)job->m_parent);	//if this is the last child job then the parent will also finish
         }
 
@@ -1022,11 +1022,11 @@ namespace vgjs {
 
     /**
     * \brief Store a job run in the log data
-    * 
+    *
     * \param[in] t1 Start time of the job.
     * \param[in] t2 End time of the job.
     * \param[in] exec_thread Index of the thread that ran the job.
-    * \param[in] finished If true, then the job finished. 
+    * \param[in] finished If true, then the job finished.
     * \param[in] type The job type.
     * \param[in] id A unique ID.
     */
@@ -1126,4 +1126,3 @@ namespace vgjs {
 
 
 #endif
-
