@@ -11,9 +11,9 @@ Important features are:
 
 
 ## Library Usage
-VGJS is a 2-header library that should be included in C++ source files where it is needed:
+VGJS is a header-only library that should be included in C++ source files where it is needed:
 
-    #include "VGJS.h"
+    #include "VGJS.h"   //also includes IntType.h
 
 If you additionally want coroutines then also include
 
