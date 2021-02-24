@@ -18,7 +18,7 @@ endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_HOME_DIRECTORY}/bin)
 SET(INCLUDE ${CMAKE_HOME_DIRECTORY}/include)
-SET(HEADERS ${INCLUDE}/VGJS.h ${INCLUDE}/VGJSCoro.h)
+SET(HEADERS ${INCLUDE}/IntType.h ${INCLUDE}/VGJS.h ${INCLUDE}/VGJSCoro.h)
 include_directories (${INCLUDE})
 
 add_subdirectory (examples/docu)
