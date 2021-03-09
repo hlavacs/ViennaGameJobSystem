@@ -560,6 +560,7 @@ namespace vgjs {
 
                     Job_base* current_job = m_current_job;
                     (*m_current_job)();   //if any job found execute it - a coro might be destroyed here!
+                    m_current_job = current_job;
 
                     if constexpr (c_enable_logging) {
                         if (is_logging()) {
@@ -571,7 +572,6 @@ namespace vgjs {
                     if (is_function) {
                         child_finished((Job*)m_current_job);  //a job always finishes itself, a coro will deal with this itself
                     }
-                    m_current_job = current_job;
                     noop_counter = 0;
                 }
                 else if (++noop_counter > NOOP) {   //if none found too longs let thread sleep
