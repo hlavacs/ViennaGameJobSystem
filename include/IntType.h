@@ -26,7 +26,8 @@ struct int_type {
 	requires std::is_convertible_v<U, T>
 	void operator=(const U& rhs) noexcept { value = static_cast<T>(rhs); };
 
-	T operator()() { return value; };
+	operator const T& () const { return value; } 
+	operator T& () { return value; }
 
 	auto operator<=>(const int_type<T, P, D>& v) const = default;
 
@@ -36,8 +37,21 @@ struct int_type {
 
 	T operator<<(const size_t L) noexcept { return value << L; };
 	T operator>>(const size_t L) noexcept { return value >> L; };
-
 	T operator&(const size_t L) noexcept { return value & L; };
+	int_type<T, P, D> operator++() noexcept {
+		value++; 
+		if( !has_value() ) value = 0;
+		return *this;
+	};
+
+	int_type<T, P, D> operator++(int i) noexcept {
+		int_type<T, P, D> res = *this;
+		value++;
+		if (!has_value()) value = 0;
+		return res;
+	};
+
+	int_type<T, P, D>& operator--() noexcept { --value; return *this;  };
 
 	struct hash {
 		std::size_t operator()(const int_type<T, P, D>& tg) const { return std::hash<T>()(tg.value); };

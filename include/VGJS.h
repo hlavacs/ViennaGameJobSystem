@@ -455,7 +455,7 @@ namespace vgjs {
             m_terminate = false;
             m_terminated = false;
 
-            m_thread_count = threadCount.value;
+            m_thread_count = threadCount;
             if (m_thread_count <= 0) {
                 m_thread_count = std::thread::hardware_concurrency();		///< main thread is also running
             }
@@ -470,7 +470,7 @@ namespace vgjs {
                 m_mutex.emplace_back(std::make_unique<std::mutex>());
             }
 
-            for (uint32_t i = start_idx.value; i < m_thread_count; i++) {
+            for (uint32_t i = start_idx; i < m_thread_count; i++) {
                 //std::cout << "Starting thread " << i << std::endl;
                 m_threads.push_back(std::thread(&JobSystem::thread_task, this, thread_index_t(i) ));	//spawn the pool threads
                 m_threads[i].detach();
@@ -537,9 +537,9 @@ namespace vgjs {
             uint32_t next = rand() % m_thread_count;                        //initialize at random position for stealing
             auto start = high_resolution_clock::now();
             while (!m_terminate) {			                                //Run until the job system is terminated
-                m_current_job = m_local_queues[m_thread_index.value].pop();       //try get a job from the local queue
+                m_current_job = m_local_queues[m_thread_index].pop();       //try get a job from the local queue
                 if (m_current_job == nullptr) {
-                    m_current_job = m_global_queues[m_thread_index.value].pop();  //try get a job from the global queue
+                    m_current_job = m_global_queues[m_thread_index].pop();  //try get a job from the global queue
                 }
                 int num_try = m_thread_count - 1;
                 while (m_current_job == nullptr && --num_try >0) {                             //try steal job from another thread
@@ -577,16 +577,16 @@ namespace vgjs {
                 }
                 else if (++noop_counter > NOOP) {   //if none found too longs let thread sleep
                     m_delete.clear();       //delete jobs to reclaim memory
-                    std::unique_lock<std::mutex> lk(*m_mutex[m_thread_index.value]);
-                    m_cv[m_thread_index.value]->wait_for(lk, std::chrono::microseconds(100));
+                    std::unique_lock<std::mutex> lk(*m_mutex[m_thread_index]);
+                    m_cv[m_thread_index]->wait_for(lk, std::chrono::microseconds(100));
                     noop_counter = noop_counter / 2;
                 }
             };
 
-           //std::cout << "Thread " << m_thread_index.value << " left " << m_thread_count.load() << "\n";
+           //std::cout << "Thread " << m_thread_index << " left " << m_thread_count.load() << "\n";
 
-           m_global_queues[m_thread_index.value].clear(); //clear your global queue
-           m_local_queues[m_thread_index.value].clear();  //clear your local queue
+           m_global_queues[m_thread_index].clear(); //clear your global queue
+           m_local_queues[m_thread_index].clear();  //clear your local queue
 
            uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears recycle and garbage queues
            m_recycle.clear();
@@ -682,7 +682,7 @@ namespace vgjs {
 
             assert(job!=nullptr);
 
-            if ( tg.value >= 0 ) {                  //tagged scheduling
+            if ( tg >= 0 ) {                  //tagged scheduling
                 if(!m_tag_queues.contains(tg)) {
                     m_tag_queues[tg] = std::make_unique<JobQueue<Job_base>>();
                 }
@@ -690,15 +690,15 @@ namespace vgjs {
                 return 0;
             }
 
-            if (job->m_thread_index.value < 0 || job->m_thread_index.value >= (int)m_thread_count ) {
-                thread_index.value = (++thread_index.value) >= (decltype(thread_index.value))m_thread_count ? 0 : thread_index.value;
-                m_global_queues[thread_index.value].push(job);
-                m_cv[thread_index.value]->notify_one();                    //wake up the thread
+            if ( (job->m_thread_index.value < 0) || (job->m_thread_index >= (int)m_thread_count) ) {
+                thread_index = (++thread_index) >= (decltype(thread_index))m_thread_count ? 0 : thread_index;
+                m_global_queues[thread_index].push(job);
+                m_cv[thread_index]->notify_one();                    //wake up the thread
                 return 1;
             }
 
-            m_local_queues[job->m_thread_index.value].push(job); //to a specific thread
-            m_cv[job->m_thread_index.value]->notify_one();
+            m_local_queues[job->m_thread_index].push(job); //to a specific thread
+            m_cv[job->m_thread_index]->notify_one();
             return 1;
         };
 
@@ -1006,7 +1006,7 @@ namespace vgjs {
         thread_index_t exec_thread, bool finished, thread_type_t type, thread_id_t id) {
 
         auto& logs = JobSystem().get_logs();
-        logs[JobSystem().get_thread_index().value].emplace_back( t1, t2, JobSystem().get_thread_index(), finished, type, id);
+        logs[JobSystem().get_thread_index()].emplace_back( t1, t2, JobSystem().get_thread_index(), finished, type, id);
     }
 
     /**
@@ -1071,14 +1071,14 @@ namespace vgjs {
 
                         if (comma) outdata << "," << std::endl;
 
-                        auto it = types.find(ev.m_type.value);
+                        auto it = types.find(ev.m_type);
                         std::string name = "-";
                         if (it != types.end()) name = it->second;
 
-                        save_job(outdata, "\"cat\"", 0, (uint32_t)ev.m_exec_thread.value,
+                        save_job(outdata, "\"cat\"", 0, (uint32_t)ev.m_exec_thread,
                             std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t1 - JobSystem().start_time()).count(),
                             std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t2 - ev.m_t1).count(),
-                            "\"X\"", "\"" + name + "\"", "\"id\": " + std::to_string(ev.m_id.value));
+                            "\"X\"", "\"" + name + "\"", "\"id\": " + std::to_string(ev.m_id));
 
                         comma = true;
                     }
