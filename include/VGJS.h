@@ -360,6 +360,7 @@ namespace vgjs {
         static inline std::vector<std::thread>	        m_threads;	            ///<array of thread structures
         static inline std::atomic<uint32_t>   		    m_thread_count = 0;     ///<number of threads in the pool
         static inline std::atomic<bool>                 m_terminated = false;   ///<flag set true when the last thread has exited
+        static inline thread_local bool                 m_unroll = false;       ///<unroll the stack and return the initial dispatch
         static inline thread_index_t				    m_start_idx;            ///<idx of first thread that is created
         static inline thread_local thread_index_t	    m_thread_index = thread_index_t{};  ///<each thread has its own number
         static inline std::atomic<bool>				    m_terminate = false;	///<Flag for terminating the pool
@@ -521,28 +522,24 @@ namespace vgjs {
             return false;
         }
 
+
         /**
         * \brief Every thread runs in this function
         * \param[in] threadIndex Number of this thread
         */
-        void thread_task(thread_index_t threadIndex = thread_index_t(0) ) noexcept {
-            constexpr uint32_t NOOP = 1<<5;                                   //number of empty loops until garbage collection
+        void dispatch() noexcept {
+            constexpr uint32_t NOOP = 1 << 5;                               //number of empty loops until garbage collection
             thread_local static uint32_t noop_counter = 0;
-            m_thread_index = threadIndex;	                                //Remember your own thread index number
-            static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
-
-            thread_counter--;			                                    //count down
-            while (thread_counter.load() > 0) {}	                        //Continue only if all threads are running
-
             uint32_t next = rand() % m_thread_count;                        //initialize at random position for stealing
-            auto start = high_resolution_clock::now();
-            while (!m_terminate) {			                                //Run until the job system is terminated
+
+            while (!m_unroll && !m_terminate) {			                                //Run until the job system is terminated
+
                 m_current_job = m_local_queues[m_thread_index].pop();       //try get a job from the local queue
                 if (m_current_job == nullptr) {
                     m_current_job = m_global_queues[m_thread_index].pop();  //try get a job from the global queue
                 }
                 int num_try = m_thread_count - 1;
-                while (m_current_job == nullptr && --num_try >0) {                             //try steal job from another thread
+                while (m_current_job == nullptr && --num_try > 0) {                             //try steal job from another thread
                     if (++next >= m_thread_count) next = 0;
                     m_current_job = m_global_queues[next].pop();
                 }
@@ -561,6 +558,7 @@ namespace vgjs {
                     }
                     auto is_function = m_current_job->is_function();      //save certain info since a coro might be destroyed
 
+                    Job_base* current_job = m_current_job;
                     (*m_current_job)();   //if any job found execute it - a coro might be destroyed here!
 
                     if constexpr (c_enable_logging) {
@@ -573,6 +571,7 @@ namespace vgjs {
                     if (is_function) {
                         child_finished((Job*)m_current_job);  //a job always finishes itself, a coro will deal with this itself
                     }
+                    m_current_job = current_job;
                     noop_counter = 0;
                 }
                 else if (++noop_counter > NOOP) {   //if none found too longs let thread sleep
@@ -581,6 +580,25 @@ namespace vgjs {
                     m_cv[m_thread_index]->wait_for(lk, std::chrono::microseconds(100));
                     noop_counter = noop_counter / 2;
                 }
+            }
+        }
+
+
+        /**
+        * \brief Every thread runs in this function
+        * \param[in] threadIndex Number of this thread
+        */
+        void thread_task(thread_index_t threadIndex = thread_index_t(0) ) noexcept {
+            m_thread_index = threadIndex;	                                //Remember your own thread index number
+            static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
+
+            thread_counter--;			                                    //count down
+            while (thread_counter.load() > 0) {}	                        //Continue only if all threads are running
+
+            auto start = high_resolution_clock::now();
+            while (!m_terminate) {			                                //Run until the job system is terminated
+                dispatch();
+                m_unroll = false;
             };
 
            //std::cout << "Thread " << m_thread_index << " left " << m_thread_count.load() << "\n";
@@ -602,6 +620,8 @@ namespace vgjs {
                m_terminated = true;
            }
         };
+
+
 
         /**
         * \brief An old Job can be recycled.
