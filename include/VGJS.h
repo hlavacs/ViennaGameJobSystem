@@ -352,7 +352,7 @@ namespace vgjs {
     */
     class JobSystem {
         static inline const uint32_t c_queue_capacity = 1<<10; ///<save at most N Jobs for recycling
-        static inline const bool c_enable_logging = true;
+        static inline const bool c_enable_logging = false;
 
     private:
         static inline std::atomic<uint64_t>             m_init_counter = 0;
@@ -360,8 +360,6 @@ namespace vgjs {
         static inline std::vector<std::thread>	        m_threads;	            ///<array of thread structures
         static inline std::atomic<uint32_t>   		    m_thread_count = 0;     ///<number of threads in the pool
         static inline std::atomic<bool>                 m_terminated = false;   ///<flag set true when the last thread has exited
-        static inline std::atomic<size_t>               m_unroll_counter = 0;   ///<Counter syncing all threads for unrolling
-        static inline thread_local size_t               m_unroll = 0;            ///<unroll the stack and return to the initial dispatch
         static inline thread_index_t				    m_start_idx;            ///<idx of first thread that is created
         static inline thread_local thread_index_t	    m_thread_index = thread_index_t{};  ///<each thread has its own number
         static inline std::atomic<bool>				    m_terminate = false;	///<Flag for terminating the pool
@@ -457,7 +455,7 @@ namespace vgjs {
             m_terminate = false;
             m_terminated = false;
 
-            m_thread_count = threadCount;
+            m_thread_count = threadCount.value;
             if (m_thread_count <= 0) {
                 m_thread_count = std::thread::hardware_concurrency();		///< main thread is also running
             }
@@ -472,7 +470,7 @@ namespace vgjs {
                 m_mutex.emplace_back(std::make_unique<std::mutex>());
             }
 
-            for (uint32_t i = start_idx; i < m_thread_count; i++) {
+            for (uint32_t i = start_idx.value; i < m_thread_count; i++) {
                 //std::cout << "Starting thread " << i << std::endl;
                 m_threads.push_back(std::thread(&JobSystem::thread_task, this, thread_index_t(i) ));	//spawn the pool threads
                 m_threads[i].detach();
@@ -523,24 +521,31 @@ namespace vgjs {
             return false;
         }
 
-
         /**
         * \brief Every thread runs in this function
         * \param[in] threadIndex Number of this thread
         */
-        void dispatch() noexcept {
-            constexpr uint32_t NOOP = 1 << 5;                               //number of empty loops until garbage collection
+        void thread_task(thread_index_t threadIndex = thread_index_t(0) ) noexcept {
+            constexpr uint32_t NOOP = 1<<8;                                   //number of empty loops until garbage collection
             thread_local static uint32_t noop_counter = 0;
+            m_thread_index = threadIndex;	                                //Remember your own thread index number
+            static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
+
+            thread_counter--;			                                    //count down
+            while (thread_counter.load() > 0) {}	                        //Continue only if all threads are running
+
             uint32_t next = rand() % m_thread_count;                        //initialize at random position for stealing
+            auto start = high_resolution_clock::now();
 
-            while (m_unroll >= m_unroll_counter.load() && !m_terminate) {			                                //Run until the job system is terminated
+            std::unique_lock<std::mutex> lk(*m_mutex[m_thread_index.value]);
 
-                m_current_job = m_local_queues[m_thread_index].pop();       //try get a job from the local queue
+            while (!m_terminate) {			                                //Run until the job system is terminated
+                m_current_job = m_local_queues[m_thread_index.value].pop();       //try get a job from the local queue
                 if (m_current_job == nullptr) {
-                    m_current_job = m_global_queues[m_thread_index].pop();  //try get a job from the global queue
+                    m_current_job = m_global_queues[m_thread_index.value].pop();  //try get a job from the global queue
                 }
                 int num_try = m_thread_count - 1;
-                while (m_current_job == nullptr && --num_try > 0) {                             //try steal job from another thread
+                while (m_current_job == nullptr && --num_try >0) {                             //try steal job from another thread
                     if (++next >= m_thread_count) next = 0;
                     m_current_job = m_global_queues[next].pop();
                 }
@@ -559,9 +564,7 @@ namespace vgjs {
                     }
                     auto is_function = m_current_job->is_function();      //save certain info since a coro might be destroyed
 
-                    Job_base* current_job = m_current_job;
                     (*m_current_job)();   //if any job found execute it - a coro might be destroyed here!
-                    m_current_job = current_job;
 
                     if constexpr (c_enable_logging) {
                         if (is_logging()) {
@@ -576,36 +579,17 @@ namespace vgjs {
                     noop_counter = 0;
                 }
                 else if (++noop_counter > NOOP) {   //if none found too longs let thread sleep
-                    m_delete.clear();       //delete jobs to reclaim memory
-                    std::unique_lock<std::mutex> lk(*m_mutex[m_thread_index]);
-                    m_cv[m_thread_index]->wait_for(lk, std::chrono::microseconds(100));
+                    m_delete.clear();       //delete jobs to reclaim memory                  
+                    m_cv[0]->wait_for(lk, std::chrono::microseconds(100));
+                    //m_cv[m_thread_index.value]->wait_for(lk, std::chrono::microseconds(100));
                     noop_counter = noop_counter / 2;
                 }
-            }
-        }
-
-
-        /**
-        * \brief Every thread runs in this function
-        * \param[in] threadIndex Number of this thread
-        */
-        void thread_task(thread_index_t threadIndex = thread_index_t(0) ) noexcept {
-            m_thread_index = threadIndex;	                                //Remember your own thread index number
-            static std::atomic<uint32_t> thread_counter = m_thread_count.load();	//Counted down when started
-
-            thread_counter--;			                      //count down
-            while (thread_counter.load() > 0) {}	          //Continue only if all threads are running
-
-            auto start = high_resolution_clock::now();
-            while (!m_terminate) {			                  //Run until the job system is terminated
-                m_unroll = m_unroll_counter;
-                dispatch();                                   //initial dispatch, can start loop rolling here          
             };
 
-           //std::cout << "Thread " << m_thread_index << " left " << m_thread_count.load() << "\n";
+           //std::cout << "Thread " << m_thread_index.value << " left " << m_thread_count.load() << "\n";
 
-           m_global_queues[m_thread_index].clear(); //clear your global queue
-           m_local_queues[m_thread_index].clear();  //clear your local queue
+           m_global_queues[m_thread_index.value].clear(); //clear your global queue
+           m_local_queues[m_thread_index.value].clear();  //clear your local queue
 
            uint32_t num = m_thread_count.fetch_sub(1);  //last thread clears recycle and garbage queues
            m_recycle.clear();
@@ -621,8 +605,6 @@ namespace vgjs {
                m_terminated = true;
            }
         };
-
-
 
         /**
         * \brief An old Job can be recycled.
@@ -703,7 +685,7 @@ namespace vgjs {
 
             assert(job!=nullptr);
 
-            if ( tg >= 0 ) {                  //tagged scheduling
+            if ( tg.value >= 0 ) {                  //tagged scheduling
                 if(!m_tag_queues.contains(tg)) {
                     m_tag_queues[tg] = std::make_unique<JobQueue<Job_base>>();
                 }
@@ -711,15 +693,17 @@ namespace vgjs {
                 return 0;
             }
 
-            if ( (job->m_thread_index.value < 0) || (job->m_thread_index >= (int)m_thread_count) ) {
-                thread_index = (++thread_index) >= (decltype(thread_index))m_thread_count ? 0 : thread_index;
+            if (job->m_thread_index.value < 0 || job->m_thread_index.value >= (int)m_thread_count ) {
+                thread_index.value = (++thread_index.value) >= (decltype(thread_index.value))m_thread_count ? 0 : thread_index.value;
                 m_global_queues[thread_index].push(job);
-                m_cv[thread_index]->notify_one();                    //wake up the thread
+                //m_cv[thread_index.value]->notify_one();       //wake up the thread
+                m_cv[0]->notify_all();       //wake up the thread
                 return 1;
             }
 
-            m_local_queues[job->m_thread_index].push(job); //to a specific thread
-            m_cv[job->m_thread_index]->notify_one();
+            m_local_queues[job->m_thread_index.value].push(job); //to a specific thread
+            //m_cv[job->m_thread_index]->notify_one();
+            m_cv[0]->notify_all();       //wake up the thread
             return 1;
         };
 
@@ -1027,7 +1011,7 @@ namespace vgjs {
         thread_index_t exec_thread, bool finished, thread_type_t type, thread_id_t id) {
 
         auto& logs = JobSystem().get_logs();
-        logs[JobSystem().get_thread_index()].emplace_back( t1, t2, JobSystem().get_thread_index(), finished, type, id);
+        logs[JobSystem().get_thread_index().value].emplace_back( t1, t2, JobSystem().get_thread_index(), finished, type, id);
     }
 
     /**
@@ -1092,14 +1076,14 @@ namespace vgjs {
 
                         if (comma) outdata << "," << std::endl;
 
-                        auto it = types.find(ev.m_type);
+                        auto it = types.find(ev.m_type.value);
                         std::string name = "-";
                         if (it != types.end()) name = it->second;
 
-                        save_job(outdata, "\"cat\"", 0, (uint32_t)ev.m_exec_thread,
+                        save_job(outdata, "\"cat\"", 0, (uint32_t)ev.m_exec_thread.value,
                             std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t1 - JobSystem().start_time()).count(),
                             std::chrono::duration_cast<std::chrono::nanoseconds>(ev.m_t2 - ev.m_t1).count(),
-                            "\"X\"", "\"" + name + "\"", "\"id\": " + std::to_string(ev.m_id));
+                            "\"X\"", "\"" + name + "\"", "\"id\": " + std::to_string(ev.m_id.value));
 
                         comma = true;
                     }
