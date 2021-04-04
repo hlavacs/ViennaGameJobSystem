@@ -446,7 +446,7 @@ namespace vgjs {
         JobSystem(thread_count_t threadCount = thread_count_t(0), thread_index_t start_idx = thread_index_t(0)
             , n_pmr::memory_resource* mr = n_pmr::new_delete_resource()) noexcept {
 
-            if (m_init_counter > 0) return;
+            if (m_init_counter > 0) [[likely]] return;
             auto cnt = m_init_counter.fetch_add(1);
             if (cnt > 0) return;
 
@@ -578,7 +578,7 @@ namespace vgjs {
                     }
                     noop_counter = 0;
                 }
-                else if (++noop_counter > NOOP) {   //if none found too longs let thread sleep
+                else if (++noop_counter > NOOP) [[unlikely]] {   //if none found too longs let thread sleep
                     m_delete.clear();       //delete jobs to reclaim memory                  
                     m_cv[0]->wait_for(lk, std::chrono::microseconds(100));
                     //m_cv[m_thread_index.value]->wait_for(lk, std::chrono::microseconds(100));
