@@ -663,7 +663,7 @@ namespace vgjs {
         * \returns the number of threads in the system.
         */
         thread_count_t get_thread_count() {
-            return thread_count_t( m_thread_count );
+            return thread_count_t( m_thread_count.load() );
         }
 
         /**
