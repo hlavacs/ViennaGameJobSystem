@@ -4,16 +4,19 @@
 
 /**
 * \brief Strong type for integers.
-*
+* 
 * T...the integer type
 * P...phantom type as unique ID
 * D...default value (=null value)
+* U...number of upper bits (if integer is cut into 2 values)
 */
-template<typename T, typename P, auto D = -1>
+template<typename T, typename P, auto D = -1, size_t U = 0>
 struct int_type {
-	static const T null = static_cast<T>(D);
+	static const T L = sizeof(T) * 8 - U; //number of lower bits (if integer is cut into 2 values)
 
-	T value{ D };
+	static const T null = static_cast<T>(D); //numm value
+
+	T value{null};
 
 	int_type() = default;
 
@@ -22,16 +25,16 @@ struct int_type {
 	* \param[in] u A POD type that is used for setting the value.
 	*/
 	template<typename U>
-	requires (std::is_convertible_v<std::decay_t<U>, T>&& std::is_pod_v<std::decay_t<U>>)
-		explicit int_type(U&& u) noexcept : value{ static_cast<T>(u) } {};
+	requires (std::is_convertible_v<std::decay_t<U>, T> && std::is_pod_v<std::decay_t<U>>)
+	explicit int_type(U&& u) noexcept : value{ static_cast<T>(u) } {};
 
 	/**
 	* \brief Copy assignment.
 	* \param[in] rhs Any POD int type.
 	*/
 	template<typename U>
-	requires (std::is_convertible_v<std::decay_t<U>, T>&& std::is_pod_v<std::decay_t<U>>)
-		void operator=(U&& rhs) noexcept { value = static_cast<T>(rhs); };
+	requires (std::is_convertible_v<std::decay_t<U>, T> && std::is_pod_v<std::decay_t<U>>)
+	void operator=(U&& rhs) noexcept { value = static_cast<T>(rhs); };
 
 	/**
 	* \brief Yield the int value.
@@ -57,7 +60,7 @@ struct int_type {
 	*/
 	template<typename U>
 	requires std::is_convertible_v<U, T>
-		auto operator<(const U& v) noexcept { return value < static_cast<T>(v); };
+	auto operator<(const U& v) noexcept { return value < static_cast<T>(v); };
 
 	/**
 	* \brief Left shift operator.
@@ -85,8 +88,8 @@ struct int_type {
 	* \returns the value increased by 1.
 	*/
 	int_type<T, P, D> operator++() noexcept {
-		value++;
-		if (!has_value()) value = 0;
+		value++; 
+		if( !has_value() ) value = 0;
 		return *this;
 	};
 
@@ -105,8 +108,8 @@ struct int_type {
 	* \brief Pre-decrement operator.
 	* \returns the value decreased by 1.
 	*/
-	int_type<T, P, D> operator--() noexcept {
-		--value;
+	int_type<T, P, D> operator--() noexcept { 
+		--value; 
 		if (!has_value()) --value;
 		return *this;
 	};
@@ -115,7 +118,7 @@ struct int_type {
 	* \brief Post-decrement operator.
 	* \returns the value before decreasing by 1.
 	*/
-	int_type<T, P, D> operator--(int) noexcept {
+	int_type<T, P, D> operator--(int) noexcept { 
 		int_type<T, P, D> res = *this;
 		value--;
 		if (!has_value()) value--;
@@ -148,6 +151,43 @@ struct int_type {
 	bool has_value() const {
 		return value != null;
 	}
+
+	/**
+	* \brief Set the upper value (if split into two integers).
+	* \param[in] v New upper value.
+	*/
+	void set_upper(T v) {
+		const T LMASK = (1 << L) - 1;
+		value = (value & LMASK) | (value << L);
+	}
+
+	/**
+	* \brief Return the upper value (if split into two integers).
+	* \returns the upper value.
+	*/
+	T get_upper() {
+		return (value >> L);
+	}
+
+	/**
+	* \brief Set the lower value (if split into two integers).
+	* \param[in] v New lower value.
+	*/
+	void set_lower(T v) {
+		const T LMASK = (1 << L) - 1;
+		const T UMASK = ((1 << U) - 1) << L;
+		value = (value & UMASK) | (v & LMASK);
+	}
+
+	/**
+	* \brief Return the lower value (if split into two integers).
+	* \returns the lower value.
+	*/
+	T get_lower() {
+		const T LMASK = (1 << L) - 1;
+		return (value & LMASK);
+	}
+
 };
 
 
