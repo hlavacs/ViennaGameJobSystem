@@ -364,7 +364,7 @@ namespace vgjs {
         static inline thread_local thread_index_t	    m_thread_index = thread_index_t{};  ///<each thread has its own number
         static inline std::atomic<bool>				    m_terminate = false;	///<Flag for terminating the pool
         static inline thread_local Job_base*            m_current_job = nullptr;///<Pointer to the current job of this thread0
-        static inline std::vector<JobQueue<Job_base>>   m_global_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
+        static inline std::vector<JobQueue<Job_base>>   m_global_queues;	    ///<each thread has its shared Job queue, multiple produce, multiple consume
         static inline std::vector<JobQueue<Job_base>>   m_local_queues;	        ///<each thread has its own Job queue, multiple produce, single consume
         static inline std::vector<std::unique_ptr<std::condition_variable>>                     m_cv;
         static inline std::vector<std::unique_ptr<std::mutex>>                                  m_mutex;
@@ -557,7 +557,7 @@ namespace vgjs {
 
                     if constexpr (c_enable_logging) {
                         if (is_logging()) {
-                            t1 = std::chrono::high_resolution_clock::now();	//time of finishing;
+                            t1 = std::chrono::high_resolution_clock::now();	//time of starting
                         }
                         type = m_current_job->m_type;
                         id = m_current_job->m_id;
