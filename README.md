@@ -13,11 +13,15 @@ Important features are:
 ## Library Usage
 VGJS is a header-only library that should be included in C++ source files where it is needed:
 
-    #include "VGJS.h"   //also includes IntType.h
+```c++
+#include "VGJS.h"   //also includes IntType.h
+```
 
 If you additionally want coroutines then also include
 
-    #include "VGJSCoro.h"
+```c++
+#include "VGJSCoro.h"
+```
 
 When compiling your projects make sure to set the appropriate compiler flags to enable co-routines if you want to use them. With MSVC these are /await and /EHsc. VGJS also comes with a some examples showing how to use it. If you want to compile them, install the latest MS Visual Studio (2019+) and doxygen, then run *msvc.bat*, preferably in a Windows console to see possible errors. This creates a MSVC solution file VGJS.sln containing the projects and a solution for the documentation.
 
@@ -26,39 +30,42 @@ VGJS runs a number of *N* worker threads, *each* having *two* work queues, a *lo
 Each thread continuously grabs jobs from one of its queues and runs them. If the workload is split into a large number of small tasks then all CPU cores continuously do work and achieve a high degree of parallelism.
 
 ## Using the Job system
+
 The job system is started by creating an instance of class *vgjs::JobSystem*.
 The system is destroyed by calling *vgjs::terminate()*.
 The main thread can wait for this termination by calling *vgjs::wait_for_termination()*.
 
-    #include "VGJS.h"
-    #include "VGJSCoro.h"
+```c++
+#include "VGJS.h"
+#include "VGJSCoro.h"
 
-    using namespace vgjs;
+using namespace vgjs;
 
-    void printData(int i) {
-        std::cout << "Print Data " << i << std::endl;
-    }
+void printData(int i) {
+	std::cout << "Print Data " << i << std::endl;
+}
 
-    void loop( int N ) {
-        for( int i=0; i< N; ++i) { //all jobs run in parallel
-            schedule( [=](){ printData(i); } ); //schedule a lambda
-        }
+void loop( int N ) {
+	for( int i=0; i< N; ++i) { //all jobs run in parallel
+		schedule( [=](){ printData(i); } ); //schedule a lambda
+	}
 
-        //after all children have finished, this function will be scheduled to thread 0
-        continuation( Function{ std::bind(vgjs::terminate), thread_index_t{0} } ); //schedule a Function
-    }
+	//after all children have finished, this function will be scheduled to thread 0
+	continuation( Function{ std::bind(vgjs::terminate), thread_index_t{0} } ); //schedule a Function
+}
 
-    void test( int N ) {
-          schedule( std::bind(loop, N ) ); //schedule a std::function
-    }
+void test( int N ) {
+	  schedule( std::bind(loop, N ) ); //schedule a std::function
+}
 
-    int main()
-    {
-        JobSystem js;               //create the job system
-        schedule( [=](){test(5);} );//schedule a lambda function
-        wait_for_termination();     //wait for the last thread to terminate
-        return 0;
-    }
+int main()
+{
+	JobSystem js;               //create the job system
+	schedule( [=](){test(5);} );//schedule a lambda function
+	wait_for_termination();     //wait for the last thread to terminate
+	return 0;
+}
+```
 
 In the above example we see the three main possibilities to schedule C++ functions:
 * using a function pointer of type *void (\*)()*
@@ -78,82 +85,94 @@ The function *printData()* is called 5 times, all runs are concurrent to each ot
 
 Instances of class *JobSystem* allow accessing the job system and are *monostate*. They accept three parameters, which can be provided or not. They are only used when the system is created, i.e. when the first instance is created. Afterwards, the parameters are ignored.
 
-  	/**
-    * \brief JobSystem class constructor
-    * \param[in] threadCount Number of threads in the system
-    * \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
-    * \param[in] mr The memory resource to use for allocating Jobs
-    */
-    JobSystem(  uint32_t threadCount = 0, uint32_t start_idx = 0,
-                std::pmr::memory_resource *mr = std::pmr::new_delete_resource() )
+```c++
+/**
+* \brief JobSystem class constructor
+* \param[in] threadCount Number of threads in the system
+* \param[in] start_idx Number of first thread, if 1 then the main thread should enter as thread 0
+* \param[in] mr The memory resource to use for allocating Jobs
+*/
+JobSystem(  uint32_t threadCount = 0, uint32_t start_idx = 0,
+			std::pmr::memory_resource *mr = std::pmr::new_delete_resource() )
+```
 
 If *threadCount* = 0 then the number of threads to start is given by the call *std\:\: thread \:\:hardware_concurrency()*, which gives the number of hardware threads, **not** CPU cores. On modern hyperthreading architectures, the hardware concurrency is typically twice the number of CPU cores.
 
 If the second parameter *start_idx* is not 0, then the main thread should enter the job system as thread 0 instead of waiting for its termination:
 
-    int main()
-    {
-        JobSystem js(0, 1);         //start only N-1 threads, leave thread 0 for now
-        schedule( [=](){test(5);} );//schedule a lambda function
-        js.thread_task(0);          //main thread enters the job system as thread 0
-        wait_for_termination();     //wait for the last thread to terminate
-        return 0;
-    }
+```c++
+int main()
+{
+	JobSystem js(0, 1);         //start only N-1 threads, leave thread 0 for now
+	schedule( [=](){test(5);} );//schedule a lambda function
+	js.thread_task(0);          //main thread enters the job system as thread 0
+	wait_for_termination();     //wait for the last thread to terminate
+	return 0;
+}
+```
 
 Some GUIs like GLFW work only if they are running in the main thread, so use this and make sure that all GUI related stuff runs on thread 0.
 
 Finally, the third parameters specifies a memory resource to be used for allocating job memory and coroutine promises.
 
-    auto g_global_mem =
-        std::pmr::synchronized_pool_resource(
-            { .max_blocks_per_chunk = 1000, .largest_required_pool_block = 1 << 10 }, std::pmr::new_delete_resource());
+```c++
+auto g_global_mem =
+	std::pmr::synchronized_pool_resource(
+		{ .max_blocks_per_chunk = 1000, .largest_required_pool_block = 1 << 10 }, std::pmr::new_delete_resource());
 
-    int main()
-    {
-        JobSystem js(0, 0, &g_global_mem); //use the memory resource g_global_mem to allocate job structures
-        schedule( [=](){test(5);} );//schedule a lambda function
-        wait_for_termination();     //wait for the last thread to terminate
-        return 0;
-    }
+int main()
+{
+	JobSystem js(0, 0, &g_global_mem); //use the memory resource g_global_mem to allocate job structures
+	schedule( [=](){test(5);} );//schedule a lambda function
+	wait_for_termination();     //wait for the last thread to terminate
+	return 0;
+}
+```
 
 If none is specified, the job system uses standard new and delete.
 
 ## Functions
+
 There are two types of tasks that can be scheduled to the job system - C++ *functions* and *coroutines*. It is important to note that both functions and coroutines themselves can both schedule again functions and coroutines. However, how tasks are scheduled depends on the type of task that does this.
 In a *function*, scheduling is done via a call to the *vgjs::schedule()* function wrapper, which in turn calls the job system to schedule the function. In a *coroutine*, scheduling is done with the *co_await* operator.
 
 *Scheduled* C++ functions can be either of type *void (\*)()* or wrapped into *std::function<void(void)>* (e.g. create by using *std::bind()* or a lambda of type *\[=\](){})*, or into the class *Function*, the latter allowing to specify more parameters. Of course, a function can simply *call* another function any time without scheduling it.
 
-    void any_function() { //this is a function, so we must use schedule()
-        schedule( std::bind(loop, 10) ); //schedule function loop(10) to random thread
-        schedule( [](){loop(10);} );     //schedule function loop(10) to random thread
+```c++
+void any_function() { //this is a function, so we must use schedule()
+	schedule( std::bind(loop, 10) ); //schedule function loop(10) to random thread
+	schedule( [](){loop(10);} );     //schedule function loop(10) to random thread
 
-        //schedule to run loop(10) and loop(100) sequentially on random thread
-        schedule( [](){loop(10); loop(100);} );
+	//schedule to run loop(10) and loop(100) sequentially on random thread
+	schedule( [](){loop(10); loop(100);} );
 
-        //Function to run on thread 1, with type 0 and id 999 (for logging)
-        Function func{ [](){loop(10);}, thread_index_t{1}, thread_type_t{0}, thread_id_t{999} };
-        schedule( func ); //lvalue, so do not move the function func, it can be reused afterwards
+	//Function to run on thread 1, with type 0 and id 999 (for logging)
+	Function func{ [](){loop(10);}, thread_index_t{1}, thread_type_t{0}, thread_id_t{999} };
+	schedule( func ); //lvalue, so do not move the function func, it can be reused afterwards
 
-        //schedule to run on thread 2, use rvalue ref, so move semantics apply
-        schedule( Function{ [](){loop(10);}, thread_index_t{2} } );
-    }
+	//schedule to run on thread 2, use rvalue ref, so move semantics apply
+	schedule( Function{ [](){loop(10);}, thread_index_t{2} } );
+}
+```
 
 Functions scheduling coroutines should simply call take the coroutine as parameter without packing it into a function wrapper.
 
-    Coro<int> do_compute(int i) {
-        //do something ...
-        co_return i;   //return the promised value;
-    }
+```c++
+Coro<int> do_compute(int i) {
+	//do something ...
+	co_return i;   //return the promised value;
+}
 
-    void other_fun() {
-        schedule( do_compute(5) ); //schedule the coroutine
-    }
+void other_fun() {
+	schedule( do_compute(5) ); //schedule the coroutine
+}
+```
 
 Functions scheduling other functions or coroutines create a parent-child relationship. Functions are immediately scheduled to be run, *schedule()* can be called any number of times to start an arbitrary number of children to run in parallel.
 If the parent is a C++ function, parameters of scheduled other functions should always be **called by value**, i.e., **copied** (see below)! Functions can also be *member-functions* of some class instance. In this case make sure that the class instance does not go out of scope while the function is running.
 
 ## Coroutines
+
 The second type of task to be scheduled are *coroutines*.
 Coroutines can suspend their function body (by returning to their caller), and later on resume them where they had left. Any function that uses the keywords *co_await*, *co_yield*, or *co_return* is a coroutine (see e.g. https://lewissbaker.github.io/).
 
@@ -165,40 +184,42 @@ On the other hand, coros should not call *schedule()*! Instead they should use *
 
 Internally, additionally to the *future*, also a *promise* of type *Coro_promise\<T\>* is allocated from the same memory resource that is used by the job system instance to allocate job structures. The coro promise stores the coro's state, value and suspend points. It is possible to pass in a pointer to a different *std::pmr::memory_resource* to be used for allocation of coro promises (see the above example).
 
-    //a memory resource
-    auto g_global_mem = ::n_pmr::synchronized_pool_resource(
-      { .max_blocks_per_chunk = 20
-        , .largest_required_pool_block = 1 << 10 }
-        , n_pmr::new_delete_resource());
+```c++
+//a memory resource
+auto g_global_mem = ::n_pmr::synchronized_pool_resource(
+  { .max_blocks_per_chunk = 20
+	, .largest_required_pool_block = 1 << 10 }
+	, n_pmr::new_delete_resource());
 
-    //a coroutine that uses a given memory resource to allocate its promise.
-    //the coro calls itself through co_await recursively to compute i!
-    Coro<int> factorial(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
-        if( i==0 ) co_return 1;
-        int j = co_await factorial(std::allocator_arg_t, mr, i-1); //recurse
-        std::cout << "Fact " << i*j << std::endl; //print intermediate results
-        co_return i*j;   //return the promised value;
-    }
+//a coroutine that uses a given memory resource to allocate its promise.
+//the coro calls itself through co_await recursively to compute i!
+Coro<int> factorial(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+	if( i==0 ) co_return 1;
+	int j = co_await factorial(std::allocator_arg_t, mr, i-1); //recurse
+	std::cout << "Fact " << i*j << std::endl; //print intermediate results
+	co_return i*j;   //return the promised value;
+}
 
-    //no sync between other_fun() and factorial()
-    //if you need the result be sure its is ready by calling ready()
-    void other_fun(int i ) {
-        auto f = factorial(std::allocator_arg, &docu::g_global_mem, i);
-        schedule(f); //schedule coroutine directly, do not pack into lambda!
-        while (!f.ready()) { //wait for the result
-          std::this_thread::sleep_for(std::chrono::microseconds(1));
-        };
-        std::cout << "Result " << f.get() << std::endl;
-        vgjs::continuation([=](){ vgjs::terminate(); }); //continuation
-    }
+//no sync between other_fun() and factorial()
+//if you need the result be sure its is ready by calling ready()
+void other_fun(int i ) {
+	auto f = factorial(std::allocator_arg, &docu::g_global_mem, i);
+	schedule(f); //schedule coroutine directly, do not pack into lambda!
+	while (!f.ready()) { //wait for the result
+	  std::this_thread::sleep_for(std::chrono::microseconds(1));
+	};
+	std::cout << "Result " << f.get() << std::endl;
+	vgjs::continuation([=](){ vgjs::terminate(); }); //continuation
+}
 
-    //use schedule( [=](){...} ) from main()
-    int main() {
-      	using namespace vgjs;
-      	JobSystem js;                        //create VGJS
-      	schedule([=]() { other_fun(5); });   //schedule function with lambda
-        wait_for_termination();             //wait until vgjs::terminate() was called
-    }
+//use schedule( [=](){...} ) from main()
+int main() {
+	using namespace vgjs;
+	JobSystem js;                        //create VGJS
+	schedule([=]() { other_fun(5); });   //schedule function with lambda
+	wait_for_termination();             //wait until vgjs::terminate() was called
+}
+```
 
 In the above example, main() schedules a C++ function other_fun() using a lambda, and then waits until VGJS shuts down. The function other_fun() itself schedules a coro that calls itself to compute the factorial of a given parameter. other_fun() also schedules a continuation that is run once all children of other_fun() have finished. This continuation calls vgjs::terminate() to shut down VGJS. The output is
 
@@ -228,32 +249,34 @@ Coros can coawait a number of different types. Single types include
 
 Since the coro suspends and awaits the finishing of all of its children, this would allow only one child to be awaited. Thus there are two ways to start more than one child in parallel. First, using the *parallel()* function, a static number of children can be started, given as parameters:
 
-    Coro<> coro_void(int x) {
-        //...
-        co_return; //return nothing
-    };
+```c++
+Coro<> coro_void(int x) {
+	//...
+	co_return; //return nothing
+};
 
-    Coro<int> coro_int(float y) {
-        //...
-        co_return some_int; //return an int
-    };
+Coro<int> coro_int(float y) {
+	//...
+	co_return some_int; //return an int
+};
 
-    Coro<float> coro_float(bool z) {
-        //...
-        co_return some_float; //return a float
-    };
+Coro<float> coro_float(bool z) {
+	//...
+	co_return some_float; //return a float
+};
 
-    void another_func() { //void (*)()
-      //...
-    }
+void another_func() { //void (*)()
+  //...
+}
 
-    auto [ret1, ret2] //two values -> tuple, use structured binding
-        = co_await parallel(
-            [=](){ some_func(); } //no return value
-            , coro_void(1)        //no return value
-            , coro_int(2.1)       //returns int
-            , coro_float(true)    //returns float
-            , another_func );     //do not use () for void (*)()
+auto [ret1, ret2] //two values -> tuple, use structured binding
+	= co_await parallel(
+		[=](){ some_func(); } //no return value
+		, coro_void(1)        //no return value
+		, coro_int(2.1)       //returns int
+		, coro_float(true)    //returns float
+		, another_func );     //do not use () for void (*)()
+```
 
 In this example, four children are started, one function and three coros. Only coros can return a value, but one of the coros returns void, so there are only two return values (packed into a tuple), *ret1* being of type *int*, and *ret2* being of type *float*. Internally, *parallel()* results in a *std::tuple* holding references to the parameters, and you can use *std::tuple* instead of *parallel()* (see the implementation of *parallel()*).
 
@@ -261,52 +284,54 @@ Second you can co_await *std::pmr::vectors* of the above types. This allows to s
 
 The following code shows how to start multiple children from a coro to run in parallel.
 
-    //A coro returning a float
-    Coro<int> coro_int(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
-        std::cout << "coro_int " << i << std::endl;
-        co_return i;
-    }
+```c++
+//A coro returning a float
+Coro<int> coro_int(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
+	std::cout << "coro_int " << i << std::endl;
+	co_return i;
+}
 
-    //A coro returning a float
-    Coro<float> coro_float(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
-        float f = 1.5f*(float)i;
-        std::cout << "coro_float " << f << std::endl;
-        co_return f;
-    }
+//A coro returning a float
+Coro<float> coro_float(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
+	float f = 1.5f*(float)i;
+	std::cout << "coro_float " << f << std::endl;
+	co_return f;
+}
 
-    //A coro returning nothing
-    Coro<> coro_void(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
-        std::cout << "coro_void " << i << std::endl;
-        co_return;
-    }
+//A coro returning nothing
+Coro<> coro_void(std::allocator_arg_t, n_pmr::memory_resource* mr, int i) {
+	std::cout << "coro_void " << i << std::endl;
+	co_return;
+}
 
-    //a function
-    void func(int i) {
-        std::cout << "func " << i << std::endl;
-    }
+//a function
+void func(int i) {
+	std::cout << "func " << i << std::endl;
+}
 
-    Coro<int> test(std::allocator_arg_t, n_pmr::memory_resource* mr, int count) {
-        std::pmr::vector<Coro<>> tv{ mr };  //vector of Coro<>
-        tv.emplace_back(coro_void(std::allocator_arg, &g_global_mem, 1));
+Coro<int> test(std::allocator_arg_t, n_pmr::memory_resource* mr, int count) {
+	std::pmr::vector<Coro<>> tv{ mr };  //vector of Coro<>
+	tv.emplace_back(coro_void(std::allocator_arg, &g_global_mem, 1));
 
-        std::pmr::vector<Coro<int>> ti{ mr };
-        ti.emplace_back(coro_int(std::allocator_arg, &g_global_mem, 2));
+	std::pmr::vector<Coro<int>> ti{ mr };
+	ti.emplace_back(coro_int(std::allocator_arg, &g_global_mem, 2));
 
-        std::pmr::vector<Coro<float>> tf{mr};
-        tf.emplace_back(coro_float(std::allocator_arg, &g_global_mem, 3));
+	std::pmr::vector<Coro<float>> tf{mr};
+	tf.emplace_back(coro_float(std::allocator_arg, &g_global_mem, 3));
 
-        std::pmr::vector<std::function<void(void)>> fv{ mr }; //vector of C++ functions
-        fv.emplace_back([=]() {func(4); });
+	std::pmr::vector<std::function<void(void)>> fv{ mr }; //vector of C++ functions
+	fv.emplace_back([=]() {func(4); });
 
-        n_pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
-        jv.emplace_back( Function{[=]() {func(5); }, thread_index_t{}, thread_type_t{ 0 }, thread_id_t{ 0 }} );
+	n_pmr::vector<Function> jv{ mr };                         //vector of Function{} instances
+	jv.emplace_back( Function{[=]() {func(5); }, thread_index_t{}, thread_type_t{ 0 }, thread_id_t{ 0 }} );
 
-        auto [ret1, ret2] = co_await parallel(tv, ti, tf, fv, jv);
+	auto [ret1, ret2] = co_await parallel(tv, ti, tf, fv, jv);
 
-        std::cout << "ret1 " << ret1[0] << " ret2 " << ret2[0] << std::endl;
+	std::cout << "ret1 " << ret1[0] << " ret2 " << ret2[0] << std::endl;
 
-        co_return 0;
-    }
+	co_return 0;
+}
+```
 
 The output of the above code is
 
@@ -329,55 +354,62 @@ If no thread is given then the Function is scheduled to the global queue of a ra
 
 Coroutine futures *Coro\<T\>* are also "callable", and you can pass in parameters similar to the *Function{}* class, setting thread index, type and id:
 
-    //schedule to thread 0, set type to 11 and id to 99
-    co_await func(std::allocator_arg, &g_global_mem4, 1, 10)( thread_index_t{0}, thread_type_t{11}, thread_id_t{99} ) ;
+```c++
+//schedule to thread 0, set type to 11 and id to 99
+co_await func(std::allocator_arg, &g_global_mem4, 1, 10)( thread_index_t{0}, thread_type_t{11}, thread_id_t{99} ) ;
+```
 
 Coroutines can also change their thread by awaiting a thread index number:
 
-    Coro<float> func(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
+```c++
+Coro<float> func(std::allocator_arg_t, std::pmr::memory_resource* mr, int i) {
 
-        //do something until here ...
+	//do something until here ...
 
-        co_await thread_index_t{0};   //move this job to thread 0
+	co_await thread_index_t{0};   //move this job to thread 0
 
-        float f = i + 0.5f;     //continue on thread 0
-        co_return 10.0f * i;
-    }
+	float f = i + 0.5f;     //continue on thread 0
+	co_return 10.0f * i;
+}
+```
 
 ## Generators and Fibers
+
 A coroutine can be used as a generator or fiber (https://en.wikipedia.org/wiki/Fiber_(computer_science)). Essentially, this is a coroutine that never coreturns but suspends and waits to be called, compute a value, return the value, and suspend again. The coro can call any other child with *co_await*, but it **must** return its result using *co_yield* in order to stay alive.
 In the below example, there is a fiber *yt* of type *Coro\<int\>*, which takes its input parameter from *g_yt_in*. Calling *co_await* on the fiber invokes the fiber, which
 eventually calls *co_yield*. Here the fiber exits and returns to the invoking coro, which
 accesses the result with calling *get()*.
 
-    Coro<int> yield_test(int& input_parameter) {
-      int value = 0;          //initialize the fiber here
-      while (true) {          //a fiber never returns
-        int res = value * input_parameter; //use internal and input parameters
-        co_yield res;       //set std::pair<bool,T> value to indicate that this fiber is ready, and suspend
-        //here its std::pair<bool,T> value is set to (false, T{}) to indicate that the fiber is working
-        //co_await other(value, input_parameter);  //call any child
-        ++value;            //do something useful
-      }
-      co_return value; //have this only to satisfy the compiler
-    }
+```c++
+Coro<int> yield_test(int& input_parameter) {
+  int value = 0;          //initialize the fiber here
+  while (true) {          //a fiber never returns
+	int res = value * input_parameter; //use internal and input parameters
+	co_yield res;       //set std::pair<bool,T> value to indicate that this fiber is ready, and suspend
+	//here its std::pair<bool,T> value is set to (false, T{}) to indicate that the fiber is working
+	//co_await other(value, input_parameter);  //call any child
+	++value;            //do something useful
+  }
+  co_return value; //have this only to satisfy the compiler
+}
 
-    int g_yt_in = 0;                //parameter that can be set from the outside
-    auto yt = yield_test(g_yt_in);  //create a fiber using an input parameter
+int g_yt_in = 0;                //parameter that can be set from the outside
+auto yt = yield_test(g_yt_in);  //create a fiber using an input parameter
 
-    Coro<int> loop(int N) {
-      for (int i = 0; i < N; ++i) {
-        g_yt_in = i; //set input parameter
-        auto ret = co_await yt; //call the fiber and wait for it to complete
-        std::cout << "Yielding " << ret << "\n";
-      }
-      vgjs::terminate();
-      co_return 0;
-    }
+Coro<int> loop(int N) {
+  for (int i = 0; i < N; ++i) {
+	g_yt_in = i; //set input parameter
+	auto ret = co_await yt; //call the fiber and wait for it to complete
+	std::cout << "Yielding " << ret << "\n";
+  }
+  vgjs::terminate();
+  co_return 0;
+}
 
-    void test(int N) {
-      schedule( docu::docu4::loop(N));
-    }
+void test(int N) {
+  schedule( docu::docu4::loop(N));
+}
+```
 
 The output of this code is
 
@@ -391,6 +423,7 @@ The advantage of generators/fibers is that they are created only once, but can b
 
 
 ## Finishing and Continuing Jobs
+
 A job starting children defines a parent-child relationship with them. Since children can start children themselves, the result is a call tree of jobs running possibly in parallel on the CPU cores. In order to enable synchronization without blocking threads, the concept of "finishing" is introduced.
 
 A parent synchronizes with its children through this non-blocking finishing process. If all children of a parent have finished and the parent additionally ends and returns, then it finishes itself. A job that finishes notifies it own parent of its finishing, thus enabling its parent to finish itself, and so on. This way, the event of finishing finally reaches the root of the job tree.
@@ -400,49 +433,54 @@ In C++ *functions*, children are started with the *schedule()* command, which is
 If the parent is a *coroutine*, then children are spawned by calling the *co_await* operator. Here the coro waits until all children have finished and resumes right after the *co_await*. Since the coro continues, it does not finish yet. Only after calling *co_return*, the coro finishes, and notifies its own parent. A coro should **not** call *schedule()* or *continuation()*!
 
 ## Tagged Jobs
+
 A unique feature of VGJS is allowing *tags*. Consider a game loop where things are done in parallel. While user callbacks work on the current state, they might share a common state and rely on the data integrity while running. Thus changing data or deleting entities should be done after the callbacks are finished. VGJS allows to schedule jobs for doing this for the future.
 
 When scheduling a job without specifying a tag, the job is immediately put into a global or local queue for running. If, however, *schedule()* is called with a tag, the job is placed into the tag's queue and waits there, until this tag is scheduled itself. Once the tag is scheduled, all jobs with the same tag are scheduled to the global/locals queues to run as *children* of the *current* job. Consider the following example:
 
-    schedule([=](){ loop(1); });            //immediately scheduled
+```c++
+schedule([=](){ loop(1); });            //immediately scheduled
 
-    schedule([=](){ loop(3); }, tag_t{1});  //wait in queue of tag 1
-    schedule([=](){ loop(4); }, tag_t{1});  //wait in queue of tag 1
+schedule([=](){ loop(3); }, tag_t{1});  //wait in queue of tag 1
+schedule([=](){ loop(4); }, tag_t{1});  //wait in queue of tag 1
 
-    schedule(tag_t{1});                       //run all jobs with tag 1
-    schedule([=](){ loop(5); });            //immediately scheduled
+schedule(tag_t{1});                       //run all jobs with tag 1
+schedule([=](){ loop(5); });            //immediately scheduled
 
-    continuation([=](){ after_tag1(); }); //continuation waits for all jobs to finish
+continuation([=](){ after_tag1(); }); //continuation waits for all jobs to finish
+```
 
 Tags act like barriers, and jobs can be prescheduled to do stuff later. E.g., changing shared resources or deleting entities can be scheduled to run later, in which the resources are no longer accessed in parallel.
 
 Coroutines schedule functions and other coroutines for future runs also using the *schedule()* function. However, scheduling tag jobs must be done with *co_await*:
 
-    void printPar(int i) { //print something
-        std::cout << "i: " << i << std::endl;
-    }
+```c++
+void printPar(int i) { //print something
+	std::cout << "i: " << i << std::endl;
+}
 
-    Coro<int> tag1() {
-        std::cout << "Tag 1" << std::endl;
-        co_await parallel(tag_t{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); },[=]() { printPar(6); });
-        co_await tag_t{ 1 }; //runt jobs with tag 1
-        co_return 0;
-    }
+Coro<int> tag1() {
+	std::cout << "Tag 1" << std::endl;
+	co_await parallel(tag_t{ 1 }, [=]() { printPar(4); }, [=]() { printPar(5); },[=]() { printPar(6); });
+	co_await tag_t{ 1 }; //runt jobs with tag 1
+	co_return 0;
+}
 
-    void tag0() {
-        std::cout << "Tag 0" << std::endl;
-        schedule([=]() { printPar(1); }, tag_t{ 0 });
-        schedule([=]() { printPar(2); }, tag_t{ 0 });
-        schedule([=]() { printPar(3); }, tag_t{ 0 });
-        schedule(tag_t{ 0 });   //run jobs with tag 0
-        continuation(tag1());   //continue with tag1()
-    }
+void tag0() {
+	std::cout << "Tag 0" << std::endl;
+	schedule([=]() { printPar(1); }, tag_t{ 0 });
+	schedule([=]() { printPar(2); }, tag_t{ 0 });
+	schedule([=]() { printPar(3); }, tag_t{ 0 });
+	schedule(tag_t{ 0 });   //run jobs with tag 0
+	continuation(tag1());   //continue with tag1()
+}
 
-    void test() {
-        std::cout << "Starting tag test()\n";
-        schedule([=]() { tag0(); });
-        std::cout << "Ending tag test()\n";
-    }
+void test() {
+	std::cout << "Starting tag test()\n";
+	schedule([=]() { tag0(); });
+	std::cout << "Ending tag test()\n";
+}
+```
 
 The example program above first schedules a function *tag0()* which runs tag 0 jobs. The output of this code is
 
@@ -459,15 +497,20 @@ The example program above first schedules a function *tag0()* which runs tag 0 j
     i: 5
 
 ## Breaking the Parent-Child Relationship
+
 Jobs having a parent will trigger a continuation of this parent after they have finished. This also means that these continuations depend on the children and have to wait. Starting a job that does not have a parent is easily done by using *nullptr* as the second argument of the *schedule()* call.
 
-    void driver() {
-        schedule( loop(std::allocator_arg, &g_global_mem4, 90), tag_t{}, nullptr );
-    }
+```c++
+void driver() {
+	schedule( loop(std::allocator_arg, &g_global_mem4, 90), tag_t{}, nullptr );
+}
+```
 
 The parameter will always be used if specified, also when scheduling tagged jobs. Therefore
 
-    schedule(tag_t{1}, nullptr);
+```c++
+schedule(tag_t{1}, nullptr);
+```
 
 runs tag 0 jobs, but these jobs do not have any parent, and the current job does not depend on them.
 
@@ -479,13 +522,14 @@ This does **not** apply to coroutines, since coroutines do not go out of context
 
 When sharing global variables in functions that might be changed by several jobs in parallel, e.g. counters counting something up or down, you should consider using *std::atomic<T>* in order to avoid unpredictable runtime behavior. In a job, never wait for anything for long, use polling instead and finally return. Waiting will block the thread that runs the job and take away overall processing efficiency.
 
-
 ## Data Parallelism and Performance
+
 VGJS enables data parallel thinking since it enables focusing on data structures rather than tasks. The system assumes the use of many data structures that might or might not need computation. Data structures can be either global, or are organized as data streams that flow from one system to another system and get transformed in the process.
 
 Since the VGJS incurs some overhead, jobs should not bee too small in order to enable some speedup. Depending on the CPU, job sizes in the order of 1-2 us seem to be enough to result in noticeable speedups on a 4 core Intel i7 with 8 hardware threads. Smaller job sizes are course possible but should not occur too often.
 
 ## Logging Jobs
+
 Execution of jobs can be recorded in trace files compatible with the Google Chrome chrome://tracing/ viewer. Recording can be switched on by calling *enable_logging()*. By calling *disable_logging()*, recording is stopped and the recorded data is saved to a file with name "log.json". The available dump is also saved to file if the job system ends.
 
 The dump file can then be loaded in the Google Chrome *chrome://tracing/* viewer. Just start Google Chrome and type in *chrome://tracing/* in the search field. Click on the Load button and select the trace file.
