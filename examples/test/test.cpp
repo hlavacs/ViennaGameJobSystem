@@ -12,18 +12,33 @@
 
 using namespace std::chrono;
 
+using namespace simple_vgjs;
 
 namespace test {
 
+    VgjsJob FF{ []() {}, thread_index_t{-1}};
 
+    template<typename F>
+    void F1(F&& func) {
 
-}
+    }
+
+    void F2() {
+        VgjsJob G;
+        F1(G);
+        F1(VgjsJob{ []() {}, thread_index_t{-1} });
+
+    }
+
+};
+
 
 
 using namespace simple_vgjs;
 
 int main(int argc, char* argv[])
 {
+    test::F2();
 	return 0;
 }
 

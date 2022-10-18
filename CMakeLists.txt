@@ -21,9 +21,6 @@ SET(INCLUDE ${CMAKE_HOME_DIRECTORY}/include)
 SET(HEADERS ${INCLUDE}/IntType.h ${INCLUDE}/VGJS.h ${INCLUDE}/VGJSCoro.h)
 include_directories (${INCLUDE})
 
-add_subdirectory (examples/docu)
-add_subdirectory (examples/examples)
-add_subdirectory (examples/performance)
 add_subdirectory (examples/test)
 
 find_package(Doxygen)
