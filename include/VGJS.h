@@ -89,7 +89,7 @@ namespace simple_vgjs {
             , thread_index_t index = thread_index_t{ -1 }
             , thread_type_t type = thread_type_t{}
             , thread_id_t id = thread_id_t{}
-            , VgjsJobParentPointer parent = nullptr) : VgjsJobParent(index, type, id, parent) {};
+            , VgjsJobParentPointer parent = nullptr) : m_function{ f }, VgjsJobParent(index, type, id, parent) {};
 
         VgjsJob(const VgjsJob& f) = default;
         VgjsJob(VgjsJob&& f) = default;
@@ -231,7 +231,7 @@ namespace simple_vgjs {
         std::vector<std::thread>                      m_threads;	        //<array of thread structures
         std::vector<VgjsQueue<VgjsJobParentPointer>>  m_global_queues;	    //<each thread has its shared Job queue, multiple produce, multiple consume
         std::vector<VgjsQueue<VgjsJobParentPointer>>  m_local_queues;	    //<each thread has its own Job queue, multiple produce, single consume
-        thread_local inline static VgjsJobParentPointer      m_current_job{};
+        thread_local inline static VgjsJobParentPointer m_current_job{};
         bool                                          m_terminate{ false };
         std::vector<std::unique_ptr<std::condition_variable>>  m_cv;
         static inline std::vector<std::unique_ptr<std::mutex>> m_mutex;
@@ -311,8 +311,8 @@ namespace simple_vgjs {
             thread_local static thread_index_t next_thread{0};
 
             VgjsJobParentPointer job;
-            if constexpr (!is_function<std::decay_t<F>>) {
-                job = std::make_shared(VgjsJob{ f, index, type, id, m_current_job });
+            if constexpr (is_function<std::decay_t<F>>) {
+                job = std::make_shared<VgjsJob>( f, index, type, id, m_current_job );
             }
             else if constexpr (is_parent_pointer<F> ) {
                 job = f; 
@@ -321,6 +321,7 @@ namespace simple_vgjs {
             next_thread = job->m_thread_index() < 0 ? next_thread() + 1 : job->m_thread_index();
             next_thread = (next_thread() >= get_thread_count() ? 0u : next_thread());
             job->m_thread_index() < 0 ? m_global_queues[next_thread()].push(job) : m_local_queues[next_thread()].push(job);
+            m_cv[next_thread()]->notify_one();
         }
     };
 

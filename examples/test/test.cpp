@@ -41,8 +41,9 @@ int main(int argc, char* argv[])
 
     system.schedule([]() {
             volatile static uint64_t sum{ 0 };
-            for (int i = 0; i < 100000; ++i) {
+            for (int i = 0; i < 10; ++i) {
                 sum += i;
+                std::cout << sum << "\n";
             };
         }
     );
