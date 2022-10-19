@@ -29,16 +29,15 @@ namespace simple_vgjs {
     struct strong_type_t {
         T value{D};
         strong_type_t() = default;
-        explicit strong_type_t(const T& v) { value = v; };
-        explicit strong_type_t(T&& v) { value = std::move(v); };
-        T operator()() const { return value; };
-        strong_type_t<T, D, P>& operator=(const T& v) { value = v; return *this; };
-        strong_type_t<T, D, P>& operator=(T&& v) { value = std::move(v); return *this; };
-        strong_type_t<T, D, P>& operator=(const strong_type_t<T, D, P>& v) { value = v.value; return *this; };
-        strong_type_t<T, D, P>& operator=(strong_type_t<T, D, P>&& v) { value = std::move(v.value); return *this; };
-        strong_type_t(const strong_type_t<T, D, P>& v) { value = v.value; };
-        strong_type_t(strong_type_t<T, D, P>&& v) { value = std::move(v.value); };
-        auto operator<=>(const strong_type_t<T, D, P>& v) const { return value < v.value; };
+        explicit strong_type_t(const T& v) noexcept { value = v; };
+        explicit strong_type_t(T&& v) noexcept { value = std::move(v); };
+        T operator()() const noexcept { return value; };
+        strong_type_t<T, D, P>& operator=(const T& v) noexcept { value = v; return *this; };
+        strong_type_t<T, D, P>& operator=(T&& v) noexcept { value = std::move(v); return *this; };
+        strong_type_t<T, D, P>& operator=(const strong_type_t<T, D, P>& v) noexcept { value = v.value; return *this; };
+        strong_type_t<T, D, P>& operator=(strong_type_t<T, D, P>&& v) noexcept { value = std::move(v.value); return *this; };
+        strong_type_t(const strong_type_t<T, D, P>& v) noexcept { value = v.value; };
+        strong_type_t(strong_type_t<T, D, P>&& v) noexcept { value = std::move(v.value); };
     };
 
     using thread_count_t    = strong_type_t<int64_t, -1, 0>;
@@ -49,28 +48,26 @@ namespace simple_vgjs {
     using parent_t          = strong_type_t<int64_t, -1, 5>;
 
     struct VgjsJobParent;
-    using job_pointer_t     = std::shared_ptr<VgjsJobParent>;
+    using VgjsJobParentPointer = std::shared_ptr<VgjsJobParent>;
 
     class VgjsJobSystem;
     //---------------------------------------------------------------------------------------------
 
     struct VgjsJobParent {
-        thread_index_t              m_thread_index;     //thread that the f should run on
-        thread_type_t               m_type;             //type of the call
-        thread_id_t                 m_id;               //unique identifier of the call
-        job_pointer_t               m_parent;           //parent job that created this job
-        std::atomic<uint64_t>       m_children;         //number of children this job is waiting for
+        thread_index_t         m_thread_index{};     //thread that the f should run on
+        thread_type_t          m_type{};             //type of the call
+        thread_id_t            m_id{};               //unique identifier of the call
+        VgjsJobParentPointer   m_parent{};           //parent job that created this job
+        std::atomic<uint32_t>  m_children{};         //number of children this job is waiting for
 
-        VgjsJobSystem *             m_system;
-        thread_index_t              m_current_thread_index;  //thread that the f is running on
+        VgjsJobSystem*         m_system{};
+        thread_index_t         m_current_thread_index{};  //thread that the f is running on
 
-        VgjsJobParent() {};
-        VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, job_pointer_t parent) 
+        VgjsJobParent() = default;
+        VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, VgjsJobParentPointer parent)
             : m_thread_index{ index }, m_type{ type }, m_id{ id }, m_parent{ parent } {};
         virtual void resume(thread_index_t index) = 0;
     };
-
-    using VgjsJobPointer = std::shared_ptr<VgjsJobParent>;
 
     struct VgjsJob : public VgjsJobParent {
         std::function<void(void)> m_function = []() {};  //empty function
@@ -82,7 +79,7 @@ namespace simple_vgjs {
             , thread_index_t index = thread_index_t{ -1 }
             , thread_type_t type = thread_type_t{}
             , thread_id_t id = thread_id_t{}
-            , job_pointer_t parent = nullptr) : VgjsJobParent(index, type, id, parent) {};
+            , VgjsJobParentPointer parent = nullptr) : VgjsJobParent(index, type, id, parent) {};
 
         VgjsJob(const VgjsJob& f) = default;
         VgjsJob(VgjsJob&& f) = default;
@@ -120,11 +117,11 @@ namespace simple_vgjs {
     template<typename T = void>
     class VgjsCoroPromise : public VgjsJobParent {
     private:
-        coroutine_handle<> m_handle;   //<handle of the coroutine
-        T m_value;        //<a local storage of the value, use if parent is a coroutine
+        coroutine_handle<T> m_handle;    //<handle of the coroutine
+        T m_value{};                     //<a local storage of the value, use if parent is a coroutine
 
     public:
-        explicit VgjsCoroPromise() noexcept : m_handle{ coroutine_handle<Coro_promise<T>>::from_promise(*this) } {};
+        explicit VgjsCoroPromise() noexcept : m_handle{ coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this) } {};
         
         auto unhandled_exception() noexcept -> void { std::terminate(); };
         auto initial_suspend() noexcept -> suspend_always { return {}; };
@@ -134,19 +131,17 @@ namespace simple_vgjs {
         auto return_value(T t) noexcept -> void { m_value = t; }
 
         template<typename U>
-        awaitable_tuple<T, U> await_transform(U&& func) noexcept { return { std::tuple<U&&>(std::forward<U>(func)) }; };
+        auto await_transform(U&& func) noexcept -> awaitable_tuple<T, U> { return { std::tuple<U&&>(std::forward<U>(func)) }; };
 
         template<typename... Ts>
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>&& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+        auto await_transform(std::tuple<Ts...>&& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         template<typename... Ts>
-        awaitable_tuple<T, Ts...> await_transform(std::tuple<Ts...>& tuple) noexcept { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+        auto await_transform(std::tuple<Ts...>& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
-        awaitable_resume_on<T> await_transform(thread_index_t index) noexcept { return { index }; };
-
-        awaitable_tag<T> await_transform(tag_t tg) noexcept { return { tg }; };
-
-        final_awaiter<T> final_suspend() noexcept { return {}; };
+        auto await_transform(thread_index_t index) noexcept -> awaitable_resume_on<T> { return { index }; };
+        auto await_transform(tag_t tg) noexcept -> awaitable_tag<T> { return { tg }; };
+        auto final_suspend() noexcept -> final_awaiter<T> { return {}; };
     };
 
     template<typename T>
@@ -190,12 +185,14 @@ namespace simple_vgjs {
     template<typename T>
     class VgjsQueue {
     private:
-        std::mutex      m_mutex;
-        std::queue<T>   m_queue;
+        std::mutex      m_mutex{};
+        std::queue<T>   m_queue{};
 
     public:
-        VgjsQueue() {};
-      
+        VgjsQueue() = default;
+        VgjsQueue(const VgjsQueue& q) { m_queue = q.m_queue; };
+        VgjsQueue(VgjsQueue&& q) { m_queue = std::move(q.m_queue); };
+
         void push(T&& job) {
             std::lock_guard<std::mutex> guard(m_mutex);
             m_queue.push(std::forward<T>(job));
@@ -218,52 +215,97 @@ namespace simple_vgjs {
 
     class VgjsJobSystem {
     private:
-        thread_count_t           m_thread_count{ 0 };    ///<number of threads in the pool
-        std::vector<std::thread> m_threads;	            ///<array of thread structures
-        std::vector<VgjsQueue<VgjsJobPointer>>  m_global_queues;	///<each thread has its shared Job queue, multiple produce, multiple consume
-        std::vector<VgjsQueue<VgjsJobPointer>>  m_local_queues;	    ///<each thread has its own Job queue, multiple produce, single consume
-        VgjsJobPointer  m_current_job{};
-        bool            m_terminate{ false };
+        std::atomic<uint32_t>                         m_thread_count{0};       //<number of threads in the pool
+        std::vector<std::thread>                      m_threads;	        //<array of thread structures
+        std::vector<VgjsQueue<VgjsJobParentPointer>>  m_global_queues;	    //<each thread has its shared Job queue, multiple produce, multiple consume
+        std::vector<VgjsQueue<VgjsJobParentPointer>>  m_local_queues;	    //<each thread has its own Job queue, multiple produce, single consume
+        thread_local inline static VgjsJobParentPointer      m_current_job{};
+        bool                                          m_terminate{ false };
+        std::vector<std::unique_ptr<std::condition_variable>>  m_cv;
+        static inline std::vector<std::unique_ptr<std::mutex>> m_mutex;
 
     public:
 
         VgjsJobSystem(thread_count_t count = thread_count_t(0), thread_index_t start = thread_index_t(0)) {
             count = ( count() == 0 ? std::thread::hardware_concurrency() : count() );
+
+            VgjsQueue<VgjsJobParentPointer> p{};
+
             for (auto i = start(); i < count(); ++i) {
+                m_global_queues.emplace_back();     //global job queue
+                m_local_queues.emplace_back();     //local job queue
+                m_cv.emplace_back(std::make_unique<std::condition_variable>());
+                m_mutex.emplace_back(std::make_unique<std::mutex>());
                 m_threads.push_back( std::thread( &VgjsJobSystem::task, this, thread_index_t(i), count ) );	//spawn the pool threads
             }
+            wait(count());
         };
 
         ~VgjsJobSystem() {}
 
-        void task(thread_index_t index, thread_count_t count) noexcept {
-            thread_index_t my_index{ index };  //<each thread has its own number
-            thread_index_t other_index{ my_index };
-            static std::latch latch{ count() };
+        auto get_thread_count() { return m_thread_count.load(); };
 
-            latch.arrive_and_wait();
+        void task(thread_index_t index, thread_count_t count) noexcept {
+            thread_index_t my_index{ index };                       //<each thread has its own number
+            thread_index_t other_index{ my_index };
+            std::unique_lock<std::mutex> lk(*m_mutex[index()]);
+
+            m_thread_count++;
+            m_thread_count.notify_all();
+            wait(count());
 
             while (!m_terminate) {  //Run until the job system is terminated
                 m_current_job = m_local_queues[my_index()].pop();
                 if (m_current_job == nullptr) {
                     m_current_job = m_global_queues[my_index()].pop();
-                    if (m_current_job == nullptr) {
+                    auto loops = count();
+                    while (m_current_job == nullptr && --loops>0) {
                         other_index = (other_index() + 1 == count() ? 0 : other_index() + 1);
-                        m_current_job = m_global_queues[other_index()].pop();
+                        if(my_index() != other_index()) m_current_job = m_global_queues[other_index()].pop();
                     }
                 }
                 if (m_current_job != nullptr) {
                     m_current_job->resume(my_index);
                 }
                 else {
-
+                    m_cv[0]->wait_for(lk, std::chrono::microseconds(100));
                 }
             }
+            m_thread_count--;
+            m_thread_count.notify_all();
         }
 
+        void terminate() {
+            m_terminate = true;
+            for (auto& cv : m_cv) cv->notify_all();
+            if (m_current_job) {
+                m_thread_count--;
+                m_thread_count.notify_all();
+            }
+            wait();
+        }
 
-        void schedule( ) {
+        void wait(size_t desired = 0) {
+            do {
+                auto num = m_thread_count.load();
+                if(num!= desired) 
+                    m_thread_count.wait(num);
+            } while (m_thread_count.load() != desired);
+        }
 
+        template<typename F>
+        void schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
+            thread_local static thread_index_t next_thread{0};
+
+            VgjsJobParentPointer job;
+            if constexpr (!std::is_same<std::decay_t<F>, VgjsJobParentPointer>) {
+                job = std::make_shared(VgjsJob{ f, index, type, id, m_current_job });
+            }
+            else { job = F; }
+
+            auto next_thread = f->m_thread_index() < 0 ? next_thread() + 1 : f->m_thread_index();
+            auto next_thread = next_thread() >= get_thread_count() ? 0 : next_thread();
+            f->m_thread_index() < 0 ? m_global_queues[next_thread()].push(job) : m_local_queues[next_thread(job)].push(job);
         }
     };
 

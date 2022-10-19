@@ -33,12 +33,14 @@ namespace test {
 };
 
 
-
-using namespace simple_vgjs;
-
 int main(int argc, char* argv[])
 {
-    test::F2();
+    //test::F2();
+
+    VgjsJobSystem system(thread_count_t{ 1 });
+
+    system.wait();
+
 	return 0;
 }
 
