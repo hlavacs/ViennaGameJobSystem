@@ -39,6 +39,14 @@ int main(int argc, char* argv[])
 
     VgjsJobSystem system(thread_count_t{ 1 });
 
+    system.schedule([]() {
+            volatile static uint64_t sum{ 0 };
+            for (int i = 0; i < 100000; ++i) {
+                sum += i;
+            };
+        }
+    );
+
     system.wait();
 
 	return 0;

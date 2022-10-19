@@ -50,6 +50,16 @@ namespace simple_vgjs {
     struct VgjsJobParent;
     using VgjsJobParentPointer = std::shared_ptr<VgjsJobParent>;
 
+    template<typename T>
+    concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> >;
+
+    template<typename T>
+    concept is_parent_pointer = std::is_same_v< std::decay_t<T>, VgjsJobParentPointer >;
+
+    template<typename T>
+    concept is_schedulable = is_function<T> || is_parent_pointer<T>;
+
+
     class VgjsJobSystem;
     //---------------------------------------------------------------------------------------------
 
@@ -190,15 +200,17 @@ namespace simple_vgjs {
 
     public:
         VgjsQueue() = default;
-        VgjsQueue(const VgjsQueue& q) { m_queue = q.m_queue; };
-        VgjsQueue(VgjsQueue&& q) { m_queue = std::move(q.m_queue); };
+        VgjsQueue(const VgjsQueue& q) noexcept { m_queue = q.m_queue; };
+        VgjsQueue(VgjsQueue&& q) noexcept { m_queue = std::move(q.m_queue); };
 
-        void push(T&& job) {
+        template<typename J>
+        requires std::is_same_v< std::decay_t<J>, T>
+        void push(J&& job) noexcept {
             std::lock_guard<std::mutex> guard(m_mutex);
             m_queue.push(std::forward<T>(job));
         }
 
-        T pop() {
+        T pop() noexcept {
             std::lock_guard<std::mutex> guard(m_mutex);
             if (m_queue.empty()) return {};
             T ref = m_queue.front();
@@ -243,7 +255,7 @@ namespace simple_vgjs {
 
         ~VgjsJobSystem() {}
 
-        auto get_thread_count() { return m_thread_count.load(); };
+        int64_t get_thread_count() { return m_thread_count.load(); };
 
         void task(thread_index_t index, thread_count_t count) noexcept {
             thread_index_t my_index{ index };                       //<each thread has its own number
@@ -294,18 +306,21 @@ namespace simple_vgjs {
         }
 
         template<typename F>
+        requires is_schedulable<F>
         void schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
             thread_local static thread_index_t next_thread{0};
 
             VgjsJobParentPointer job;
-            if constexpr (!std::is_same<std::decay_t<F>, VgjsJobParentPointer>) {
+            if constexpr (!is_function<std::decay_t<F>>) {
                 job = std::make_shared(VgjsJob{ f, index, type, id, m_current_job });
             }
-            else { job = F; }
+            else if constexpr (is_parent_pointer<F> ) {
+                job = f; 
+            }
 
-            auto next_thread = f->m_thread_index() < 0 ? next_thread() + 1 : f->m_thread_index();
-            auto next_thread = next_thread() >= get_thread_count() ? 0 : next_thread();
-            f->m_thread_index() < 0 ? m_global_queues[next_thread()].push(job) : m_local_queues[next_thread(job)].push(job);
+            next_thread = job->m_thread_index() < 0 ? next_thread() + 1 : job->m_thread_index();
+            next_thread = (next_thread() >= get_thread_count() ? 0u : next_thread());
+            job->m_thread_index() < 0 ? m_global_queues[next_thread()].push(job) : m_local_queues[next_thread()].push(job);
         }
     };
 
