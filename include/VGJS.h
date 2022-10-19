@@ -69,7 +69,7 @@ namespace simple_vgjs {
         thread_id_t            m_id{};               //unique identifier of the call
         VgjsJobParentPointer   m_parent{};           //parent job that created this job
         std::atomic<uint32_t>  m_children{};         //number of children this job is waiting for
-
+        bool                   m_is_function{ true };
         VgjsJobSystem*         m_system{};
         thread_index_t         m_current_thread_index{};  //thread that the f is running on
 
@@ -227,19 +227,19 @@ namespace simple_vgjs {
 
     class VgjsJobSystem {
     private:
-        std::atomic<uint32_t>                         m_thread_count{0};       //<number of threads in the pool
+        std::atomic<uint32_t>                         m_thread_count{ 0 };       //<number of threads in the pool
         std::vector<std::thread>                      m_threads;	        //<array of thread structures
         std::vector<VgjsQueue<VgjsJobParentPointer>>  m_global_queues;	    //<each thread has its shared Job queue, multiple produce, multiple consume
         std::vector<VgjsQueue<VgjsJobParentPointer>>  m_local_queues;	    //<each thread has its own Job queue, multiple produce, single consume
         thread_local inline static VgjsJobParentPointer m_current_job{};
         bool                                          m_terminate{ false };
         std::vector<std::unique_ptr<std::condition_variable>>  m_cv;
-        static inline std::vector<std::unique_ptr<std::mutex>> m_mutex;
+        static inline std::vector<std::unique_ptr<std::mutex>> m_mutex{};
 
     public:
 
         VgjsJobSystem(thread_count_t count = thread_count_t(0), thread_index_t start = thread_index_t(0)) {
-            count = ( count() == 0 ? std::thread::hardware_concurrency() : count() );
+            count = ( count() <= 0 ? std::thread::hardware_concurrency() : count() );
 
             VgjsQueue<VgjsJobParentPointer> p{};
 
@@ -253,18 +253,23 @@ namespace simple_vgjs {
             wait(count());
         };
 
-        ~VgjsJobSystem() {}
+        ~VgjsJobSystem() { 
+            std::ranges::for_each(m_threads, [&](auto& thread) { thread.join(); });
+        }
 
-        int64_t get_thread_count() { return m_thread_count.load(); };
+        int64_t get_thread_count() { 
+            return m_thread_count.load(); 
+        };
+
 
         void task(thread_index_t index, thread_count_t count) noexcept {
-            thread_index_t my_index{ index };                       //<each thread has its own number
-            thread_index_t other_index{ my_index };
-            std::unique_lock<std::mutex> lk(*m_mutex[index()]);
-
             m_thread_count++;
             m_thread_count.notify_all();
             wait(count());
+
+            thread_index_t my_index{ index };                       //<each thread has its own number
+            thread_index_t other_index{ my_index };
+            std::unique_lock<std::mutex> lk(*m_mutex[my_index()]);
 
             while (!m_terminate) {  //Run until the job system is terminated
                 m_current_job = m_local_queues[my_index()].pop();
@@ -287,6 +292,20 @@ namespace simple_vgjs {
             m_thread_count.notify_all();
         }
 
+        void child_finished(VgjsJobParentPointer job) noexcept {
+            uint32_t num = job->m_children.fetch_sub(1);        //one less child
+            if (num == 1) {                                     //was it the last child?
+                if (job->m_is_function) {            //Jobs call always on_finished()
+                    if (job->m_parent) {
+                        child_finished(job->m_parent);	//if this is the last child job then the parent will also finish
+                    }
+                }
+                else {
+                    schedule(job);   //a coro just gets scheduled again so it can go on
+                }
+            }
+        }
+
         void terminate() {
             m_terminate = true;
             for (auto& cv : m_cv) cv->notify_all();
@@ -297,7 +316,7 @@ namespace simple_vgjs {
             wait();
         }
 
-        void wait(size_t desired = 0) {
+        void wait(int64_t desired = 0) {
             do {
                 auto num = m_thread_count.load();
                 if(num!= desired) 
@@ -311,7 +330,7 @@ namespace simple_vgjs {
             thread_local static thread_index_t next_thread{0};
 
             VgjsJobParentPointer job;
-            if constexpr (is_function<std::decay_t<F>>) {
+            if constexpr (is_function<F>) {
                 job = std::make_shared<VgjsJob>( f, index, type, id, m_current_job );
             }
             else if constexpr (is_parent_pointer<F> ) {

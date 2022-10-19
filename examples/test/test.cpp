@@ -33,22 +33,31 @@ namespace test {
 };
 
 
+
 int main(int argc, char* argv[])
 {
     //test::F2();
 
-    VgjsJobSystem system(thread_count_t{ 1 });
+    VgjsJobSystem system(thread_count_t{});
 
-    system.schedule([]() {
-            volatile static uint64_t sum{ 0 };
-            for (int i = 0; i < 10; ++i) {
-                sum += i;
-                std::cout << sum << "\n";
-            };
-        }
-    );
+    auto f = [](int i) {
+        volatile static uint64_t sum{ 0 };
+        for (int i = 0; i < 10; ++i) {
+            sum += i;
+            std::cout << sum << "\n";
+        };
+    };
 
-    system.wait();
+    auto g = [&](int i) {
+        system.schedule([&]() { f(i); });
+    };
+
+    for( int i=0; i<100; ++i)
+        system.schedule( [&]() { g(i); } );
+
+    std::string str;
+    //std::cin >> str;
+    system.terminate();
 
 	return 0;
 }
