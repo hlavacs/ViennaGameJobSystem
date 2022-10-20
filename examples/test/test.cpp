@@ -55,11 +55,12 @@ int main(int argc, char* argv[])
         VgjsJobSystem().schedule([&]() { f(i); });
     };
 
-    for( int i=0; i<100; ++i)
-        VgjsJobSystem().schedule( [&]() { g(i); } );
+    for (int i = 0; i < 100; ++i) {
+        VgjsJobSystem().schedule([&]() { f(i); });
+    }
 
     std::string str;
-    //std::cin >> str;
+    std::cin >> str;
     VgjsJobSystem().terminate();
 
 	return 0;
