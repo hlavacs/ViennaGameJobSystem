@@ -30,6 +30,11 @@ namespace test {
 
     }
 
+    VgjsCoroReturn<int> coro() {
+        co_await std::make_tuple( []() { F2(); } );
+        co_return 1;
+    }
+
 };
 
 
@@ -37,8 +42,6 @@ namespace test {
 int main(int argc, char* argv[])
 {
     //test::F2();
-
-    VgjsJobSystem system(thread_count_t{});
 
     auto f = [](int i) {
         volatile static uint64_t sum{ 0 };
@@ -49,15 +52,15 @@ int main(int argc, char* argv[])
     };
 
     auto g = [&](int i) {
-        system.schedule([&]() { f(i); });
+        VgjsJobSystem().schedule([&]() { f(i); });
     };
 
     for( int i=0; i<100; ++i)
-        system.schedule( [&]() { g(i); } );
+        VgjsJobSystem().schedule( [&]() { g(i); } );
 
     std::string str;
     //std::cin >> str;
-    system.terminate();
+    VgjsJobSystem().terminate();
 
 	return 0;
 }
