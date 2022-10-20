@@ -48,6 +48,24 @@ namespace simple_vgjs {
     using tag_t             = strong_type_t<int64_t, -1, 4>;
     using parent_t          = strong_type_t<int64_t, -1, 5>;
 
+    //---------------------------------------------------------------------------------------------
+
+    //Declaration of classes 
+    template<typename T> struct awaitable_resume_on;
+    template<typename PT, typename... Ts> struct awaitable_tuple;
+    template<typename PT> struct awaitable_tag;
+    template<typename U> struct final_awaiter;
+
+    struct VgjsJobParent; 
+    using VgjsJobParentPointer = std::shared_ptr<VgjsJobParent>;
+    template<typename T> class VgjsCoroPromise;
+    template<typename T> using VgjsCoroPromisePointer = std::shared_ptr<VgjsCoroPromise<T>>;
+    template<typename T> class VgjsCoroReturn;
+    template<typename T> using VgjsCoroReturnPointer = std::shared_ptr<VgjsCoroReturn<T>>;
+    
+    class VgjsJobSystem; 
+    using VgjsJobSystemPointer = VgjsJobSystem*;
+
     //test whether a template parameter T is a std::pmr::vector
     template<typename>
     struct is_vector : std::false_type {};
@@ -55,13 +73,15 @@ namespace simple_vgjs {
     template<typename T>
     struct is_vector<std::vector<T>> : std::true_type {};
 
-    //Base class of all jobs
-    struct VgjsJobParent;
-    using VgjsJobParentPointer = std::shared_ptr<VgjsJobParent>;
-
     //Concept of things that can get scheduled
     template<typename T>
     concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> >;
+
+    template<typename >
+    struct is_return_object : std::false_type {};
+
+    template<typename T>
+    struct is_return_object<VgjsCoroReturn<T>> : std::true_type {};
 
     template<typename T>
     concept is_parent_pointer = std::is_same_v< std::decay_t<T>, VgjsJobParentPointer >;
@@ -70,11 +90,7 @@ namespace simple_vgjs {
     concept is_tag = std::is_same_v< std::decay_t<T>, tag_t >;
 
     template<typename T>
-    concept is_schedulable = is_function<T> || is_parent_pointer<T> || is_tag<T>;
-
-    //The job system
-    class VgjsJobSystem;
-    using VgjsJobSystemPointer = VgjsJobSystem*;
+    concept is_schedulable = is_function<T> || std::is_same_v< is_return_object<T>, std::true_type > || is_parent_pointer<T> || is_tag<T>;
 
     //---------------------------------------------------------------------------------------------
 
@@ -114,28 +130,8 @@ namespace simple_vgjs {
         void resume() noexcept { m_function(); }
     };
 
-    //---------------------------------------------------------------------------------------------
-
-    class VgjsJobSystem;
-
-    template<typename T>
-    struct awaitable_resume_on;
-
-    template<typename PT, typename... Ts>
-    struct awaitable_tuple;
-
-    template<typename PT>
-    struct awaitable_tag;
-
-    template<typename U>
-    struct final_awaiter;
-
 
     //---------------------------------------------------------------------------------------------
-
-
-    template<typename T>
-    class VgjsCoroReturn;
 
     template<typename T = void>
     class VgjsCoroPromise : public VgjsJobParent {
@@ -167,9 +163,6 @@ namespace simple_vgjs {
         auto await_transform(tag_t tg) noexcept -> awaitable_tag<T> { return { tg }; };
         auto final_suspend() noexcept -> final_awaiter<T> { return {}; };
     };
-
-    template<typename T>
-    using VgjsCoroPromisePointer = std::shared_ptr<VgjsCoroPromise<T>>;
 
 
     //--------------------------------------------------------
@@ -204,8 +197,6 @@ namespace simple_vgjs {
         }*/
     };
 
-    template<typename T>
-    using VgjsCoroReturnPointer = std::shared_ptr<VgjsCoroReturn<T>>;
 
     template<typename T>
     auto VgjsCoroPromise<T>::get_return_object() noexcept -> VgjsCoroReturn<T> { return { coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this) }; };
@@ -367,6 +358,9 @@ namespace simple_vgjs {
             }
             else if constexpr (is_parent_pointer<F> ) {
                 return sched(f);
+            }
+            else if constexpr (is_return_object_pointer<F>) {
+
             }
             else if constexpr (is_tag<F>) {
 

@@ -59,6 +59,9 @@ int main(int argc, char* argv[])
         VgjsJobSystem().schedule([&]() { f(i); });
     }
 
+    auto c = test::coro();
+    //VgjsJobSystem().schedule( c );
+
     std::string str;
     std::cin >> str;
     VgjsJobSystem().terminate();
