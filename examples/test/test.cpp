@@ -20,10 +20,11 @@ namespace test {
 
     template<typename F>
     void F1(F&& func) {
-
+        std::cout << "F1\n";
     }
 
     void F2() {
+        std::cout << "F2\n";
         VgjsJob G;
         F1(G);
         F1(VgjsJob{ []() {}, thread_index_t{-1} });
@@ -31,7 +32,8 @@ namespace test {
     }
 
     VgjsCoroReturn<int> coro() {
-        co_await std::make_tuple( []() { F2(); } );
+        std::cout << "coro\n";
+        co_await []() { F2(); };
         co_return 1;
     }
 
@@ -56,11 +58,10 @@ int main(int argc, char* argv[])
     };
 
     for (int i = 0; i < 100; ++i) {
-        VgjsJobSystem().schedule([&]() { f(i); });
+        //VgjsJobSystem().schedule([&]() { f(i); });
     }
 
-    auto c = test::coro();
-    //VgjsJobSystem().schedule( c );
+    VgjsJobSystem().schedule(test::coro());
 
     std::string str;
     std::cin >> str;
