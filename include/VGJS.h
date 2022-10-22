@@ -226,40 +226,48 @@ namespace simple_vgjs {
     class VgjsQueue {
     private:
         std::mutex  m_mutex{};
-        T*          m_first{};
-        T*          m_last{};
-        uint64_t    m_size{ 0 };
+        T*          m_first{ nullptr };
+        T*          m_last{ nullptr };
+        size_t      m_size{ 0 };
 
     public:
         VgjsQueue() {};
         VgjsQueue(VgjsQueue&& rhs) {};
 
         auto size() { 
-            if constexpr (SYNC) std::lock_guard<std::mutex> guard(m_mutex);
-            return m_size;
+            if constexpr (SYNC) m_mutex.lock();
+            auto size = m_size;
+            if constexpr (SYNC) m_mutex.unlock();
+            return size;
         }
 
         void push(T* job) noexcept {
+            if constexpr (SYNC) m_mutex.lock();
             if (m_size > LIMIT) {
                 delete job;
+                if constexpr (SYNC) m_mutex.unlock();
                 return;
             }
-            if constexpr (SYNC) std::lock_guard<std::mutex> guard(m_mutex);
-            if (m_last) m_last->m_next = job;
-            m_last = job;
             job->m_next = nullptr;
-            m_first = ( m_first ? m_first : job);
-            ++m_size;
+            if (m_last) m_last->m_next = job;
+            else m_first = job;
+            m_last = job;
+            m_size++;
+            if constexpr (SYNC) m_mutex.unlock();
         }
 
         T* pop() noexcept {
-            if constexpr (SYNC) std::lock_guard<std::mutex> guard(m_mutex);
-            if (!m_first) return {};
-            T* res = m_first;
-            m_first = (T*)m_first->m_next;
-            if (!m_first) m_last = nullptr;
-            --m_size;
-            return res; 
+            if constexpr (SYNC) m_mutex.lock();
+            if (!m_first) {
+                if constexpr (SYNC) m_mutex.unlock();
+                return nullptr; //queue is empty -> return nullptr
+            }
+            T* res = m_first;               //there is a first entry
+            m_first = (T*)m_first->m_next;  //point to next in queue
+            if (!m_first) m_last = nullptr; //if there is not next -> queue is empty
+            m_size--;                       //reduce size
+            if constexpr (SYNC) m_mutex.unlock();
+            return res;
         }
     };
 
@@ -282,6 +290,7 @@ namespace simple_vgjs {
 
         static inline thread_local VgjsJobParentPointer m_current_job{};
         VgjsQueue<VgjsJob, false, 1 << 12>              m_recycle_jobs;
+        thread_local static inline thread_index_t       m_next_thread{ 0 };
         static inline std::vector<std::unique_ptr<std::condition_variable>> m_cv;
         static inline std::vector<std::unique_ptr<std::mutex>>              m_mutex{};
 
@@ -321,6 +330,7 @@ namespace simple_vgjs {
         void task(thread_index_t index, thread_count_t count) noexcept {
             m_thread_count++;
             m_thread_count.notify_all();
+            m_next_thread = index;
             wait(count);
 
             thread_index_t my_index{ index };                       //<each thread has its own number
@@ -393,21 +403,24 @@ namespace simple_vgjs {
         //requires is_schedulable<F>
         //int64_t schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
 
-        int64_t schedule(VgjsJob* job, tag_t tag = tag_t{}) {
-            thread_local static thread_index_t next_thread{0};
+        thread_index_t next_thread() {
 
-            if (tag >= 0) {                  //tagged scheduling
+        }
+
+        int64_t schedule(VgjsJobPointer job, tag_t tag = tag_t{}) {
+
+            /*if (tag >= 0) {                  //tagged scheduling
                 //if (!m_tag_queues.contains(tg)) {
                 //    m_tag_queues[tg] = std::make_unique<JobQueue<Job_base>>();
                 //}
                 //m_tag_queues.at(tg)->push(job); //save for later
                 return 0;
-            }
+            }*/
 
-            next_thread = job->m_thread_index < 0 ? next_thread + 1 : job->m_thread_index;
-            next_thread = (next_thread >= get_thread_count() ? thread_index_t{ 0 } : next_thread);
-            //job->m_thread_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
-            m_cv[next_thread]->notify_all();
+            m_next_thread = job->m_thread_index < 0 ? m_next_thread + 1 : job->m_thread_index;
+            m_next_thread = (m_next_thread >= get_thread_count() ? thread_index_t{ 0 } : m_next_thread);
+            job->m_thread_index < 0 ? m_global_job_queues[m_next_thread].push(job) : m_local_job_queues[m_next_thread].push(job);
+            m_cv[m_next_thread]->notify_all();
 
             return 1ul;
         }
@@ -475,7 +488,9 @@ namespace simple_vgjs {
         template<typename F>
         requires is_function<F>
         uint32_t schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-            return schedule(new VgjsJob{ std::forward<decltype(f)>(f), index, type, id}, tag, parent, children );
+            VgjsJob* job = m_recycle_jobs.pop();
+            if (!job) job = new VgjsJob{ std::forward<decltype(f)>(f), index, type, id };            
+            return schedule(job, tag, parent, children );
         }
 
         /*template<typename F>
