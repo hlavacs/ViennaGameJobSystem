@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
     };
 
     for (int i = 0; i < 100; ++i) {
-        //VgjsJobSystem().schedule([&]() { f(i); });
+        VgjsJobSystem().schedule([&]() { f(i); });
     }
 
     VgjsJobSystem().schedule(test::coro());

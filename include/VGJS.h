@@ -39,6 +39,10 @@ namespace simple_vgjs {
         strong_type_t<T, D, P>& operator=(strong_type_t<T, D, P>&& v) noexcept { value = std::move(v.value); return *this; };
         strong_type_t(const strong_type_t<T, D, P>& v) noexcept { value = v.value; };
         strong_type_t(strong_type_t<T, D, P>&& v) noexcept { value = std::move(v.value); };
+        struct hash {
+            std::size_t operator()(const strong_type_t<T, D, P>& tag) const { return std::hash<T>()(tag.value); };
+        };
+
     };
 
     using thread_count_t    = strong_type_t<int64_t, -1, 0>;
@@ -80,22 +84,26 @@ namespace simple_vgjs {
 
     //Concept of things that can get scheduled
     template<typename T>
-    concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> >;
+    concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> > && (!is_coro_return<T>::value);
+
+    template<typename T>
+    concept is_parent = std::is_same_v< std::decay_t<T>, VgjsJobParent >;
+
+    template<typename T>
+    concept is_job = std::is_same_v< std::decay_t<T>, VgjsJob >;
+
+    template<typename T>
+    concept is_coro_promise = std::is_base_of_v<VgjsJobParent, std::decay_t<T>> && !is_job<T>;
 
     template<typename >
-    struct is_return_object : std::false_type {};
+    struct is_coro_return : std::false_type {};
 
     template<typename T>
-    struct is_return_object<VgjsCoroReturn<T>> : std::true_type {};
-
-    template<typename T>
-    concept is_parent_pointer = std::is_same_v< std::decay_t<T>, VgjsJobParentPointer >;
+    struct is_coro_return<VgjsCoroReturn<T>> : std::true_type {};
 
     template<typename T>
     concept is_tag = std::is_same_v< std::decay_t<T>, tag_t >;
 
-    template<typename T>
-    concept is_schedulable = is_function<T> || is_return_object<T>::value || is_parent_pointer<T> || is_tag<T>;
 
     //---------------------------------------------------------------------------------------------
 
@@ -106,16 +114,34 @@ namespace simple_vgjs {
         thread_type_t          m_type{};             //type of the call
         thread_id_t            m_id{};               //unique identifier of the call
         VgjsJobParentPointer   m_parent{};           //parent job that created this job
-
-        std::atomic<uint32_t>  m_children{};         //number of children this job is waiting for
         bool                   m_is_function{ true };
+        std::atomic<uint32_t>  m_children{};         //number of children this job is waiting for
 
         VgjsJobParent() = default;
         
         VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, VgjsJobParentPointer parent)
             : m_thread_index{ index }, m_type{ type }, m_id{ id }, m_parent{ parent } {};
 
+        VgjsJobParent(const VgjsJobParent& j) noexcept {
+            m_thread_index = j.m_thread_index;
+            m_type = j.m_type;
+            m_id = j.m_id;
+            m_parent = j.m_parent;
+            m_is_function = j.m_is_function;
+        }
+
+        VgjsJobParent(VgjsJobParent&& j) noexcept {
+            m_thread_index = j.m_thread_index;
+            m_type = j.m_type;
+            m_id = j.m_id;
+            m_parent = j.m_parent;
+            m_is_function = j.m_is_function;
+        }
+        VgjsJobParent& operator= (const VgjsJobParent& j) noexcept = default;
+        VgjsJobParent& operator= (VgjsJobParent&& j) noexcept = default;
+
         virtual void resume() = 0;
+        virtual bool destroy() = 0;
     };
 
     struct VgjsJob : public VgjsJobParent {
@@ -130,11 +156,12 @@ namespace simple_vgjs {
             , thread_id_t id = thread_id_t{}
             , VgjsJobParentPointer parent = nullptr) : m_function{ f }, VgjsJobParent(index, type, id, parent) {};
 
-        VgjsJob(const VgjsJob& f) = default;
-        VgjsJob(VgjsJob&& f) = default;
-        VgjsJob& operator= (const VgjsJob& f) = default;
-        VgjsJob& operator= (VgjsJob&& f) = default;
+        VgjsJob(const VgjsJob& j) noexcept = default;
+        VgjsJob(VgjsJob&& j) noexcept { m_function = std::move(j.m_function); };
+        VgjsJob& operator= (const VgjsJob& j) noexcept { m_function = j.m_function; return *this; };
+        VgjsJob& operator= (VgjsJob&& j) noexcept = default;
         void resume() noexcept { m_function(); }
+        bool destroy() noexcept { return true; }
     };
 
 
@@ -149,19 +176,24 @@ namespace simple_vgjs {
         explicit VgjsCoroPromiseBase() noexcept : m_handle{ coroutine_handle<VgjsCoroPromiseBase<T>>::from_promise(*this) } {
             m_is_function = false;
         };
-        
+
+        bool destroy() noexcept {
+            m_handle.destroy();
+            return false; 
+        }
+
         auto unhandled_exception() noexcept -> void { std::terminate(); };
         auto initial_suspend() noexcept -> suspend_always { return {}; };
         auto resume() noexcept -> void { m_handle.resume(); };
 
         template<typename U>
-        auto await_transform(U&& func) noexcept -> awaitable_tuple<T, U> { return { std::tuple<U&&>(std::forward<U>(func)) }; };
+        auto await_transform(U&& func) noexcept -> awaitable_tuple<T, U> { return awaitable_tuple<T, U>{ this, std::tuple<U&&>(std::forward<U>(func)) }; };
 
         template<typename... Ts>
-        auto await_transform(std::tuple<Ts...>&& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { std::forward<std::tuple<Ts...>>(tuple) }; };
+        auto await_transform(std::tuple<Ts...>&& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { this, std::forward<std::tuple<Ts...>>(tuple) }; };
 
         template<typename... Ts>
-        auto await_transform(std::tuple<Ts...>& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { tuple }; };
+        auto await_transform(std::tuple<Ts...>& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { this, tuple }; };
 
         auto await_transform(thread_index_t index) noexcept -> awaitable_resume_on<T> { return { index }; };
         auto await_transform(tag_t tg) noexcept -> awaitable_tag<T> { return { tg }; };
@@ -205,14 +237,14 @@ namespace simple_vgjs {
         }
 
         T get() noexcept { return {}; }
+        promise_type& promise() { return m_handle.promise(); }
 
-        /*decltype(auto) operator() (thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
-            auto promise = 
-            m_promise->m_thread_index = index;
-            m_promise->m_type = type;
-            m_promise->m_id = id;
-            return std::move(*this);
-        }*/
+        decltype(auto) operator() (thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
+            promise().m_thread_index = index;
+            promise().m_type = type;
+            promise().m_id = id;
+            return *this;
+        }
     };
 
 
@@ -231,10 +263,18 @@ namespace simple_vgjs {
         size_t      m_size{ 0 };
 
     public:
-        VgjsQueue() {};
-        VgjsQueue(VgjsQueue&& rhs) {};
+        VgjsQueue() noexcept {};
+        VgjsQueue(VgjsQueue&& rhs) noexcept {};
+        ~VgjsQueue() noexcept {
+            auto* p = m_first;
+            while (p) {
+                auto* q = p;
+                p = (T*)p->m_next;
+                if( q->destroy() ) delete q;
+            }
+        }
 
-        auto size() { 
+        auto size() noexcept { 
             if constexpr (SYNC) m_mutex.lock();
             auto size = m_size;
             if constexpr (SYNC) m_mutex.unlock();
@@ -288,11 +328,19 @@ namespace simple_vgjs {
         static inline std::vector<VgjsQueue<VgjsJobParent>> m_global_coro_queues;	//<each thread has its shared Coro queue, multiple produce, multiple consume
         static inline std::vector<VgjsQueue<VgjsJobParent>> m_local_coro_queues;	//<each thread has its own Coro queue, multiple produce, single consume
 
+        static inline std::unordered_map<tag_t, std::unique_ptr<VgjsQueue<VgjsJobParent>>, tag_t::hash> m_tag_queues;
+
         static inline thread_local VgjsJobParentPointer m_current_job{};
         VgjsQueue<VgjsJob, false, 1 << 12>              m_recycle_jobs;
         thread_local static inline thread_index_t       m_next_thread{ 0 };
         static inline std::vector<std::unique_ptr<std::condition_variable>> m_cv;
         static inline std::vector<std::unique_ptr<std::mutex>>              m_mutex{};
+
+        thread_index_t next_thread_index() {
+            m_next_thread = thread_index_t{ m_next_thread + 1 };
+            m_next_thread = (m_next_thread >= m_thread_count ? thread_index_t{ 0 } : m_next_thread);
+            return m_next_thread;
+        }
 
     public:
 
@@ -322,7 +370,7 @@ namespace simple_vgjs {
 
         ~VgjsJobSystem() {} //keep empty!!
 
-        int64_t get_thread_count() { 
+        int64_t thread_count() { 
             return m_thread_count.load(); 
         };
 
@@ -398,66 +446,48 @@ namespace simple_vgjs {
         }
 
         //--------------------------------------------------------------------------------------------
+        //schedule
 
-        //template<typename F>
-        //requires is_schedulable<F>
-        //int64_t schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
-
-        thread_index_t next_thread() {
-
+        template<typename R>
+            requires is_coro_return<R>::value
+        uint32_t schedule(R&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            return schedule(&job.promise(), tag, parent, children);
         }
 
-        int64_t schedule(VgjsJobPointer job, tag_t tag = tag_t{}) {
-
-            /*if (tag >= 0) {                  //tagged scheduling
-                //if (!m_tag_queues.contains(tg)) {
-                //    m_tag_queues[tg] = std::make_unique<JobQueue<Job_base>>();
-                //}
-                //m_tag_queues.at(tg)->push(job); //save for later
-                return 0;
-            }*/
-
-            m_next_thread = job->m_thread_index < 0 ? m_next_thread + 1 : job->m_thread_index;
-            m_next_thread = (m_next_thread >= get_thread_count() ? thread_index_t{ 0 } : m_next_thread);
-            job->m_thread_index < 0 ? m_global_job_queues[m_next_thread].push(job) : m_local_job_queues[m_next_thread].push(job);
-            m_cv[m_next_thread]->notify_all();
-
-            return 1ul;
-        }
-
-
-        /*uint32_t schedule_job(Job_base* job, tag_t tg = tag_t{}) noexcept {
-            thread_local static thread_index_t thread_index(rand() % m_thread_count);
-
-            assert(job != nullptr);
-
-            if (tg.value >= 0) {                  //tagged scheduling
-                if (!m_tag_queues.contains(tg)) {
-                    m_tag_queues[tg] = std::make_unique<JobQueue<Job_base>>();
+        template<typename T>
+            requires is_parent<T> || is_job<T> || is_coro_promise<T>
+        uint32_t schedule(T* job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            if (tag >= 0) {
+                if (!m_tag_queues.contains(tag)) {
+                    m_tag_queues[tag] = std::make_unique<VgjsQueue<VgjsJobParent>>();
                 }
-                m_tag_queues.at(tg)->push(job); //save for later
+                m_tag_queues.at(tag)->push(job); //save for later
                 return 0;
             }
 
-            if (job->m_thread_index.value < 0 || job->m_thread_index.value >= (int)m_thread_count) {
-                thread_index.value = (++thread_index.value) >= (decltype(thread_index.value))m_thread_count ? 0 : thread_index.value;
-                m_global_queues[thread_index].push(job);
-                //m_cv[thread_index.value]->notify_one();       //wake up the thread
-                m_cv[0]->notify_all();       //wake up the thread
-                return 1;
+            if (parent != nullptr) {
+                if (children < 0) children = 1;
+                parent->m_children.fetch_add((int)children);
             }
 
-            m_local_queues[job->m_thread_index.value].push(job); //to a specific thread
-            //m_cv[job->m_thread_index]->notify_one();
-            m_cv[0]->notify_all();       //wake up the thread
-            return 1;
-        };*/
+            auto next_thread = job->m_thread_index < 0 ? next_thread_index() : job->m_thread_index;
+            if constexpr (is_job<T>) {
+                job->m_thread_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
+            }
+            if constexpr (is_coro_promise<T>) {
+                job->m_thread_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
+            }
 
+            m_cv[next_thread]->notify_all();
+            return 1l;
+        }
 
-        uint32_t schedule_tag(tag_t& tg, tag_t tg2 = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-            /*if (!m_tag_queues.contains(tg)) return 0;
+        template<typename T>
+            requires is_tag<T>
+        uint32_t schedule(T&& tg, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            if (!m_tag_queues.contains(tg)) return 0;
 
-            JobQueue<Job_base>* queue = m_tag_queues[tg].get();   //get the queue for this tag
+            auto queue = m_tag_queues[tg].get();   //get the queue for this tag
             uint32_t num_jobs = queue->size();
 
             if (parent != nullptr) {
@@ -468,76 +498,35 @@ namespace simple_vgjs {
             uint32_t num = num_jobs;        //schedule at most num_jobs, since someone could add more jobs now
             int i = 0;
             while (num > 0) {     //schedule all jobs from the tag queue
-                Job_base* job = queue->pop();
+                VgjsJobParent* job = queue->pop();
                 if (!job) return i;
                 job->m_parent = parent;
-                schedule_job(job, tag_t{});
+                schedule(job);
                 --num;
                 ++i;
             }
-            return i;*/
-            return 1;
+            return i;
         };
 
         template<typename F>
-        requires is_vector<F>::value
-        uint32_t schedule(F&& f, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-
-        }
-
-        template<typename F>
-        requires is_function<F>
+            requires is_function<F> 
         uint32_t schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
-            if (!job) job = new VgjsJob{ std::forward<decltype(f)>(f), index, type, id };            
+            if (job) {
+                *job = std::move(VgjsJob{ std::forward<decltype(f)>(f), index, type, id });
+            }
+            else {
+                if (!job) job = new VgjsJob{ std::forward<decltype(f)>(f), index, type, id };
+            }
             return schedule(job, tag, parent, children );
         }
 
-        /*template<typename F>
-        requires is_return_object<F>::value
-        uint32_t schedule(F&& f, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-
+        template<typename V>
+            requires is_vector<V>::value
+        uint32_t schedule(V&& vector, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            return std::accumulate(vector.begin, vector.end, 0, [](auto&& v) { return schedule(std::forward<decltype(v)>(v), index, type, id, tag, parent, children); });
         }
 
-        template<typename F>
-        requires is_parent_pointer<F> && (!is_return_object<F>::value)
-        uint32_t schedule(F&& f, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-
-        }*/
-
-        template<typename F>
-        uint32_t schedule(F&& f, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-            /*if constexpr (std::is_same_v<std::decay_t<F>, tag_t>) {
-                return schedule_tag(f, tag, parent, children);
-            }
-            else {
-                if constexpr (is_function<F>) {
-                    return schedule_job(std::make_shared<VgjsJob>(f, index, type, id, m_current_job));
-                }
-                else if constexpr (is_parent_pointer<F>) {
-                    return sched(f);
-                }
-                else if constexpr (is_return_object<std::decay_t<F>>::value) {
-
-                }
-                else if constexpr (is_tag<F>) {
-                    return schedule_tag(function, tg, parent, children);
-                }
-
-
-
-                job->m_parent = nullptr;
-                if (tg.value < 0) {
-                    job->m_parent = parent;
-                    if (parent != nullptr) {
-                        if (children < 0) children = 1;
-                        parent->m_children.fetch_add((int)children);
-                    }
-                }
-                return schedule_job(job, tg);
-            }*/
-            return 0;
-        };
     };
 
 
@@ -585,14 +574,14 @@ namespace simple_vgjs {
 
     template<typename PT, typename... Ts>
     struct awaitable_tuple : suspend_always {
-        tag_t               m_tag;          //The tag to schedule to
-        std::tuple<Ts&&...> m_tuple;        //tuple with all children to start
-        std::size_t         m_number;       //total number of all new children to schedule
+        VgjsCoroPromiseBase<PT>* m_promise;
+        tag_t                    m_tag;          //The tag to schedule to
+        std::tuple<Ts&&...>      m_tuple;        //tuple with all children to start
+        std::size_t              m_number;       //total number of all new children to schedule
 
         template<typename U>
         size_t size(U& children) {
-            return 1;
-            /*if constexpr (is_pmr_vector< std::decay_t<U> >::value) { //if this is a vector
+            if constexpr (is_vector< std::decay_t<U> >::value) { //if this is a vector
                 return children.size();
             }
             if constexpr (std::is_same_v<std::decay_t<U>, tag_t>) { //if this is a tag
@@ -600,7 +589,6 @@ namespace simple_vgjs {
                 return 0;
             }
             return 1;   //if this is a std::function, Function, or Coro
-            */
         };
 
         bool await_ready() noexcept {               //suspend only if there is something to do
@@ -623,7 +611,7 @@ namespace simple_vgjs {
                     return;
                 }
                 else {
-                    VgjsJobSystem().schedule(std::forward<T>(children), m_tag, (VgjsJobParentPointer) & h.promise(), (int32_t)m_number);   //in first call the number of children is the total number of all jobs
+                    VgjsJobSystem().schedule(std::forward<T>(children), m_promise->m_thread_index, m_promise->m_type, m_promise->m_id, m_tag, (VgjsJobParentPointer) & h.promise(), (int32_t)m_number);   //in first call the number of children is the total number of all jobs
                     m_number = 0;                                               //after this always 0
                 }
             };
@@ -674,7 +662,7 @@ namespace simple_vgjs {
             }
         }
 
-        awaitable_tuple(std::tuple<Ts&&...> tuple) noexcept : m_tag{}, m_number{ 0 }, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
+        awaitable_tuple(VgjsCoroPromiseBase<PT>* promise, std::tuple<Ts&&...> tuple) noexcept : m_tag{}, m_number{ 0 }, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
     };
 
 
