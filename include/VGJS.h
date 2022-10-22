@@ -402,7 +402,8 @@ namespace simple_vgjs {
                             ((VgjsJobPointer)m_current_job)->m_function();          //avoid virtual call
                             m_recycle_jobs.push((VgjsJobPointer)m_current_job);     //recycle job
                         }
-                        if(!found || (found = (m_current_job = m_global_coro_queues[other_index].pop()))) m_current_job->resume();
+                        if(!found && (found = (m_current_job = m_global_coro_queues[other_index].pop()))) 
+                            m_current_job->resume();
                     }
                 }
 
