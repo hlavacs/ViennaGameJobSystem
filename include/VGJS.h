@@ -66,7 +66,7 @@ namespace simple_vgjs {
     template<typename T = void> class VgjsCoroReturn;
     template<typename T = void> using VgjsCoroReturnPointer = VgjsCoroReturn<T>*;
     
-    template<typename T, bool SYNC = true> class VgjsQueue;
+    template<typename T, bool SYNC = true, uint64_t LIMIT = std::numeric_limits<uint64_t>::max()> class VgjsQueue;
 
     class VgjsJobSystem; 
     using VgjsJobSystemPointer = VgjsJobSystem*;
@@ -115,7 +115,7 @@ namespace simple_vgjs {
         VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, VgjsJobParentPointer parent)
             : m_thread_index{ index }, m_type{ type }, m_id{ id }, m_parent{ parent } {};
 
-        virtual void resume() {};
+        virtual void resume() = 0;
     };
 
     struct VgjsJob : public VgjsJobParent {
@@ -222,23 +222,34 @@ namespace simple_vgjs {
 
     //---------------------------------------------------------------------------------------------
 
-    template<typename T, bool SYNC>
+    template<typename T, bool SYNC, uint64_t LIMIT>
     class VgjsQueue {
     private:
         std::mutex  m_mutex{};
         T*          m_first{};
         T*          m_last{};
+        uint64_t    m_size{ 0 };
 
     public:
         VgjsQueue() {};
         VgjsQueue(VgjsQueue&& rhs) {};
 
+        auto size() { 
+            if constexpr (SYNC) std::lock_guard<std::mutex> guard(m_mutex);
+            return m_size;
+        }
+
         void push(T* job) noexcept {
+            if (m_size > LIMIT) {
+                delete job;
+                return;
+            }
             if constexpr (SYNC) std::lock_guard<std::mutex> guard(m_mutex);
             if (m_last) m_last->m_next = job;
             m_last = job;
             job->m_next = nullptr;
             m_first = ( m_first ? m_first : job);
+            ++m_size;
         }
 
         T* pop() noexcept {
@@ -247,6 +258,7 @@ namespace simple_vgjs {
             T* res = m_first;
             m_first = (T*)m_first->m_next;
             if (!m_first) m_last = nullptr;
+            --m_size;
             return res; 
         }
     };
@@ -257,18 +269,19 @@ namespace simple_vgjs {
 
     class VgjsJobSystem {
     private:
+        static inline std::atomic<bool>               m_terminate{ false };
         static inline std::atomic<uint32_t>           m_init_counter = 0;
-        static inline std::atomic<uint32_t>           m_thread_count{ 0 };   //<number of threads in the pool
-        static inline std::vector<std::thread>        m_threads;	           //<array of thread structures
+        static inline std::atomic<uint32_t>           m_thread_count{ 0 };      //<number of threads in the pool
+        static inline std::vector<std::thread>        m_threads;	            //<array of thread structures
 
-        static inline std::vector<VgjsQueue<VgjsJob>> m_global_job_queues;	   //<each thread has its shared Job queue, multiple produce, multiple consume
-        static inline std::vector<VgjsQueue<VgjsJob>> m_local_job_queues;	       //<each thread has its own Job queue, multiple produce, single consume
+        static inline std::vector<VgjsQueue<VgjsJob>> m_global_job_queues;	    //<each thread has its shared Job queue, multiple produce, multiple consume
+        static inline std::vector<VgjsQueue<VgjsJob>> m_local_job_queues;	    //<each thread has its own Job queue, multiple produce, single consume
 
-        static inline std::vector<VgjsQueue<VgjsJobParent>> m_global_coro_queues;	   //<each thread has its shared Job queue, multiple produce, multiple consume
-        static inline std::vector<VgjsQueue<VgjsJobParent>> m_local_coro_queues;	       //<each thread has its own Job queue, multiple produce, single consume
+        static inline std::vector<VgjsQueue<VgjsJobParent>> m_global_coro_queues;	//<each thread has its shared Coro queue, multiple produce, multiple consume
+        static inline std::vector<VgjsQueue<VgjsJobParent>> m_local_coro_queues;	//<each thread has its own Coro queue, multiple produce, single consume
 
-        static inline thread_local VgjsJobParentPointer     m_current_job{};
-        static inline std::atomic<bool>                     m_terminate{ false };
+        static inline thread_local VgjsJobParentPointer m_current_job{};
+        VgjsQueue<VgjsJob, false, 1 << 12>              m_recycle_jobs;
         static inline std::vector<std::unique_ptr<std::condition_variable>> m_cv;
         static inline std::vector<std::unique_ptr<std::mutex>>              m_mutex{};
 
@@ -312,30 +325,30 @@ namespace simple_vgjs {
 
             thread_index_t my_index{ index };                       //<each thread has its own number
             thread_index_t other_index{ my_index };
-            VgjsQueue<VgjsJob, false> recycle;
             std::unique_lock<std::mutex> lk(*m_mutex[my_index]);
 
             while (!m_terminate) {  //Run until the job system is terminated
-
-                (m_current_job = (VgjsJobParentPointer)m_local_job_queues[my_index].pop()) ||
-                    (m_current_job = (VgjsJobParentPointer)m_global_job_queues[my_index].pop());
-                if (m_current_job) {
-                    ((VgjsJobPointer)m_current_job)->m_function();
+                bool found = false;
+                found = (m_current_job = (VgjsJobParentPointer)m_local_job_queues[my_index].pop()) || (m_current_job = (VgjsJobParentPointer)m_global_job_queues[my_index].pop());
+                if(found) { 
+                    ((VgjsJobPointer)m_current_job)->m_function();          //avoid virtual call
+                    m_recycle_jobs.push((VgjsJobPointer)m_current_job);     //recycle job
                 }
-                else {
-                    auto loops = count;
-                    while (m_current_job == nullptr && --loops > 0) {
-                        other_index = (other_index + 1 == count ? 0 : other_index + 1);
-                        if(my_index != other_index) m_current_job = m_global_coro_queues[other_index].pop();
-                    }
+                found = found || ((m_current_job = m_local_coro_queues[my_index].pop()) || (m_current_job = m_global_coro_queues[my_index].pop()));
 
-                    if (m_current_job != nullptr) {
-                        m_current_job->resume();
-                    }
-                    else {
-                        m_cv[my_index]->wait_for(lk, std::chrono::microseconds(100));
+                int64_t loops = count;
+                while (!found && --loops > 0) {
+                    other_index = (other_index + 1 == count ? 0 : other_index + 1);
+                    if (my_index != other_index) {
+                        if ( (found = (m_current_job = m_global_job_queues[other_index].pop()))) {
+                            ((VgjsJobPointer)m_current_job)->m_function();          //avoid virtual call
+                            m_recycle_jobs.push((VgjsJobPointer)m_current_job);     //recycle job
+                        }
+                        if(!found || (found = (m_current_job = m_global_coro_queues[other_index].pop()))) m_current_job->resume();
                     }
                 }
+
+                if (!found) m_cv[my_index]->wait_for(lk, std::chrono::microseconds(100));
             }
             m_current_job = nullptr;
             m_thread_count--;
