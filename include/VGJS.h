@@ -122,15 +122,7 @@ namespace simple_vgjs {
         VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, VgjsJobParentPointer parent)
             : m_thread_index{ index }, m_type{ type }, m_id{ id }, m_parent{ parent } {};
 
-        VgjsJobParent(const VgjsJobParent& j) noexcept {
-            m_thread_index = j.m_thread_index;
-            m_type = j.m_type;
-            m_id = j.m_id;
-            m_parent = j.m_parent;
-            m_is_function = j.m_is_function;
-        }
-
-        VgjsJobParent(VgjsJobParent&& j) noexcept {
+        VgjsJobParent(const VgjsJobParent&& j) noexcept {
             m_thread_index = j.m_thread_index;
             m_type = j.m_type;
             m_id = j.m_id;
@@ -224,11 +216,9 @@ namespace simple_vgjs {
         using promise_type = VgjsCoroPromise<T>;
 
     private:
-        coroutine_handle<promise_type> m_handle{};       //<handle to Coro promise
+        coroutine_handle<promise_type> m_handle{};       //handle to Coro promise
 
     public:
-
-        VgjsCoroReturn() noexcept {};
         VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept {};
         ~VgjsCoroReturn() noexcept {}
 
@@ -247,7 +237,6 @@ namespace simple_vgjs {
         }
     };
 
-
     template<typename T>
     auto VgjsCoroPromise<T>::get_return_object() noexcept -> VgjsCoroReturn<T> { return { coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this) }; };
 
@@ -265,12 +254,12 @@ namespace simple_vgjs {
     public:
         VgjsQueue() noexcept {};
         VgjsQueue(VgjsQueue&& rhs) noexcept {};
-        ~VgjsQueue() noexcept {
-            auto* p = m_first;
+        ~VgjsQueue() noexcept {                 
+            auto* p = m_first;                  
             while (p) {
                 auto* q = p;
                 p = (T*)p->m_next;
-                if( q->destroy() ) delete q;
+                if( q->destroy() ) delete q; //Destroy returns true if you should call delete
             }
         }
 
@@ -283,16 +272,16 @@ namespace simple_vgjs {
 
         void push(T* job) noexcept {
             if constexpr (SYNC) m_mutex.lock();
-            if (m_size > LIMIT) {
-                delete job;
+            if (m_size > LIMIT) {   //is queue full -> do not accept the new entry
+                delete job;         //but delete it (ok when recycling something)
                 if constexpr (SYNC) m_mutex.unlock();
                 return;
             }
-            job->m_next = nullptr;
-            if (m_last) m_last->m_next = job;
-            else m_first = job;
-            m_last = job;
-            m_size++;
+            job->m_next = nullptr;                  //No successor
+            if (m_last) m_last->m_next = job;       //Is there a predecessor -> link
+            else m_first = job;                     //No -> its the first element
+            m_last = job;                           //Its always the new last element in the queue
+            m_size++;                               //increase size
             if constexpr (SYNC) m_mutex.unlock();
         }
 
@@ -431,19 +420,18 @@ namespace simple_vgjs {
         void terminate() {
             m_terminate = true;
             for (auto& cv : m_cv) cv->notify_all();
-            if (m_current_job) {
-                m_thread_count--;
-                m_thread_count.notify_all();
+            if (m_current_job) {                //if called from a job
+                m_thread_count--;               //Remove this job, because it is blocking
+                m_thread_count.notify_all();    //notify the others waiting
             }
-            wait();
+            wait(); //wait for the threads to return
         }
 
         void wait(int64_t desired = 0) {
             do {
-                auto num = m_thread_count.load();
-                if(num!= desired) 
-                    m_thread_count.wait(num);
-            } while (m_thread_count.load() != desired);
+                auto num = m_thread_count.load();           //current number of threads
+                if(num!= desired) m_thread_count.wait(num); //if not yet there -> blocking wait
+            } while (m_thread_count.load() != desired);     //until we are there
         }
 
         //--------------------------------------------------------------------------------------------
