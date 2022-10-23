@@ -33,13 +33,13 @@ namespace test {
 
     VgjsCoroReturn<int> coro() {
         std::cout << "coro\n";
-        //co_await []() { F2(); };
+        co_await []() { F2(); };
         co_return 1;
     }
 
     VgjsCoroReturn<> coro2() {
         std::cout << "coro2\n";
-        //co_await []() { F2(); };
+        co_await []() { F2(); };
         co_return;
     }
 
