@@ -414,9 +414,7 @@ namespace simple_vgjs {
                 while (!found && --loops > 0) {
                     other_index = (other_index + 1 == count ? 0 : other_index + 1);
                     if (my_index != other_index) {
-                        bool found5 = test_job(m_global_job_queues[other_index]);
-                        bool found6 = test_coro(m_global_coro_queues[other_index]);
-                        found = found5 || found6;
+                        found = ( test_job(m_global_job_queues[other_index]) || test_coro(m_global_coro_queues[other_index]) );
                     }
                 }
 
