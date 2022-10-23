@@ -67,8 +67,10 @@ int main(int argc, char* argv[])
         //VgjsJobSystem().schedule([&]() { g(i); });
     }
 
-    VgjsJobSystem().schedule(test::coro());
+    VgjsJobSystem(thread_count_t{1}).schedule(test::coro());
     VgjsJobSystem().schedule(test::coro2());
+
+    //std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::seconds>(10s));
 
     std::string str;
     std::cin >> str;

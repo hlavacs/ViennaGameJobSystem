@@ -184,13 +184,13 @@ namespace simple_vgjs {
         }
 
         template<typename U>
-        auto await_transform(U&& func) noexcept -> awaitable_tuple<T, U> { return awaitable_tuple<T, U>{ this, std::tuple<U&&>(std::forward<U>(func)) }; };
+        auto await_transform(U&& func) noexcept -> awaitable_tuple<T, U> { return awaitable_tuple<T, U>{ std::tuple<U&&>(std::forward<U>(func)) }; };
 
         template<typename... Ts>
-        auto await_transform(std::tuple<Ts...>&& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { this, std::forward<std::tuple<Ts...>>(tuple) }; };
+        auto await_transform(std::tuple<Ts...>&& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { std::forward<std::tuple<Ts...>>(tuple) }; };
 
         template<typename... Ts>
-        auto await_transform(std::tuple<Ts...>& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { this, tuple }; };
+        auto await_transform(std::tuple<Ts...>& tuple) noexcept -> awaitable_tuple<T, Ts...> { return { tuple }; };
 
         auto await_transform(thread_index_t index) noexcept -> awaitable_resume_on<T> { return { index }; };
         auto await_transform(tag_t tg) noexcept -> awaitable_tag<T> { return { tg }; };
@@ -375,6 +375,25 @@ namespace simple_vgjs {
         };
 
 
+        bool test_job(auto& queue) {
+            m_current_job = (VgjsJobParentPointer)queue.pop();
+            if (m_current_job) {
+                ((VgjsJobPointer)m_current_job)->m_function();          //avoid virtual call
+                m_recycle_jobs.push((VgjsJobPointer)m_current_job);     //recycle job
+                return true;
+            }
+            return false;
+        }
+
+        bool test_coro(auto& queue) {
+            m_current_job = queue.pop();
+            if (m_current_job) {
+                m_current_job->resume();
+                return true;
+            }
+            return false;
+        }
+
         void task(thread_index_t index, thread_count_t count) noexcept {
             m_thread_count++;
             m_thread_count.notify_all();
@@ -386,28 +405,22 @@ namespace simple_vgjs {
             std::unique_lock<std::mutex> lk(*m_mutex[my_index]);
 
             while (!m_terminate) {  //Run until the job system is terminated
-                bool found = false;
-                found = (m_current_job = (VgjsJobParentPointer)m_local_job_queues[my_index].pop()) || (m_current_job = (VgjsJobParentPointer)m_global_job_queues[my_index].pop());
-                if(found) { 
-                    ((VgjsJobPointer)m_current_job)->m_function();          //avoid virtual call
-                    m_recycle_jobs.push((VgjsJobPointer)m_current_job);     //recycle job
-                }
-                found = found || ((m_current_job = m_local_coro_queues[my_index].pop()) || (m_current_job = m_global_coro_queues[my_index].pop()));
-
+                bool found1 = test_job(m_local_job_queues[my_index]);
+                bool found2 = test_job(m_global_job_queues[my_index]);
+                bool found3 = test_coro(m_local_coro_queues[my_index]);
+                bool found4 = test_coro(m_global_coro_queues[my_index]);
+                bool found = found1 || found2 || found3 || found4;
                 int64_t loops = count;
                 while (!found && --loops > 0) {
                     other_index = (other_index + 1 == count ? 0 : other_index + 1);
                     if (my_index != other_index) {
-                        if ( (found = (m_current_job = m_global_job_queues[other_index].pop()))) {
-                            ((VgjsJobPointer)m_current_job)->m_function();          //avoid virtual call
-                            m_recycle_jobs.push((VgjsJobPointer)m_current_job);     //recycle job
-                        }
-                        if(!found && (found = (m_current_job = m_global_coro_queues[other_index].pop()))) 
-                            m_current_job->resume();
+                        bool found5 = test_job(m_global_job_queues[other_index]);
+                        bool found6 = test_coro(m_global_coro_queues[other_index]);
+                        found = found5 || found6;
                     }
                 }
 
-                if (!found) m_cv[my_index]->wait_for(lk, std::chrono::microseconds(100));
+                if (!found) m_cv[0]->wait_for(lk, std::chrono::microseconds(100));
             }
             m_current_job = nullptr;
             m_thread_count--;
@@ -457,6 +470,13 @@ namespace simple_vgjs {
         template<typename T>
             requires is_parent<T> || is_job<T> || is_coro_promise<T>
         uint32_t schedule(T* job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            if constexpr (is_coro_promise<T>) {
+                if (m_current_job && m_current_job->m_is_function) { //function is not allowed to schedule a coro
+                    assert(false && "Error: only coros allowed to schedule a coro!");
+                    std::exit(1);
+                }
+            }
+
             if (tag >= 0) {
                 if (!m_tag_queues.contains(tag)) {
                     m_tag_queues[tag] = std::make_unique<VgjsQueue<VgjsJobParent>>();
@@ -478,7 +498,7 @@ namespace simple_vgjs {
                 job->m_thread_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
             }
 
-            m_cv[next_thread]->notify_all();
+            m_cv[0]->notify_all();
             return 1l;
         }
 
@@ -574,7 +594,6 @@ namespace simple_vgjs {
 
     template<typename PT, typename... Ts>
     struct awaitable_tuple : suspend_always {
-        VgjsCoroPromise<PT>*     m_promise;
         tag_t                    m_tag;          //The tag to schedule to
         std::tuple<Ts&&...>      m_tuple;        //tuple with all children to start
         std::size_t              m_number;       //total number of all new children to schedule
@@ -611,7 +630,7 @@ namespace simple_vgjs {
                     return;
                 }
                 else {
-                    VgjsJobSystem().schedule(std::forward<T>(children), m_promise->m_thread_index, m_promise->m_type, m_promise->m_id, m_tag, (VgjsJobParentPointer) & h.promise(), (int32_t)m_number);   //in first call the number of children is the total number of all jobs
+                    VgjsJobSystem().schedule(std::forward<T>(children), m_tag, (VgjsJobParentPointer) & h.promise(), (int32_t)m_number);   //in first call the number of children is the total number of all jobs
                     m_number = 0;                                               //after this always 0
                 }
             };
@@ -662,7 +681,7 @@ namespace simple_vgjs {
             }
         }
 
-        awaitable_tuple(VgjsCoroPromise<PT>* promise, std::tuple<Ts&&...> tuple) noexcept : m_tag{}, m_number{ 0 }, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
+        awaitable_tuple( std::tuple<Ts&&...> tuple ) noexcept : m_tag{}, m_number{ 0 }, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
     };
 
 
@@ -670,29 +689,17 @@ namespace simple_vgjs {
     struct final_awaiter : public suspend_always {
 
         bool await_suspend(coroutine_handle<VgjsCoroPromise<U>> h) noexcept { //called after suspending
-            /*auto& promise = h.promise();
-            bool is_parent_function = promise.m_is_parent_function;
-            auto parent = promise.m_parent;
+            auto parent = h.promise().m_parent;
 
             if (parent != nullptr) {          //if there is a parent
-                if (is_parent_function) {       //if it is a Job
-                    JobSystem().child_finished((Job*)parent);//indicate that this child has finished
-                }
-                else {
-                    uint32_t num = parent->m_children.fetch_sub(1);        //one less child
-                    if (num == 1) {                                             //was it the last child?
-                        JobSystem().schedule_job(parent);      //if last reschedule the parent coro
-                    }
+                uint32_t num = parent->m_children.fetch_sub(1);        //one less child
+                if (num == 1) {                                             //was it the last child?
+                    VgjsJobSystem().schedule(parent);      //if last reschedule the parent coro
                 }
             }
-            return !is_parent_function; //if parent is coro, then you are in sync -> the future will destroy the promise
-            */
-            return true;
+            else return false;  //no parent -> immediately destroy
+            return true;        //leave destruction to parent coro
         }
-
-        final_awaiter() noexcept {
-        
-        };
     };
 
 }
