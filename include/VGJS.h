@@ -202,7 +202,7 @@ namespace simple_vgjs {
     private:
         T m_value{};   //<a local storage of the value, use if parent is a coroutine
     public:
-        VgjsCoroPromise() noexcept : VgjsCoroPromiseBase<T>(coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this)) {}
+       VgjsCoroPromise() noexcept : VgjsCoroPromiseBase<T>(coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this)) {}
        void return_value(T t) { this->m_value = t; }
        auto get_return_object() noexcept -> VgjsCoroReturn<T>;
     };
@@ -235,7 +235,7 @@ namespace simple_vgjs {
         }
 
         T get() noexcept { return {}; }
-        VgjsCoroPromisePointer<T>& promise() { return m_handle.promise(); }
+        VgjsCoroPromise<T>& promise() { return m_handle.promise(); }
         void resume() { m_handle.promise().resume(); }
 
         decltype(auto) operator() (thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
@@ -248,6 +248,8 @@ namespace simple_vgjs {
 
     template<typename T>
     auto VgjsCoroPromise<T>::get_return_object() noexcept -> VgjsCoroReturn<T> { return { coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this) }; };
+
+    auto VgjsCoroPromise<void>::get_return_object() noexcept -> VgjsCoroReturn<void> { return { coroutine_handle<VgjsCoroPromise<void>>::from_promise(*this) }; };
 
 
     //---------------------------------------------------------------------------------------------

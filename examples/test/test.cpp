@@ -37,6 +37,12 @@ namespace test {
         co_return 1;
     }
 
+    VgjsCoroReturn<> coro2() {
+        std::cout << "coro2\n";
+        //co_await []() { F2(); };
+        co_return;
+    }
+
 };
 
 
@@ -61,10 +67,8 @@ int main(int argc, char* argv[])
         //VgjsJobSystem().schedule([&]() { g(i); });
     }
 
-    //VgjsJobSystem().schedule(test::coro());
-
-    auto coro = test::coro();
-    coro.resume();
+    VgjsJobSystem().schedule(test::coro());
+    VgjsJobSystem().schedule(test::coro2());
 
     std::string str;
     std::cin >> str;
