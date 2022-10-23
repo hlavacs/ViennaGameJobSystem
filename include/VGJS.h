@@ -159,24 +159,29 @@ namespace simple_vgjs {
 
     //---------------------------------------------------------------------------------------------
 
+
     template<typename T>
     class VgjsCoroPromiseBase : public VgjsJobParent {
-    private:
-        coroutine_handle<>  m_handle{};    //<handle of the coroutine
+    protected:
+        coroutine_handle<> m_handle{};    //<handle of the coroutine
 
     public:
-        explicit VgjsCoroPromiseBase() noexcept : m_handle{ coroutine_handle<VgjsCoroPromiseBase<T>>::from_promise(*this) } {
-            m_is_function = false;
-        };
-
-        bool destroy() noexcept {
-            m_handle.destroy();
-            return false; 
-        }
+        VgjsCoroPromiseBase(coroutine_handle<> handle) noexcept : m_handle{ handle } { m_is_function = false; };
 
         auto unhandled_exception() noexcept -> void { std::terminate(); };
         auto initial_suspend() noexcept -> suspend_always { return {}; };
-        auto resume() noexcept -> void { m_handle.resume(); };
+        auto final_suspend() noexcept -> final_awaiter<T> { return {}; };
+
+        auto resume() noexcept -> void {
+            if (m_handle && !m_handle.done()) {
+                m_handle.resume();       //coro could destroy itself here!!
+            }
+        }
+
+        bool destroy() noexcept {
+            m_handle.destroy();
+            return false;
+        }
 
         template<typename U>
         auto await_transform(U&& func) noexcept -> awaitable_tuple<T, U> { return awaitable_tuple<T, U>{ this, std::tuple<U&&>(std::forward<U>(func)) }; };
@@ -189,13 +194,15 @@ namespace simple_vgjs {
 
         auto await_transform(thread_index_t index) noexcept -> awaitable_resume_on<T> { return { index }; };
         auto await_transform(tag_t tg) noexcept -> awaitable_tag<T> { return { tg }; };
-        auto final_suspend() noexcept -> final_awaiter<T> { return {}; };
     };
+
 
     template<typename T>
     class VgjsCoroPromise : public VgjsCoroPromiseBase<T> {
-        T m_value{};                     //<a local storage of the value, use if parent is a coroutine
+    private:
+        T m_value{};   //<a local storage of the value, use if parent is a coroutine
     public:
+        VgjsCoroPromise() noexcept : VgjsCoroPromiseBase<T>(coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this)) {}
        void return_value(T t) { this->m_value = t; }
        auto get_return_object() noexcept -> VgjsCoroReturn<T>;
     };
@@ -203,10 +210,10 @@ namespace simple_vgjs {
     template<>
     class VgjsCoroPromise<void> : public VgjsCoroPromiseBase<void> {
     public:
+        VgjsCoroPromise() noexcept : VgjsCoroPromiseBase<void>(coroutine_handle<VgjsCoroPromise<void>>::from_promise(*this)) {} 
         void return_void() noexcept {}
         auto get_return_object() noexcept -> VgjsCoroReturn<void>;
     };
-
 
     //--------------------------------------------------------
 
@@ -216,10 +223,11 @@ namespace simple_vgjs {
         using promise_type = VgjsCoroPromise<T>;
 
     private:
-        coroutine_handle<promise_type> m_handle{};       //handle to Coro promise
+        coroutine_handle<VgjsCoroPromise<T>> m_handle{};       //handle to Coro promise
 
     public:
-        VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept {};
+        VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_handle{ h } {};
+        VgjsCoroReturn(VgjsCoroReturn<T>&& t)  noexcept : m_handle{ t.m_handle } {}
         ~VgjsCoroReturn() noexcept {}
 
         bool ready() noexcept {
@@ -227,7 +235,8 @@ namespace simple_vgjs {
         }
 
         T get() noexcept { return {}; }
-        promise_type& promise() { return m_handle.promise(); }
+        VgjsCoroPromisePointer<T>& promise() { return m_handle.promise(); }
+        void resume() { m_handle.promise().resume(); }
 
         decltype(auto) operator() (thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
             promise().m_thread_index = index;
@@ -563,7 +572,7 @@ namespace simple_vgjs {
 
     template<typename PT, typename... Ts>
     struct awaitable_tuple : suspend_always {
-        VgjsCoroPromiseBase<PT>* m_promise;
+        VgjsCoroPromise<PT>*     m_promise;
         tag_t                    m_tag;          //The tag to schedule to
         std::tuple<Ts&&...>      m_tuple;        //tuple with all children to start
         std::size_t              m_number;       //total number of all new children to schedule
@@ -651,7 +660,7 @@ namespace simple_vgjs {
             }
         }
 
-        awaitable_tuple(VgjsCoroPromiseBase<PT>* promise, std::tuple<Ts&&...> tuple) noexcept : m_tag{}, m_number{ 0 }, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
+        awaitable_tuple(VgjsCoroPromise<PT>* promise, std::tuple<Ts&&...> tuple) noexcept : m_tag{}, m_number{ 0 }, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
     };
 
 

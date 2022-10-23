@@ -25,15 +25,15 @@ namespace test {
 
     void F2() {
         std::cout << "F2\n";
-        VgjsJob G;
-        F1(G);
-        F1(VgjsJob{ []() {}, thread_index_t{-1} });
+        //VgjsJob G;
+        //F1(G);
+        //F1(VgjsJob{ []() {}, thread_index_t{-1} });
 
     }
 
     VgjsCoroReturn<int> coro() {
         std::cout << "coro\n";
-        co_await []() { F2(); };
+        //co_await []() { F2(); };
         co_return 1;
     }
 
@@ -58,10 +58,13 @@ int main(int argc, char* argv[])
     };
 
     for (int i = 0; i < 100; ++i) {
-        VgjsJobSystem().schedule([&]() { f(i); });
+        //VgjsJobSystem().schedule([&]() { g(i); });
     }
 
     //VgjsJobSystem().schedule(test::coro());
+
+    auto coro = test::coro();
+    coro.resume();
 
     std::string str;
     std::cin >> str;
