@@ -116,7 +116,6 @@ namespace simple_vgjs {
         thread_id_t            m_id{};               //unique identifier of the call
         VgjsJobParentPointer   m_parent{};           //parent job that created this job
         bool                   m_is_function{ true };
-        bool                   m_self_destruct{ false };
         std::atomic<uint32_t>  m_children{};         //number of children this job is waiting for
 
         VgjsJobParent() = default;
@@ -231,7 +230,7 @@ namespace simple_vgjs {
         VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_handle{ h } {};
         VgjsCoroReturn(VgjsCoroReturn<T>&& t)  noexcept : m_handle{ t.m_handle } {}
         ~VgjsCoroReturn() noexcept {
-            if (m_handle.promise().m_self_destruct) return;
+            if (!m_handle.promise().m_parent) return;
             if(m_handle) m_handle.destroy(); 
         }
 
@@ -490,7 +489,8 @@ namespace simple_vgjs {
             if constexpr (is_job<T>) {
                 job->m_thread_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
             }
-            if constexpr (is_coro_promise<T>) {
+            if constexpr (is_coro_promise<T>) {  
+                job->m_parent = parent;
                 job->m_thread_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
             }
 
@@ -697,9 +697,9 @@ namespace simple_vgjs {
                 if (num == 1) {                                             //was it the last child?
                     VgjsJobSystem().schedule(parent);      //if last reschedule the parent coro
                 }
+                return true;        //leave destruction to parent coro
             }
-            else return false;  //no parent -> immediately destroy
-            return true;        //leave destruction to parent coro
+            return false;  //no parent -> immediately destroy
         }
     };
 
