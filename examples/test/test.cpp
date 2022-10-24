@@ -8,7 +8,6 @@
 #include <numeric>
 
 #include "VGJS.h"
-#include "VGJSCoro.h"
 
 using namespace std::chrono;
 
@@ -18,28 +17,27 @@ namespace test {
 
     VgjsJob FF{ []() {}, thread_index_t{-1}};
 
-    template<typename F>
-    void F1(F&& func) {
+    void F1(int v) {
         std::cout << "F1\n";
     }
 
     void F2() {
         std::cout << "F2\n";
-        //VgjsJob G;
-        //F1(G);
-        //F1(VgjsJob{ []() {}, thread_index_t{-1} });
-
+        VgjsJob G;
+        F1(1);
+        F1(2);
     }
 
-    VgjsCoroReturn<int> coro() {
-        std::cout << "coro\n";
-        co_await []() { F2(); };
+    VgjsCoroReturn<int> coro2() {
+        std::cout << "coro2\n";
+        //co_await []() { F2(); };
         co_return 1;
     }
 
-    VgjsCoroReturn<> coro2() {
-        std::cout << "coro2\n";
-        co_await []() { F2(); };
+    VgjsCoroReturn<> coro() {
+        std::cout << "coro\n";
+        int res = co_await coro2();
+        //co_await std::make_tuple(coro2(), []() {F1(1);}, []() {F2();});
         co_return;
     }
 
@@ -51,7 +49,8 @@ int main(int argc, char* argv[])
 {
     //test::F2();
 
-    auto f = [](int i) {
+    /*auto f = [](int i) {
+        std::cout << "f(" << i << ")" << "\n";
         volatile static uint64_t sum{ 0 };
         for (int i = 0; i < 10; ++i) {
             sum += i;
@@ -60,15 +59,15 @@ int main(int argc, char* argv[])
     };
 
     auto g = [&](int i) {
+        std::cout << "g(" << i << ")" << "\n";
         VgjsJobSystem().schedule([&]() { f(i); });
     };
 
-    for (int i = 0; i < 100; ++i) {
-        //VgjsJobSystem().schedule([&]() { g(i); });
-    }
+    for (int i = 0; i < 10; ++i) {
+        VgjsJobSystem().schedule([&]() { g(i); });
+    }*/
 
     VgjsJobSystem(thread_count_t{1}).schedule(test::coro());
-    VgjsJobSystem().schedule(test::coro2());
 
     //std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::seconds>(10s));
 

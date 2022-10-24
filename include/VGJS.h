@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <utility>
+#include <tuple>
 
 namespace simple_vgjs {
 
@@ -115,6 +116,7 @@ namespace simple_vgjs {
         thread_id_t            m_id{};               //unique identifier of the call
         VgjsJobParentPointer   m_parent{};           //parent job that created this job
         bool                   m_is_function{ true };
+        bool                   m_self_destruct{ false };
         std::atomic<uint32_t>  m_children{};         //number of children this job is waiting for
 
         VgjsJobParent() = default;
@@ -131,7 +133,7 @@ namespace simple_vgjs {
         }
         VgjsJobParent& operator= (const VgjsJobParent& j) noexcept = default;
         VgjsJobParent& operator= (VgjsJobParent&& j) noexcept = default;
-
+        
         virtual void resume() = 0;
         virtual bool destroy() = 0;
     };
@@ -228,10 +230,9 @@ namespace simple_vgjs {
     public:
         VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_handle{ h } {};
         VgjsCoroReturn(VgjsCoroReturn<T>&& t)  noexcept : m_handle{ t.m_handle } {}
-        ~VgjsCoroReturn() noexcept {}
-
-        bool ready() noexcept {
-            return true;
+        ~VgjsCoroReturn() noexcept {
+            if (m_handle.promise().m_self_destruct) return;
+            if(m_handle) m_handle.destroy(); 
         }
 
         T get() noexcept { return {}; }
@@ -281,12 +282,11 @@ namespace simple_vgjs {
             return size;
         }
 
-        void push(T* job) noexcept {
+        bool push(T* job) noexcept {
             if constexpr (SYNC) m_mutex.lock();
             if (m_size > LIMIT) {   //is queue full -> do not accept the new entry
-                delete job;         //but delete it (ok when recycling something)
                 if constexpr (SYNC) m_mutex.unlock();
-                return;
+                return false;
             }
             job->m_next = nullptr;                  //No successor
             if (m_last) m_last->m_next = job;       //Is there a predecessor -> link
@@ -294,6 +294,7 @@ namespace simple_vgjs {
             m_last = job;                           //Its always the new last element in the queue
             m_size++;                               //increase size
             if constexpr (SYNC) m_mutex.unlock();
+            return true;
         }
 
         T* pop() noexcept {
@@ -376,7 +377,7 @@ namespace simple_vgjs {
             m_current_job = (VgjsJobParentPointer)queue.pop();
             if (m_current_job) {
                 ((VgjsJobPointer)m_current_job)->m_function();          //avoid virtual call
-                m_recycle_jobs.push((VgjsJobPointer)m_current_job);     //recycle job
+                if (!m_recycle_jobs.push((VgjsJobPointer)m_current_job)) delete m_current_job;  //recycle job if possible
                 return true;
             }
             return false;
