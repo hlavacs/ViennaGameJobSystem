@@ -85,7 +85,7 @@ namespace simple_vgjs {
 
     //Concept of things that can get scheduled
     template<typename T>
-    concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> > && (!is_coro_return<T>::value);
+    concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> > && (!is_coro_return<std::decay_t<T>>::value);
 
     template<typename T>
     concept is_parent = std::is_same_v< std::decay_t<T>, VgjsJobParent >;
@@ -105,6 +105,11 @@ namespace simple_vgjs {
     template<typename T>
     concept is_tag = std::is_same_v< std::decay_t<T>, tag_t >;
 
+
+    template<typename... Ts>
+    inline decltype(auto) parallel(Ts&&... args) {
+        return std::tuple<Ts&&...>(std::forward<Ts>(args)...);
+    }
 
     //---------------------------------------------------------------------------------------------
 
@@ -228,7 +233,6 @@ namespace simple_vgjs {
 
     public:
         VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_handle{ h } {};
-        VgjsCoroReturn(VgjsCoroReturn<T>&& t)  noexcept : m_handle{ t.m_handle } {}
         ~VgjsCoroReturn() noexcept {
             if (!m_handle.promise().m_parent) return;
             if(m_handle) m_handle.destroy(); 
@@ -460,7 +464,7 @@ namespace simple_vgjs {
         //schedule
 
         template<typename R>
-            requires is_coro_return<R>::value
+            requires is_coro_return<std::decay_t<R>>::value
         uint32_t schedule(R&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             return schedule(&job.promise(), tag, parent, children);
         }

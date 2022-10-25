@@ -27,16 +27,26 @@ namespace test {
         F1(2);
     }
 
+    VgjsCoroReturn<int> coro3() {
+        std::cout << "coro3\n";
+        co_return 1;
+    }
+
     VgjsCoroReturn<int> coro2() {
         std::cout << "coro2\n";
-        //co_await []() { F2(); };
+        co_await []() { F2(); };
         co_return 1;
     }
 
     VgjsCoroReturn<> coro() {
         std::cout << "coro\n";
-        //int res = co_await coro2();
-        co_await std::make_tuple(coro2(), []() {F1(1); });
+        int res = co_await coro2();
+        
+        std::cout << "coro - 2\n";
+        auto f1 = []() {F1(1); };
+        auto c3 = coro3();
+        co_await parallel(coro2(), coro3(), c3, f1, []() {F2(); });
+        std::cout << "coro - 3\n";
         co_return;
     }
 
