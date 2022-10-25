@@ -23,7 +23,6 @@ namespace test {
 
     void F2() {
         std::cout << "F2\n";
-        VgjsJob G;
         F1(1);
         F1(2);
     }

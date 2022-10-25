@@ -376,7 +376,9 @@ namespace simple_vgjs {
             m_current_job = (VgjsJobParentPointer)queue.pop();
             if (m_current_job) {
                 ((VgjsJobPointer)m_current_job)->m_function();          //avoid virtual call
-                if (!m_recycle_jobs.push((VgjsJobPointer)m_current_job)) delete m_current_job;  //recycle job if possible
+                auto save = m_current_job;
+                child_finished(m_current_job);
+                if (!m_recycle_jobs.push((VgjsJobPointer)save)) delete save;  //recycle job if possible
                 return true;
             }
             return false;
@@ -431,7 +433,8 @@ namespace simple_vgjs {
                     }
                 }
                 else {
-                    schedule(job);   //a coro just gets scheduled again so it can go on
+                    m_current_job = nullptr;
+                    schedule(job, tag_t{}, job->m_parent, 0);   //a coro just gets scheduled again so it can go on
                 }
             }
         }
@@ -480,6 +483,7 @@ namespace simple_vgjs {
                 return 0;
             }
 
+            job->m_parent = parent;
             if (parent != nullptr) {
                 if (children < 0) children = 1;
                 parent->m_children.fetch_add((int)children);
@@ -487,10 +491,11 @@ namespace simple_vgjs {
 
             auto next_thread = job->m_thread_index < 0 ? next_thread_index() : job->m_thread_index;
             if constexpr (is_job<T>) {
+                job->m_children = 1;
                 job->m_thread_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
             }
             if constexpr (is_coro_promise<T>) {  
-                job->m_parent = parent;
+                job->m_children = 0;
                 job->m_thread_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
             }
 
@@ -695,7 +700,7 @@ namespace simple_vgjs {
             if (parent != nullptr) {          //if there is a parent
                 uint32_t num = parent->m_children.fetch_sub(1);        //one less child
                 if (num == 1) {                                             //was it the last child?
-                    VgjsJobSystem().schedule(parent);      //if last reschedule the parent coro
+                    VgjsJobSystem().schedule(parent, tag_t{}, parent->m_parent, 0);      //if last reschedule the parent coro
                 }
                 return true;        //leave destruction to parent coro
             }
