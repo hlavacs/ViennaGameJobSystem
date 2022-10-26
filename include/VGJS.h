@@ -21,6 +21,7 @@
 #include <assert.h>
 #include <utility>
 #include <tuple>
+#include <numeric>
 
 namespace simple_vgjs {
 
@@ -43,7 +44,6 @@ namespace simple_vgjs {
         struct hash {
             std::size_t operator()(const strong_type_t<T, D, P>& tag) const { return std::hash<T>()(tag.value); };
         };
-
     };
 
     using thread_count_t    = strong_type_t<int64_t, -1, 0>;
@@ -51,7 +51,6 @@ namespace simple_vgjs {
     using thread_id_t       = strong_type_t<int64_t, -1, 2>;
     using thread_type_t     = strong_type_t<int64_t, -1, 3>;
     using tag_t             = strong_type_t<int64_t, -1, 4>;
-    using parent_t          = strong_type_t<int64_t, -1, 5>;
 
     //---------------------------------------------------------------------------------------------
 
@@ -116,7 +115,7 @@ namespace simple_vgjs {
     struct VgjsJobParent {
         VgjsJobParentPointer   m_next{0};
 
-        thread_index_t         m_thread_index{};     //thread that the f should run on
+        thread_index_t         m_index{};            //thread that the f should run on
         thread_type_t          m_type{};             //type of the call
         thread_id_t            m_id{};               //unique identifier of the call
         VgjsJobParentPointer   m_parent{};           //parent job that created this job
@@ -126,10 +125,10 @@ namespace simple_vgjs {
         VgjsJobParent() = default;
         
         VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, VgjsJobParentPointer parent)
-            : m_thread_index{ index }, m_type{ type }, m_id{ id }, m_parent{ parent } {};
+            : m_index{ index }, m_type{ type }, m_id{ id }, m_parent{ parent } {};
 
         VgjsJobParent(const VgjsJobParent&& j) noexcept {
-            m_thread_index = j.m_thread_index;
+            m_index = j.m_index;
             m_type = j.m_type;
             m_id = j.m_id;
             m_parent = j.m_parent;
@@ -210,6 +209,7 @@ namespace simple_vgjs {
        VgjsCoroPromise() noexcept : VgjsCoroPromiseBase<T>(coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this)) {}
        void return_value(T t) { this->m_value = t; }
        auto get_return_object() noexcept -> VgjsCoroReturn<T>;
+       auto get() { return m_value; };
     };
 
     template<>
@@ -228,27 +228,44 @@ namespace simple_vgjs {
         using promise_type = VgjsCoroPromise<T>;
 
     private:
+        bool m_valid{false};
         coroutine_handle<VgjsCoroPromise<T>> m_handle{};       //handle to Coro promise
 
     public:
-        VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_handle{ h } {};
-        VgjsCoroReturn(const VgjsCoroReturn &rhs) = delete;
-        VgjsCoroReturn(VgjsCoroReturn&& rhs) noexcept { 
-            m_handle = std::forward<decltype(m_handle)>(rhs.m_handle); 
-            rhs.m_handle = nullptr;
+        VgjsCoroReturn() noexcept {};
+        VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_valid{true}, m_handle { h } {};
+        VgjsCoroReturn(const VgjsCoroReturn& rhs) noexcept = delete;
+
+        VgjsCoroReturn(VgjsCoroReturn&& rhs) noexcept {
+            m_handle = std::exchange(rhs.m_handle, {});
+            m_valid = std::exchange(rhs.m_valid, false);
         };
+
         ~VgjsCoroReturn() noexcept {
-            if (!m_handle || m_handle.done() || !m_handle.promise().m_parent) return;
+            if (!m_valid || !m_handle || m_handle.done() || !m_handle.promise().m_parent) return;
             m_handle.destroy(); 
         }
 
-        T get() noexcept { return {}; }
+        void operator= (VgjsCoroReturn<T>&& rhs) noexcept {
+            m_handle = std::exchange(rhs.m_handle, {});
+            m_valid = std::exchange(rhs.m_valid, false);
+        }
+
+        T get() noexcept { 
+            if constexpr (!std::is_void_v<std::decay_t<T>>) {
+                if (m_valid && m_handle) return m_handle.promise().get();
+            }
+            return {};
+        }
         VgjsCoroPromise<T>& promise() { return m_handle.promise(); }
-        void resume() { if(m_handle && !m_handle.done()) m_handle.promise().resume(); }
+        void resume() { 
+            if(m_valid && m_handle && !m_handle.done()) 
+                m_handle.promise().resume(); 
+        }
         auto handle() { return m_handle; };
 
         decltype(auto) operator() (thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
-            promise().m_thread_index = index;
+            promise().m_index = index;
             promise().m_type = type;
             promise().m_id = id;
             return *this;
@@ -325,6 +342,11 @@ namespace simple_vgjs {
 
 
     class VgjsJobSystem {
+        template<typename T> friend struct awaitable_resume_on;
+        template<typename PT, typename... Ts> friend struct awaitable_tuple;
+        template<typename PT> friend struct awaitable_tag;
+        template<typename U> friend struct final_awaiter;
+
     private:
         static inline std::atomic<bool>               m_terminate{ false };
         static inline std::atomic<uint32_t>           m_init_counter = 0;
@@ -468,16 +490,18 @@ namespace simple_vgjs {
         //--------------------------------------------------------------------------------------------
         //schedule
 
+        private:
+
         template<typename R>
             requires is_coro_return<std::decay_t<R>>::value
-        uint32_t schedule(R&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(R&& job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             if (!job.handle() || job.handle().done()) return 0;
             return schedule(&job.promise(), tag, parent, children);
         }
 
         template<typename T>
             requires is_parent<T> || is_job<T> || is_coro_promise<T>
-        uint32_t schedule(T* job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(T* job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             if constexpr (is_coro_promise<T>) {
                 if (m_current_job && m_current_job->m_is_function) { //function is not allowed to schedule a coro
                     assert(false && "Error: only coros allowed to schedule a coro!");
@@ -499,18 +523,46 @@ namespace simple_vgjs {
                 parent->m_children.fetch_add((int)children);
             }
 
-            auto next_thread = job->m_thread_index < 0 ? next_thread_index() : job->m_thread_index;
+            auto next_thread = job->m_index < 0 ? next_thread_index() : job->m_index;
             if constexpr (is_job<T>) {
                 job->m_children = 1;
-                job->m_thread_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
+                job->m_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
             }
             if constexpr (is_coro_promise<T>) {  
                 job->m_children = 0;
-                job->m_thread_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
+                job->m_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
             }
 
             m_cv[0]->notify_all();
             return 1l;
+        }
+
+        template<typename F>
+            requires is_function<F>
+        uint32_t schedule(F&& f, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
+            return schedule(std::forward<F>(f), thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
+        }
+
+        template<typename V>
+            requires is_vector<std::decay_t<V>>::value
+        uint32_t schedule(V&& vector, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
+            uint32_t sum = 0;
+            std::ranges::for_each(vector, [&](auto&& v) { sum += schedule(std::forward<decltype(v)>(v), tag, parent, children);  });
+            return sum;
+        }
+
+        //---------------------------------------------------------------------------------------
+
+        public:
+
+        template<typename R>
+            requires is_coro_return<std::decay_t<R>>::value
+        uint32_t schedule(R&& job, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            if (!job.handle() || job.handle().done()) return 0;
+            job.promise().m_index = index;
+            job.promise().m_type = type;
+            job.promise().m_id = id;
+            return schedule(&job.promise(), tag, parent, children);
         }
 
         template<typename T>
@@ -540,12 +592,6 @@ namespace simple_vgjs {
         };
 
         template<typename F>
-            requires is_function<F>
-        uint32_t schedule(F&& f, tag_t tag, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-            return schedule(std::forward<F>(f), thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
-        }
-
-        template<typename F>
             requires is_function<F> 
         uint32_t schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
@@ -559,10 +605,13 @@ namespace simple_vgjs {
         }
 
         template<typename V>
-            requires is_vector<V>::value
+            requires is_vector<std::decay_t<V>>::value
         uint32_t schedule(V&& vector, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-            return std::accumulate(vector.begin, vector.end, 0, [](auto&& v) { return schedule(std::forward<decltype(v)>(v), index, type, id, tag, parent, children); });
+            uint32_t sum = 0;
+            std::ranges::for_each(vector, [&](auto&& v) { sum += schedule(std::forward<decltype(v)>(v), index, type, id, tag, parent, children);  });
+            return sum;
         }
+
     };
 
 
@@ -571,18 +620,18 @@ namespace simple_vgjs {
 
     template<typename T>
     struct awaitable_resume_on : suspend_always {
-        thread_index_t m_thread_index; //the thread index to use
+        thread_index_t m_index; //the thread index to use
 
         bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
-            return (m_thread_index == system->m_thread_index);
+            return (m_index == system->m_index);
         }
 
         void await_suspend(coroutine_handle<VgjsCoroPromise<T>> h) noexcept {
-            h.promise().m_thread_index = m_thread_index;
-            VgjsJobSystem()->schedule(&h.promise());
+            h.promise().m_index = m_index;
+            VgjsJobSystem()->schedule(&h.promise(), tag_t{}, (VgjsJobParentPointer)&h.promise().m_parent, -1);
         }
 
-        awaitable_resume_on(thread_index_t index) noexcept : m_thread_index(index) {};
+        awaitable_resume_on(thread_index_t index) noexcept : m_index(index) {};
     };
 
 
