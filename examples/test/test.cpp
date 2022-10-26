@@ -45,7 +45,8 @@ namespace test {
         std::cout << "coro - 2\n";
         auto f1 = []() {F1(1); };
         auto c3 = coro3();
-        co_await parallel(coro2(), coro3(), c3, f1, []() {F2(); });
+        auto c4 = std::move(c3);
+        co_await parallel(coro2(), coro3(), c4, f1, []() {F2(); });
         std::cout << "coro - 3\n";
         co_return;
     }

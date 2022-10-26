@@ -177,7 +177,6 @@ namespace simple_vgjs {
         auto unhandled_exception() noexcept -> void { std::terminate(); };
         auto initial_suspend() noexcept -> suspend_always { return {}; };
         auto final_suspend() noexcept -> final_awaiter<T> { return {}; };
-
         auto resume() noexcept -> void {
             if (m_handle && !m_handle.done()) {
                 m_handle.resume();       //coro could destroy itself here!!
@@ -233,14 +232,20 @@ namespace simple_vgjs {
 
     public:
         VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_handle{ h } {};
+        VgjsCoroReturn(const VgjsCoroReturn &rhs) = delete;
+        VgjsCoroReturn(VgjsCoroReturn&& rhs) noexcept { 
+            m_handle = std::forward<decltype(m_handle)>(rhs.m_handle); 
+            rhs.m_handle = nullptr;
+        };
         ~VgjsCoroReturn() noexcept {
-            if (!m_handle.promise().m_parent) return;
-            if(m_handle) m_handle.destroy(); 
+            if (!m_handle || m_handle.done() || !m_handle.promise().m_parent) return;
+            m_handle.destroy(); 
         }
 
         T get() noexcept { return {}; }
         VgjsCoroPromise<T>& promise() { return m_handle.promise(); }
-        void resume() { m_handle.promise().resume(); }
+        void resume() { if(m_handle && !m_handle.done()) m_handle.promise().resume(); }
+        auto handle() { return m_handle; };
 
         decltype(auto) operator() (thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}) {
             promise().m_thread_index = index;
@@ -466,6 +471,7 @@ namespace simple_vgjs {
         template<typename R>
             requires is_coro_return<std::decay_t<R>>::value
         uint32_t schedule(R&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            if (!job.handle() || job.handle().done()) return 0;
             return schedule(&job.promise(), tag, parent, children);
         }
 
