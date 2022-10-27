@@ -50,9 +50,9 @@ namespace test {
 
         std::vector<VgjsCoroReturn<int>> vec;
         vec.emplace_back(coro2());
-        vec.emplace_back(coro3());
-        vec.emplace_back(coro2());
-        vec.emplace_back(coro3());
+        //vec.emplace_back(coro3());
+        //vec.emplace_back(coro2());
+        //vec.emplace_back(coro3());
         auto res3 = co_await parallel(vec);
         std::cout << "coro - 4 \n";
 

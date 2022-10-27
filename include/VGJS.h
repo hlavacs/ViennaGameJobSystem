@@ -500,7 +500,7 @@ namespace simple_vgjs {
         }
 
         template<typename T>
-            requires is_parent<T> || is_job<T> || is_coro_promise<T>
+            requires is_parent<std::decay_t<T>> || is_job< std::decay_t<T>> || is_coro_promise< std::decay_t<T>>
         uint32_t schedule(T* job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             if constexpr (is_coro_promise<T>) {
                 if (m_current_job && m_current_job->m_is_function) { //function is not allowed to schedule a coro
@@ -538,7 +538,7 @@ namespace simple_vgjs {
         }
 
         template<typename F>
-            requires is_function<F>
+            requires is_function<std::decay_t<F>>
         uint32_t schedule(F&& f, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             return schedule(std::forward<F>(f), thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
         }
@@ -547,7 +547,7 @@ namespace simple_vgjs {
             requires is_vector<std::decay_t<V>>::value
         uint32_t schedule(V&& vector, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             uint32_t sum = 0;
-            std::ranges::for_each(vector, [&](auto&& v) { sum += schedule(std::forward<decltype(v)>(v), tag, parent, children);  });
+            std::ranges::for_each(vector, [&](auto&& v) { sum += schedule(std::forward<decltype(v)>(v), tag, parent, children); children = 0;  });
             return sum;
         }
 
@@ -566,7 +566,7 @@ namespace simple_vgjs {
         }
 
         template<typename T>
-            requires is_tag<T>
+            requires is_tag<std::decay_t<T>>
         uint32_t schedule(T&& tg, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             if (!m_tag_queues.contains(tg)) return 0;
 
@@ -592,7 +592,7 @@ namespace simple_vgjs {
         };
 
         template<typename F>
-            requires is_function<F> 
+            requires is_function<std::decay_t<F>> 
         uint32_t schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
             if (job) {
@@ -608,7 +608,7 @@ namespace simple_vgjs {
             requires is_vector<std::decay_t<V>>::value
         uint32_t schedule(V&& vector, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             uint32_t sum = 0;
-            std::ranges::for_each(vector, [&](auto&& v) { sum += schedule(std::forward<decltype(v)>(v), index, type, id, tag, parent, children);  });
+            std::ranges::for_each(vector, [&](auto&& v) { sum += schedule(std::forward<decltype(v)>(v), index, type, id, tag, parent, children); children = 0; });
             return sum;
         }
 
