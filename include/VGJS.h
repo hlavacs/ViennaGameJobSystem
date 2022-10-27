@@ -242,7 +242,23 @@ namespace simple_vgjs {
         };
 
         ~VgjsCoroReturn() noexcept {
-            if (!m_valid || !m_handle || m_handle.done() || !m_handle.promise().m_parent) return;
+            if (!m_valid) 
+                return;
+
+            bool h = !m_handle;
+            if (h) 
+                return;
+
+            //bool d = m_handle.done();
+            //if (d) 
+            //    return;
+
+            auto p = &m_handle.promise();
+            if (!p->m_parent)
+                return;
+
+            //if (!m_valid || !m_handle || m_handle.done() || !m_handle.promise().m_parent) 
+            //    return;
             m_handle.destroy(); 
         }
 
@@ -518,7 +534,7 @@ namespace simple_vgjs {
             }
 
             job->m_parent = parent;
-            if (parent != nullptr) {
+            if (parent != nullptr && children != 0) {
                 if (children < 0) children = 1;
                 parent->m_children.fetch_add((int)children);
             }
