@@ -749,16 +749,17 @@ namespace simple_vgjs {
             auto f = [&, this]<typename... Us>(Us&... args) {
                 return std::tuple_cat(get_val(args)...);
             };
-            auto ret = std::apply(f, m_tuple);
+            using rtype = decltype(std::apply(f, m_tuple));
 
-            if constexpr (std::tuple_size_v < decltype(ret) > == 0) {
+            if constexpr (std::tuple_size_v < rtype > == 0) {
                 return;
             }
-            else if constexpr (std::tuple_size_v < decltype(ret) > == 1) {
-                return std::get<0>(ret);
+            else if constexpr (std::tuple_size_v < rtype > == 1) {
+                auto ret = std::get<0>(std::apply(f, m_tuple));
+                return ret;
             }
             else {
-                return ret;
+                return std::apply(f, m_tuple);
             }
         }
 

@@ -40,26 +40,33 @@ namespace test {
 
     VgjsCoroReturn<> coro() {
         std::cout << "coro\n";
-        //int res = co_await coro2();
-        
+        /*int res = co_await coro2();
+
         std::cout << "coro - 2 \n";
         auto f1 = []() {F1(1); };
-        //auto c3 = coro3();
-        //auto res2 = co_await parallel(coro2(), coro3(), c3, f1, []() {F2(); });
-        std::cout << "coro - 3 \n";
+        auto c3 = coro3();
+        auto res2 = co_await parallel(coro2(), coro3(), c3, f1, []() {F2(); });
+        std::cout << "coro - 3 \n";*/
 
         std::vector<VgjsCoroReturn<int>> vec;
         vec.emplace_back(coro2());
-        //vec.emplace_back(coro3());
-        //vec.emplace_back(coro2());
-        //vec.emplace_back(coro3());
-        auto res3 = co_await parallel(coro2());
+        vec.emplace_back(coro2());
+        vec.emplace_back(coro2());
+        vec.emplace_back(coro2());
+        auto res3 = co_await parallel(vec, F2, F2);
         std::cout << "coro - 4 \n";
-        auto res4 = co_await parallel(vec);
+
+        std::vector<void(*)()> vec2;
+        vec2.emplace_back(F2);
+        vec2.emplace_back(F2);
+        vec2.emplace_back(F2);
+        vec2.emplace_back(F2);
+        co_await parallel(vec2);
         std::cout << "coro - 5 \n";
 
         co_return;
     }
+
 
 };
 
