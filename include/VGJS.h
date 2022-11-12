@@ -27,6 +27,12 @@ namespace simple_vgjs {
 
     using namespace std::experimental;
 
+    /// <summary>
+    /// A strong type must be explicitly created, and cannot be created by implicit conversion.
+    /// </summary>
+    /// <typeparam name="T">Value type.</typeparam>
+    /// <typeparam name="D">Default value.</typeparam>
+    /// <typeparam name="P">Phantom parameter to make type unique.</typeparam>
     template<typename T, auto D, int64_t P>
     struct strong_type_t {
         T value{D};
@@ -53,8 +59,8 @@ namespace simple_vgjs {
     using tag_t             = strong_type_t<int64_t, -1, 4>;
 
     //---------------------------------------------------------------------------------------------
-
     //Declaration of classes 
+
     template<typename T> struct awaitable_resume_on;
     template<typename PT, typename... Ts> struct awaitable_tuple;
     template<typename PT> struct awaitable_tag;
@@ -75,56 +81,65 @@ namespace simple_vgjs {
     class VgjsJobSystem; 
     using VgjsJobSystemPointer = VgjsJobSystem*;
 
-    //test whether a template parameter T is a std::pmr::vector
+    //---------------------------------------------------------------------------------------------
+    //Concepts
+
     template<typename>
-    struct is_vector : std::false_type {};
+    struct is_vector : std::false_type {};    //test whether a template parameter T is a std::pmr::vector
 
     template<typename T>
     struct is_vector<std::vector<T>> : std::true_type {};
 
-    //Concept of things that can get scheduled
-    template<typename T>
+    template<typename T>    //Concept of things that can get scheduled
     concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> > && (!is_coro_return<std::decay_t<T>>::value);
 
     template<typename T>
-    concept is_parent = std::is_same_v< std::decay_t<T>, VgjsJobParent >;
+    concept is_parent = std::is_same_v< std::decay_t<T>, VgjsJobParent >; //Is derived from job parent class
 
     template<typename T>
-    concept is_job = std::is_same_v< std::decay_t<T>, VgjsJob >;
+    concept is_job = std::is_same_v< std::decay_t<T>, VgjsJob >; //Is a job.
 
     template<typename T>
-    concept is_coro_promise = std::is_base_of_v<VgjsJobParent, std::decay_t<T>> && !is_job<T>;
+    concept is_coro_promise = std::is_base_of_v<VgjsJobParent, std::decay_t<T>> && !is_job<T>; //Is a coro promise
 
     template<typename >
-    struct is_coro_return : std::false_type {};
+    struct is_coro_return : std::false_type {}; //Is NOT a coro return object class.
 
     template<typename T>
-    struct is_coro_return<VgjsCoroReturn<T>> : std::true_type {};
+    struct is_coro_return<VgjsCoroReturn<T>> : std::true_type {}; //Is a coro return object class.
 
     template<typename T>
-    concept is_tag = std::is_same_v< std::decay_t<T>, tag_t >;
+    concept is_tag = std::is_same_v< std::decay_t<T>, tag_t >; //Is a tag that can be scheduled.
 
-
+    /// <summary>
+    /// A wrapper for scheduling tuples of functions and coros.
+    /// </summary>
+    /// <typeparam name="...Ts">The types to be scheduled</typeparam>
+    /// <param name="...args">The actual functions and coros to be scheduled.</param>
+    /// <returns>Returns a tuple that can be scheduled.</returns>
     template<typename... Ts>
     inline decltype(auto) parallel(Ts&&... args) {
         return std::tuple<Ts&&...>(std::forward<Ts>(args)...);
     }
 
     //---------------------------------------------------------------------------------------------
+    //Function objects
 
+    /// <summary>
+    /// This is the parent class of all jobs.
+    /// </summary>
     struct VgjsJobParent {
-        VgjsJobParentPointer   m_next{0};
-
+        VgjsJobParentPointer   m_next{0};            //For storing in a queue.
         thread_index_t         m_index{};            //thread that the f should run on
         thread_type_t          m_type{};             //type of the call
         thread_id_t            m_id{};               //unique identifier of the call
         VgjsJobParentPointer   m_parent{};           //parent job that created this job
-        bool                   m_is_function{ true };
+        bool                   m_is_function{ true };//If true then this is a function, if false then a coroutine.
         std::atomic<uint32_t>  m_children{};         //number of children this job is waiting for
 
         VgjsJobParent() = default;
         
-        VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, VgjsJobParentPointer parent)
+        VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, VgjsJobParentPointer parent) noexcept
             : m_index{ index }, m_type{ type }, m_id{ id }, m_parent{ parent } {};
 
         VgjsJobParent(const VgjsJobParent&& j) noexcept {
@@ -138,20 +153,23 @@ namespace simple_vgjs {
         VgjsJobParent& operator= (VgjsJobParent&& j) noexcept = default;
         
         virtual void resume() = 0;
-        virtual bool destroy() = 0;
+        virtual bool destroy() = 0; //Called when the object should be destroyed.
     };
 
+    /// <summary>
+    /// A job is a function object that can be scheduled.
+    /// </summary>
     struct VgjsJob : public VgjsJobParent {
-        std::function<void(void)> m_function = []() {};  //empty function
+        std::function<void(void)> m_function = []() {};  //The function that should be executed
 
-        VgjsJob() : VgjsJobParent() {};
+        VgjsJob() noexcept : VgjsJobParent() {};
 
         template<typename F>
         VgjsJob(F&& f = []() {}
             , thread_index_t index = thread_index_t{ -1 }
             , thread_type_t type = thread_type_t{}
             , thread_id_t id = thread_id_t{}
-            , VgjsJobParentPointer parent = nullptr) : m_function{ f }, VgjsJobParent(index, type, id, parent) {};
+            , VgjsJobParentPointer parent = nullptr) noexcept : m_function{ f }, VgjsJobParent(index, type, id, parent) {};
 
         VgjsJob(const VgjsJob& j) noexcept = default;
         VgjsJob(VgjsJob&& j) noexcept { m_function = std::move(j.m_function); };
@@ -161,14 +179,19 @@ namespace simple_vgjs {
         bool destroy() noexcept { return true; }
     };
 
-
     //---------------------------------------------------------------------------------------------
+    //Coroutines
 
-
+    /// <summary>
+    /// This is the base class of all coroutine promises. We need it to distinguish between return type
+    /// of void or any value. Coroutines must have different interfaces for these two cases, but we
+    /// need a unified interfaces to handle all cases.
+    /// </summary>
+    /// <typeparam name="T">The return type of the coroutine.</typeparam>
     template<typename T>
     class VgjsCoroPromiseBase : public VgjsJobParent {
     protected:
-        coroutine_handle<> m_handle{};    //<handle of the coroutine
+        coroutine_handle<> m_handle{};    //Handle of the coroutine
 
     public:
         VgjsCoroPromiseBase(coroutine_handle<> handle) noexcept : m_handle{ handle } { m_is_function = false; };
@@ -178,7 +201,7 @@ namespace simple_vgjs {
         auto final_suspend() noexcept -> final_awaiter<T> { return {}; };
         auto resume() noexcept -> void {
             if (m_handle && !m_handle.done()) {
-                m_handle.resume();       //coro could destroy itself here!!
+                m_handle.resume();       //Coro could destroy itself here!!
             }
         }
 
@@ -200,7 +223,10 @@ namespace simple_vgjs {
         auto await_transform(tag_t tg) noexcept -> awaitable_tag<T> { return { tg }; };
     };
 
-
+    /// <summary>
+    /// The coroutine promise class for returning a specific value type.
+    /// </summary>
+    /// <typeparam name="T">Return type of the coroutine.</typeparam>
     template<typename T>
     class VgjsCoroPromise : public VgjsCoroPromiseBase<T> {
     private:
@@ -212,6 +238,9 @@ namespace simple_vgjs {
        auto get() { return m_value; };
     };
 
+    /// <summary>
+    /// The coroutine promise class for returning void.
+    /// </summary>
     template<>
     class VgjsCoroPromise<void> : public VgjsCoroPromiseBase<void> {
     public:
@@ -220,62 +249,43 @@ namespace simple_vgjs {
         auto get_return_object() noexcept -> VgjsCoroReturn<void>;
     };
 
-    //--------------------------------------------------------
+    //---------------------------------------------------------------------------------------------
+    //Coroutine return object
 
+    /// <summary>
+    /// The coroutine return object.
+    /// </summary>
+    /// <typeparam name="T">Return value type.</typeparam>
     template<typename T>
     class VgjsCoroReturn {
     public:
         using promise_type = VgjsCoroPromise<T>;
 
     private:
-        bool m_valid{false};
         coroutine_handle<VgjsCoroPromise<T>> m_handle{};       //handle to Coro promise
 
     public:
         VgjsCoroReturn() noexcept {};
-        VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_valid{true}, m_handle { h } {};
+        VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_handle { h } {};
         VgjsCoroReturn(const VgjsCoroReturn& rhs) noexcept = delete;
-
-        VgjsCoroReturn(VgjsCoroReturn&& rhs) noexcept {
-            m_handle = std::exchange(rhs.m_handle, {});
-            m_valid = std::exchange(rhs.m_valid, false);
-        };
+        VgjsCoroReturn(VgjsCoroReturn&& rhs) noexcept { m_handle = std::exchange(rhs.m_handle, {}); };
 
         ~VgjsCoroReturn() noexcept {
-            if (!m_valid) 
-                return;
-
-            bool h = !m_handle;
-            if (h) 
-                return;
-
-            //bool d = m_handle.done();
-            //if (d) 
-            //    return;
-
-            auto p = &m_handle.promise();
-            if (!p->m_parent)
-                return;
-
-            //if (!m_valid || !m_handle || m_handle.done() || !m_handle.promise().m_parent) 
-            //    return;
+            if (!m_handle || m_handle.done() || !m_handle.promise().m_parent) return;
             m_handle.destroy(); 
         }
 
-        void operator= (VgjsCoroReturn<T>&& rhs) noexcept {
-            m_handle = std::exchange(rhs.m_handle, {});
-            m_valid = std::exchange(rhs.m_valid, false);
-        }
+        void operator= (VgjsCoroReturn<T>&& rhs) noexcept { m_handle = std::exchange(rhs.m_handle, {}); }
 
         T get() noexcept { 
             if constexpr (!std::is_void_v<std::decay_t<T>>) {
-                if (m_valid && m_handle) return m_handle.promise().get();
+                if (m_handle) return m_handle.promise().get();
             }
             return {};
         }
         VgjsCoroPromise<T>& promise() { return m_handle.promise(); }
         void resume() { 
-            if(m_valid && m_handle && !m_handle.done()) 
+            if(m_handle && !m_handle.done()) 
                 m_handle.promise().resume(); 
         }
         auto handle() { return m_handle; };
@@ -293,16 +303,22 @@ namespace simple_vgjs {
 
     auto VgjsCoroPromise<void>::get_return_object() noexcept -> VgjsCoroReturn<void> { return { coroutine_handle<VgjsCoroPromise<void>>::from_promise(*this) }; };
 
-
     //---------------------------------------------------------------------------------------------
+    //A general internally synchronized FIFO queue class
 
+    /// <summary>
+    /// A general FIFO queue class. The class is thread safe and internally synchronized.
+    /// </summary>
+    /// <typeparam name="T">Type of items to be stored in the queue.</typeparam>
+    /// <typeparam name="SYNC">If true then the queue is thread safe.</typeparam>
+    /// <typeparam name="LIMIT">Max number of items that the queue can store.</typeparam>
     template<typename T, bool SYNC, uint64_t LIMIT>
     class VgjsQueue {
     private:
-        std::mutex  m_mutex{};
-        T*          m_first{ nullptr };
-        T*          m_last{ nullptr };
-        size_t      m_size{ 0 };
+        std::mutex  m_mutex{};          //Mutex for synchronization.
+        T*          m_first{ nullptr }; //First item in the queue.
+        T*          m_last{ nullptr };  //Last item in the queue.
+        size_t      m_size{ 0 };        //Number of items currently in the queue.
 
     public:
         VgjsQueue() noexcept {};
@@ -316,6 +332,10 @@ namespace simple_vgjs {
             }
         }
 
+        /// <summary>
+        /// Return the number of items currently in the queue.
+        /// </summary>
+        /// <returns>Number of items currently in the queue.</returns>
         auto size() noexcept { 
             if constexpr (SYNC) m_mutex.lock();
             auto size = m_size;
@@ -323,6 +343,11 @@ namespace simple_vgjs {
             return size;
         }
 
+        /// <summary>
+        /// Push a new item into the back of the queue.
+        /// </summary>
+        /// <param name="job">The new item.</param>
+        /// <returns>If true then the item was stored.</returns>
         bool push(T* job) noexcept {
             if constexpr (SYNC) m_mutex.lock();
             if (m_size > LIMIT) {   //is queue full -> do not accept the new entry
@@ -338,6 +363,9 @@ namespace simple_vgjs {
             return true;
         }
 
+        /// <summary>
+        /// Pop an item from the queue.
+        /// </summary>
         T* pop() noexcept {
             if constexpr (SYNC) m_mutex.lock();
             if (!m_first) {
@@ -355,8 +383,11 @@ namespace simple_vgjs {
 
 
     //---------------------------------------------------------------------------------------------
+    //The main job system class 
 
-
+    /// <summary>
+    /// The main job system class. The class uses the mono state pattern, i.e., all state variables are static.
+    /// </summary>
     class VgjsJobSystem {
         template<typename T> friend struct awaitable_resume_on;
         template<typename PT, typename... Ts> friend struct awaitable_tuple;
@@ -364,8 +395,8 @@ namespace simple_vgjs {
         template<typename U> friend struct final_awaiter;
 
     private:
-        static inline std::atomic<bool>               m_terminate{ false };
-        static inline std::atomic<uint32_t>           m_init_counter = 0;
+        static inline std::atomic<bool>               m_terminate{ false };     //If true then terminate the job system
+        static inline std::atomic<uint32_t>           m_init_counter = 0;       //Counter used when starting the system
         static inline std::atomic<uint32_t>           m_thread_count{ 0 };      //<number of threads in the pool
         static inline std::vector<std::thread>        m_threads;	            //<array of thread structures
 
@@ -377,12 +408,16 @@ namespace simple_vgjs {
 
         static inline std::unordered_map<tag_t, std::unique_ptr<VgjsQueue<VgjsJobParent>>, tag_t::hash> m_tag_queues;
 
-        static inline thread_local VgjsJobParentPointer m_current_job{};
-        VgjsQueue<VgjsJob, false, 1 << 12>              m_recycle_jobs;
-        thread_local static inline thread_index_t       m_next_thread{ 0 };
-        static inline std::vector<std::unique_ptr<std::condition_variable>> m_cv;
-        static inline std::vector<std::unique_ptr<std::mutex>>              m_mutex{};
+        static inline thread_local VgjsJobParentPointer m_current_job{};    //A pointer to the current job of this thread.
+        VgjsQueue<VgjsJob, false, 1 << 12>              m_recycle_jobs;     //A queue to recycle old jobs.
+        thread_local static inline thread_index_t       m_next_thread{ 0 }; //The index of the next thread to schedule to
+        static inline std::unique_ptr<std::condition_variable> m_cv;       //Condition variable to wake up threads
+        static inline std::vector<std::unique_ptr<std::mutex>> m_mutex{};  //For sleeping and waking up again
 
+        /// <summary>
+        /// Determine the thread that should receive a new job.
+        /// </summary>
+        /// <returns>Thread index to schedule to.</returns>
         thread_index_t next_thread_index() {
             m_next_thread = thread_index_t{ m_next_thread + 1 };
             m_next_thread = (m_next_thread >= m_thread_count ? thread_index_t{ 0 } : m_next_thread);
@@ -391,6 +426,12 @@ namespace simple_vgjs {
 
     public:
 
+        /// <summary>
+        /// Constructor of the job system class. Can be called any number of times, but it will
+        /// only do real work at the first time.
+        /// </summary>
+        /// <param name="count">Number of threads to be in the job system.</param>
+        /// <param name="start">Start index, can be 0 or 1.</param>
         VgjsJobSystem(thread_count_t count = thread_count_t(0), thread_index_t start = thread_index_t(0)) {
             if (m_init_counter > 0) [[likely]] return;
             auto cnt = m_init_counter.fetch_add(1);
@@ -398,13 +439,13 @@ namespace simple_vgjs {
 
             count = ( count <= 0 ? (int64_t)std::thread::hardware_concurrency() : count );
             for (auto i = start; i < count; ++i) {
-                m_global_job_queues.emplace_back();     //global job queue
+                m_global_job_queues.emplace_back();    //global job queue
                 m_local_job_queues.emplace_back();     //local job queue
-                m_global_coro_queues.emplace_back();     //global coro queue
-                m_local_coro_queues.emplace_back();     //local coro queue
-                m_cv.emplace_back(std::make_unique<std::condition_variable>());
+                m_global_coro_queues.emplace_back();   //global coro queue
+                m_local_coro_queues.emplace_back();    //local coro queue
                 m_mutex.emplace_back(std::make_unique<std::mutex>());
             }
+            m_cv = std::make_unique<std::condition_variable>();
 
             for (auto i = start; i < count; ++i) {
                 m_threads.push_back(std::thread(&VgjsJobSystem::task, this, thread_index_t(i), count));	//spawn the pool threads
@@ -413,33 +454,50 @@ namespace simple_vgjs {
             wait(count);
         };
 
-        ~VgjsJobSystem() {} //keep empty!!
+        ~VgjsJobSystem() {} //Keep empty!! Otherwise there will be death each time the destructor is called. 
 
-        int64_t thread_count() { 
-            return m_thread_count.load(); 
-        };
+        /// <summary>
+        /// Return the number of threads in the system.
+        /// </summary>
+        /// <returns>Number of threads in the system.</returns>
+        int64_t thread_count() { return m_thread_count.load(); };
 
+        /// <summary>
+        /// Test whether there is a function job in a queue. If found, pop it and run it.
+        /// </summary>
+        /// <param name="queue">The queue to test.</param>
+        /// <returns>True, if a job was found and executed.</returns>
         inline bool test_job(auto& queue) {
-            m_current_job = (VgjsJobParentPointer)queue.pop();
+            m_current_job = (VgjsJobParentPointer)queue.pop();      //Pop a job.
             if (m_current_job) {
-                ((VgjsJobPointer)m_current_job)->m_function();          //avoid virtual call
-                auto save = m_current_job;
-                child_finished(m_current_job);
-                if (!m_recycle_jobs.push((VgjsJobPointer)save)) delete save;  //recycle job if possible
+                ((VgjsJobPointer)m_current_job)->m_function();      //Run it, but avoid virtual call.
+                auto save = m_current_job;              //Safe the job for later recycling.
+                child_finished(m_current_job);          //Test whether parent should be notified
+                if (!m_recycle_jobs.push((VgjsJobPointer)save)) delete save;  //recycle job if possible.
                 return true;
             }
             return false;
         }
 
+        /// <summary>
+        /// Test whether there is a coroutine job in a queue. If found, pop it and run it.
+        /// </summary>
+        /// <param name="queue">The queue to test.</param>
+        /// <returns>True, if a job was found and executed.</returns>
         inline bool test_coro(auto& queue) {
-            m_current_job = queue.pop();
+            m_current_job = queue.pop();    //Pop a job
             if (m_current_job) {
-                m_current_job->resume();
+                m_current_job->resume();    //Resume the coroutine (virtual call)
                 return true;
             }
             return false;
         }
 
+        /// <summary>
+        /// The main function that all threads must enter.
+        /// </summary>
+        /// <param name="index">The index of this thread.</param>
+        /// <param name="count">The total number of threads in the system.</param>
         void task(thread_index_t index, thread_count_t count) noexcept {
             m_thread_count++;
             m_thread_count.notify_all();
@@ -452,8 +510,8 @@ namespace simple_vgjs {
 
             while (!m_terminate) {  //Run until the job system is terminated
                 bool found1 = test_job(m_local_job_queues[my_index]);
-                bool found2 = test_job(m_global_job_queues[my_index]);
-                bool found3 = test_coro(m_local_coro_queues[my_index]);
+                bool found2 = test_coro(m_local_coro_queues[my_index]);
+                bool found3 = test_job(m_global_job_queues[my_index]);
                 bool found4 = test_coro(m_global_coro_queues[my_index]);
                 bool found = found1 || found2 || found3 || found4;
                 int64_t loops = count;
@@ -464,13 +522,17 @@ namespace simple_vgjs {
                     }
                 }
 
-                if (!found) m_cv[0]->wait_for(lk, std::chrono::microseconds(100));
+                if (!found) m_cv->wait_for(lk, std::chrono::microseconds(100));
             }
             m_current_job = nullptr;
             m_thread_count--;
             m_thread_count.notify_all();
         }
 
+        /// <summary>
+        /// If a function job finishes, it calls this function. A function also counts itself as a child.
+        /// </summary>
+        /// <param name="job"></param>
         void child_finished(VgjsJobParentPointer job) noexcept {
             uint32_t num = job->m_children.fetch_sub(1);        //one less child
             if (num == 1) {                                     //was it the last child?
@@ -488,7 +550,7 @@ namespace simple_vgjs {
 
         void terminate() {
             m_terminate = true;
-            for (auto& cv : m_cv) cv->notify_all();
+            m_cv->notify_all();
             if (m_current_job) {                //if called from a job
                 m_thread_count--;               //Remove this job, because it is blocking
                 m_thread_count.notify_all();    //notify the others waiting
@@ -549,7 +611,7 @@ namespace simple_vgjs {
                 job->m_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
             }
 
-            m_cv[0]->notify_all();
+            m_cv->notify_all();
             return 1l;
         }
 
