@@ -91,7 +91,7 @@ namespace simple_vgjs {
     struct is_vector<std::vector<T>> : std::true_type {};
 
     template<typename T>    //Concept of things that can get scheduled
-    concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void(void)> > && (!is_coro_return<std::decay_t<T>>::value);
+    concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void(void*)> > && (!is_coro_return<std::decay_t<T>>::value);
 
     template<typename T>
     concept is_parent = std::is_same_v< std::decay_t<T>, VgjsJobParent >; //Is derived from job parent class
@@ -160,22 +160,24 @@ namespace simple_vgjs {
     /// A job is a function object that can be scheduled.
     /// </summary>
     struct VgjsJob : public VgjsJobParent {
-        std::function<void(void)> m_function = []() {};  //The function that should be executed
+        std::function<void(void*)> m_function = [](void*) {};  //The function that should be executed
+        void* m_ptr = nullptr;
 
         VgjsJob() noexcept : VgjsJobParent() {};
 
         template<typename F>
-        VgjsJob(F&& f = []() {}
+        VgjsJob(F&& f = [](void*) {}
+            , void* ptr = nullptr
             , thread_index_t index = thread_index_t{ -1 }
             , thread_type_t type = thread_type_t{}
             , thread_id_t id = thread_id_t{}
-            , VgjsJobParentPointer parent = nullptr) noexcept : m_function{ f }, VgjsJobParent(index, type, id, parent) {};
+            , VgjsJobParentPointer parent = nullptr) noexcept : m_function{ f }, m_ptr{ptr}, VgjsJobParent(index, type, id, parent) {};
 
         VgjsJob(const VgjsJob& j) noexcept = default;
         VgjsJob(VgjsJob&& j) noexcept { m_function = std::move(j.m_function); };
         VgjsJob& operator= (const VgjsJob& j) noexcept { m_function = j.m_function; return *this; };
         VgjsJob& operator= (VgjsJob&& j) noexcept = default;
-        void resume() noexcept { m_function(); }
+        void resume() noexcept { m_function(nullptr); }
         bool destroy() noexcept { return true; }
     };
 
@@ -471,7 +473,7 @@ namespace simple_vgjs {
         inline bool test_job(auto& queue) {
             m_current_job = (VgjsJobParentPointer)queue.pop();      //Pop a job.
             if (m_current_job) {
-                ((VgjsJobPointer)m_current_job)->m_function();      //Run it, but avoid virtual call.
+                ((VgjsJobPointer)m_current_job)->m_function(((VgjsJobPointer)m_current_job)->m_ptr);      //Run it, but avoid virtual call.
                 auto save = m_current_job;              //Safe the job for later recycling.
                 child_finished(m_current_job);          //Test whether parent should be notified
                 if (!m_recycle_jobs.push((VgjsJobPointer)save)) delete save;  //recycle job if possible.
@@ -655,8 +657,8 @@ namespace simple_vgjs {
         /// <returns>Number of scheduled jobs.</returns>
         template<typename F>
             requires is_function<std::decay_t<F>>
-        uint32_t schedule_job(F&& f, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
-            return schedule(std::forward<F>(f), thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
+        uint32_t schedule_job(F&& f, void* ptr, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
+            return schedule(std::forward<F>(f), ptr, thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
         }
 
         /// <summary>
@@ -691,7 +693,7 @@ namespace simple_vgjs {
         /// <returns>Number of scheduled jobs.</returns>
         template<typename R>
             requires is_coro_return<std::decay_t<R>>::value
-        uint32_t schedule(R&& job, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(R&& job, void* ptr = nullptr, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             if (!job.handle() || job.handle().done()) return 0;
             job.promise().m_index = index;
             job.promise().m_type = type;
@@ -749,15 +751,15 @@ namespace simple_vgjs {
         /// <returns>Number of scheduled jobs.</returns>
         template<typename F>
             requires is_function<std::decay_t<F>> 
-        uint32_t schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(F&& f, void* ptr = nullptr, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
             if (job) {
-                *job = std::move(VgjsJob{ std::forward<decltype(f)>(f), index, type, id });
+                *job = std::move(VgjsJob{ std::forward<decltype(f)>(f), ptr, index, type, id });
             }
             else {
-                if (!job) job = new VgjsJob{ std::forward<decltype(f)>(f), index, type, id };
+                if (!job) job = new VgjsJob{ std::forward<decltype(f)>(f), ptr, index, type, id };
             }
-            return schedule_job(job, tag, parent, children );
+            return schedule_job(job, nullptr, tag, parent, children );
         }
 
         /// <summary>
