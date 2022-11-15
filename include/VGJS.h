@@ -409,7 +409,6 @@ namespace simple_vgjs {
         static inline std::vector<VgjsQueue<VgjsJobParent>> m_local_coro_queues;	//<each thread has its own Coro queue, multiple produce, single consume
 
         static inline std::unordered_map<tag_t, std::unique_ptr<VgjsQueue<VgjsJobParent>>, tag_t::hash> m_tag_queues;
-        static inline std::mutex m_tag_mutex{};  //For accessing the tag queues
 
         static inline thread_local VgjsJobParentPointer m_current_job{};    //A pointer to the current job of this thread.
         VgjsQueue<VgjsJob, false, 1 << 12>              m_recycle_jobs;     //A queue to recycle old jobs.
@@ -533,10 +532,9 @@ namespace simple_vgjs {
         }
 
         /// <summary>
-        /// If a job ends, it tests whether there are any children left.
-        /// If not, the job finishes, and calls its parent so that the parent might also finish.
+        /// If a function job finishes, it calls this function. A function also counts itself as a child.
         /// </summary>
-        /// <param name="job">Pointer to the job that might finish.</param>
+        /// <param name="job"></param>
         void child_finished(VgjsJobParentPointer job) noexcept {
             uint32_t num = job->m_children.fetch_sub(1);        //one less child
             if (num == 1) {                                     //was it the last child?
@@ -546,15 +544,12 @@ namespace simple_vgjs {
                     }
                 }
                 else {
-                    m_current_job = nullptr; //prevent the negative test that a function scheduled a coro
-                    schedule_job(job, tag_t{}, job->m_parent, 0);   //a coro just gets scheduled again so it can continue
+                    m_current_job = nullptr;
+                    schedule_job(job, tag_t{}, job->m_parent, 0);   //a coro just gets scheduled again so it can go on
                 }
             }
         }
 
-        /// <summary>
-        /// Terminate the job system.
-        /// </summary>
         void terminate() {
             m_terminate = true;
             m_cv->notify_all();
@@ -565,10 +560,6 @@ namespace simple_vgjs {
             wait(); //wait for the threads to return
         }
 
-        /// <summary>
-        /// Wait until the system holds a given number of threads.
-        /// </summary>
-        /// <param name="desired">The deried number of threads to wait for.</param>
         void wait(int64_t desired = 0) {
             do {
                 auto num = m_thread_count.load();           //current number of threads
@@ -577,19 +568,10 @@ namespace simple_vgjs {
         }
 
         //--------------------------------------------------------------------------------------------
-        //Private schedule functions
+        //schedule
 
         private:
 
-        /// <summary>
-        /// Wrapper to schedule a coroutine job.
-        /// </summary>
-        /// <typeparam name="R">Job type.</typeparam>
-        /// <param name="job">Reference to the job.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Job parent.</param>
-        /// <param name="children">Number of children to use.</param>
-        /// <returns>Number of scheduled jobs.</returns>
         template<typename R>
             requires is_coro_return<std::decay_t<R>>::value
         uint32_t schedule_job(R&& job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
@@ -597,15 +579,6 @@ namespace simple_vgjs {
             return schedule_job(&job.promise(), tag, parent, children);
         }
 
-        /// <summary>
-        /// Main job schedule function.
-        /// </summary>
-        /// <typeparam name="T">Job type.</typeparam>
-        /// <param name="job">Reference to the job.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Job parent.</param>
-        /// <param name="children">Number of children to use.</param>
-        /// <returns>Number of scheduled jobs.</returns>
         template<typename T>
             requires is_parent<std::decay_t<T>> || is_job< std::decay_t<T>> || is_coro_promise< std::decay_t<T>>
         uint32_t schedule_job(T* job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
@@ -617,8 +590,6 @@ namespace simple_vgjs {
             }
 
             if (tag >= 0) {
-                std::lock_guard<std::mutex> lock(m_tag_mutex);
-
                 if (!m_tag_queues.contains(tag)) {
                     m_tag_queues[tag] = std::make_unique<VgjsQueue<VgjsJobParent>>();
                 }
@@ -646,30 +617,12 @@ namespace simple_vgjs {
             return 1l;
         }
 
-        /// <summary>
-        /// Main job schedule function.
-        /// </summary>
-        /// <typeparam name="F">Function type.</typeparam>
-        /// <param name="f">Universal reference to the function.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Job parent.</param>
-        /// <param name="children">Number of children to use.</param>
-        /// <returns>Number of scheduled jobs.</returns>
         template<typename F>
             requires is_function<std::decay_t<F>>
         uint32_t schedule_job(F&& f, void* ptr, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             return schedule(std::forward<F>(f), ptr, thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
         }
 
-        /// <summary>
-        /// Schedule a vector.
-        /// </summary>
-        /// <typeparam name="F">Vector type.</typeparam>
-        /// <param name="f">Universal reference to the vector of functions.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Job parent.</param>
-        /// <param name="children">Number of children to use.</param>
-        /// <returns>Number of scheduled jobs.</returns>
         template<typename V>
             requires is_vector<std::decay_t<V>>::value
         uint32_t schedule_job(V&& vector, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
@@ -682,15 +635,6 @@ namespace simple_vgjs {
 
         public:
 
-        /// <summary>
-        /// Main function for scheduling coroutines.
-        /// </summary>
-        /// <typeparam name="F">Job type.</typeparam>
-        /// <param name="f">Universal reference to the coroutine return object.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Job parent.</param>
-        /// <param name="children">Number of children to use.</param>
-        /// <returns>Number of scheduled jobs.</returns>
         template<typename R>
             requires is_coro_return<std::decay_t<R>>::value
         uint32_t schedule(R&& job, void* ptr = nullptr, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
@@ -701,19 +645,9 @@ namespace simple_vgjs {
             return schedule_job(&job.promise(), tag, parent, children);
         }
 
-        /// <summary>
-        /// Schedule tags.
-        /// </summary>
-        /// <typeparam name="T">Job type.</typeparam>
-        /// <param name="tg">Tag to schedule to.</param>
-        /// <param name="parent">Job parent.</param>
-        /// <param name="children">Number of children to use.</param>
-        /// <returns>Number of scheduled jobs.</returns>
         template<typename T>
             requires is_tag<std::decay_t<T>>
         uint32_t schedule(T&& tg, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-            std::lock_guard<std::mutex> lock(m_tag_mutex);
-
             if (!m_tag_queues.contains(tg)) return 0;
 
             auto queue = m_tag_queues[tg].get();   //get the queue for this tag
@@ -737,18 +671,6 @@ namespace simple_vgjs {
             return i;
         };
 
-        /// <summary>
-        /// Schedule a function.
-        /// </summary>
-        /// <typeparam name="F">Job type.</typeparam>
-        /// <param name="f">Function to be scheduled.</param>
-        /// <param name="index">Index of the thread to schedule to.</param>
-        /// <param name="type">Thread type.</param>
-        /// <param name="id">Thread id.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Job parent.</param>
-        /// <param name="children">Number of children to use.</param>
-        /// <returns>Number of scheduled jobs.</returns>
         template<typename F>
             requires is_function<std::decay_t<F>> 
         uint32_t schedule(F&& f, void* ptr = nullptr, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
@@ -762,18 +684,6 @@ namespace simple_vgjs {
             return schedule_job(job, nullptr, tag, parent, children );
         }
 
-        /// <summary>
-        /// Schedule a vector.
-        /// </summary>
-        /// <typeparam name="V">Vector type.</typeparam>
-        /// <param name="vector">The vector of jobs.</param>
-        /// <param name="index">Index of the thread to schedule to.</param>
-        /// <param name="type">Thread type.</param>
-        /// <param name="id">Thread id.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Job parent.</param>
-        /// <param name="children">Number of children to use.</param>
-        /// <returns>Number of scheduled jobs.</returns>
         template<typename V>
             requires is_vector<std::decay_t<V>>::value
         uint32_t schedule(V&& vector, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
@@ -781,15 +691,13 @@ namespace simple_vgjs {
             std::ranges::for_each(vector, [&](auto&& v) { sum += schedule_job(std::forward<decltype(v)>(v), index, type, id, tag, parent, children); children = 0; });
             return sum;
         }
+
     };
 
-    //---------------------------------------------------------------------------------------------
-    //Awaitable classes
 
-    /// <summary>
-    /// Awaitable for moving a job to another thread.
-    /// </summary>
-    /// <typeparam name="T">Coro return type.</typeparam>
+    //---------------------------------------------------------------------------------------------
+
+
     template<typename T>
     struct awaitable_resume_on : suspend_always {
         thread_index_t m_index; //the thread index to use
@@ -806,10 +714,7 @@ namespace simple_vgjs {
         awaitable_resume_on(thread_index_t index) noexcept : m_index(index) {};
     };
 
-    /// <summary>
-    /// Awaitable for scheduling tags.
-    /// </summary>
-    /// <typeparam name="T">Coro return type.</typeparam>
+
     template<typename T>
     struct awaitable_tag : suspend_always {
         tag_t    m_tag;            //the tag to schedule
@@ -831,29 +736,19 @@ namespace simple_vgjs {
         awaitable_tag(tag_t tg) noexcept : m_tag{ tg } {};
     };
 
-    /// <summary>
-    /// Awaitable for scheduling jobs.
-    /// </summary>
-    /// <typeparam name="PT">Coro return type.</typeparam>
-    /// <typeparam name="...Ts">Job types.</typeparam>
+
     template<typename PT, typename... Ts>
     struct awaitable_tuple : suspend_always {
-        tag_t               m_tag;          //The tag to schedule to
-        std::tuple<Ts&&...> m_tuple;        //tuple with all children to start
-        std::size_t         m_number;       //total number of all new children to schedule
+        tag_t                    m_tag;          //The tag to schedule to
+        std::tuple<Ts&&...>      m_tuple;        //tuple with all children to start
+        std::size_t              m_number;       //total number of all new children to schedule
 
-        /// <summary>
-        /// Get the total number of children that should be scheduled.
-        /// </summary>
-        /// <typeparam name="U">Type of the job to schedule.</typeparam>
-        /// <param name="children">Container for the jobs to be scheduled.</param>
-        /// <returns>Total number of jobs to be scheduled.</returns>
         template<typename U>
         size_t size(U& children) {
             if constexpr (is_vector< std::decay_t<U> >::value) { //if this is a vector
                 return children.size();
             }
-            if constexpr (is_tag<U>) { //if this is a tag
+            if constexpr (std::is_same_v<std::decay_t<U>, tag_t>) { //if this is a tag
                 m_tag = children;
                 return 0;
             }
@@ -872,9 +767,9 @@ namespace simple_vgjs {
         bool await_suspend(coroutine_handle<VgjsCoroPromise<PT>> h) noexcept {
             auto g = [&]<std::size_t Idx>() {
 
-                using tt = decltype(m_tuple);   //Type of the tuple
-                using T = decltype(std::get<Idx>(std::forward<tt>(m_tuple))); //Type of Idx's element of the tuple
-                decltype(auto) children = std::forward<T>(std::get<Idx>(std::forward<tt>(m_tuple))); //Get the jobs
+                using tt = decltype(m_tuple);
+                using T = decltype(std::get<Idx>(std::forward<tt>(m_tuple)));
+                decltype(auto) children = std::forward<T>(std::get<Idx>(std::forward<tt>(m_tuple)));
 
                 if constexpr (std::is_same_v<std::decay_t<T>, tag_t>) { //never schedule tags here
                     return;
@@ -891,38 +786,20 @@ namespace simple_vgjs {
 
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
 
-            return m_tag < 0; //if tag value < 0 then schedule now, so return true to suspend
+            return m_tag.value < 0; //if tag value < 0 then schedule now, so return true to suspend
         }
 
-        /// <summary>
-        /// Catch all function for anything that does not return a value.
-        /// </summary>
-        /// <typeparam name="T">Return type.</typeparam>
-        /// <param name="t">The value.</param>
-        /// <returns>Am empty tuple.</returns>
         template<typename T>
         decltype(auto) get_val(T& t) {
             return std::make_tuple(); //ignored by std::tuple_cat
         }
 
-        /// <summary>
-        /// Get the value from a single coroutine.
-        /// </summary>
-        /// <typeparam name="T">Return type.</typeparam>
-        /// <param name="t">The coro return object.</param>
-        /// <returns>The return value wrapped into a tuple.</returns>
         template<typename T>
             requires (!std::is_void_v<T>)
         decltype(auto) get_val(VgjsCoroReturn<T>& t) {
             return std::make_tuple(t.get());
         }
 
-        /// <summary>
-        /// Get the values from a vector of coroutines. Put the return values into a vector.
-        /// </summary>
-        /// <typeparam name="T">Return type.</typeparam>
-        /// <param name="vec">Vector of coroutines.</param>
-        /// <returns>The return value vector wrapped into a tuple.</returns>
         template<typename T>
             requires (!std::is_void_v<T>)
         decltype(auto) get_val(std::vector<VgjsCoroReturn<T>>& vec) {
@@ -932,49 +809,42 @@ namespace simple_vgjs {
             return std::make_tuple(std::move(ret));
         }
 
-        /// <summary>
-        /// Called when the coroutine resumes and possibly returns values.
-        /// </summary>
-        /// <returns>Either a tuple holding return values, or a single return value.</returns>
         decltype(auto) await_resume() {
-            auto f = [&, this]<typename... Us>(Us&... args) { //lambda stiching together the return value tuple.
+            auto f = [&, this]<typename... Us>(Us&... args) {
                 return std::tuple_cat(get_val(args)...);
             };
             using rtype = decltype(std::apply(f, m_tuple));
 
-            if constexpr (std::tuple_size_v < rtype > == 0) { //No return value.
+            if constexpr (std::tuple_size_v < rtype > == 0) {
                 return;
             }
-            else if constexpr (std::tuple_size_v < rtype > == 1) { //Just one value, return it directly.
+            else if constexpr (std::tuple_size_v < rtype > == 1) {
                 auto ret = std::get<0>(std::apply(f, m_tuple));
                 return ret;
             }
             else {
-                return std::apply(f, m_tuple);  //A tuple of many return values.
+                return std::apply(f, m_tuple);
             }
         }
 
         awaitable_tuple( std::tuple<Ts&&...> tuple ) noexcept : m_tag{}, m_number{ 0 }, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
     };
 
-    /// <summary>
-    /// The final awaiter for coroutines.
-    /// </summary>
-    /// <typeparam name="U">The coro return type.</typeparam>
+
     template<typename U>
     struct final_awaiter : public suspend_always {
 
         bool await_suspend(coroutine_handle<VgjsCoroPromise<U>> h) noexcept { //called after suspending
             auto parent = h.promise().m_parent;
 
-            if (parent != nullptr) {     //if there is a parent
+            if (parent != nullptr) {          //if there is a parent
                 uint32_t num = parent->m_children.fetch_sub(1);        //one less child
-                if (num == 1) {                                        //was it the last child?
-                    VgjsJobSystem().schedule_job(parent, tag_t{}, parent->m_parent, 0);   //if last reschedule the parent coro
+                if (num == 1) {                                             //was it the last child?
+                    VgjsJobSystem().schedule_job(parent, tag_t{}, parent->m_parent, 0);      //if last reschedule the parent coro
                 }
-                return true;  //leave destruction to parent coro
+                return true;        //leave destruction to parent coro
             }
-            return false;     //no parent -> immediately destroy
+            return false;  //no parent -> immediately destroy
         }
     };
 
