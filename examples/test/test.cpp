@@ -15,13 +15,13 @@ using namespace simple_vgjs;
 
 namespace test {
 
-    VgjsJob FF{ [](void*) {}, nullptr, thread_index_t{-1}};
+    VgjsJob FF{ []() {}, thread_index_t{-1}};
 
     void F1(int v) {
         std::cout << "F1\n";
     }
 
-    void F2(void* p = nullptr) {
+    void F2() {
         std::cout << "F2\n";
         F1(1);
         F1(2);
@@ -56,7 +56,7 @@ namespace test {
         auto res3 = co_await parallel(vec, F2, F2);
         std::cout << "coro - 4 \n";
 
-        std::vector<void(*)(void*)> vec2;
+        std::vector<void(*)()> vec2;
         vec2.emplace_back(F2);
         vec2.emplace_back(F2);
         vec2.emplace_back(F2);
@@ -66,34 +66,12 @@ namespace test {
 
         co_return;
     }
-
-
 };
 
 
 
 int main(int argc, char* argv[])
 {
-    //test::F2();
-
-    /*auto f = [](int i) {
-        std::cout << "f(" << i << ")" << "\n";
-        volatile static uint64_t sum{ 0 };
-        for (int i = 0; i < 10; ++i) {
-            sum += i;
-            std::cout << sum << "\n";
-        };
-    };
-
-    auto g = [&](int i) {
-        std::cout << "g(" << i << ")" << "\n";
-        VgjsJobSystem().schedule([&]() { f(i); });
-    };
-
-    for (int i = 0; i < 10; ++i) {
-        VgjsJobSystem().schedule([&]() { g(i); });
-    }*/
-
     VgjsJobSystem().schedule(test::coro());
 
     //std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::seconds>(10s));
