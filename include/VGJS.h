@@ -531,6 +531,8 @@ namespace simple_vgjs {
 
         /// <summary>
         /// If a function job finishes, it calls this function. A function also counts itself as a child.
+        /// If this is the last child job of the function, then it calls child_finished() for its parent, which can be a 
+        /// function or a coro itself. 
         /// </summary>
         /// <param name="job"></param>
         void child_finished(VgjsJobParentPointer job) noexcept {
@@ -548,6 +550,9 @@ namespace simple_vgjs {
             }
         }
 
+        /// <summary>
+        /// Terminate the job system, then wait until all threads are gone.
+        /// </summary>
         void terminate() {
             m_terminate = true;
             m_cv->notify_all();
@@ -558,6 +563,10 @@ namespace simple_vgjs {
             wait(); //wait for the threads to return
         }
 
+        /// <summary>
+        /// Wait until the number of threads reaches a desired value.
+        /// </summary>
+        /// <param name="desired"></param>
         void wait(int64_t desired = 0) {
             do {
                 auto num = m_thread_count.load();           //current number of threads
@@ -566,10 +575,19 @@ namespace simple_vgjs {
         }
 
         //--------------------------------------------------------------------------------------------
-        //schedule
+        //Private schedule_job functions. These functions are only used internally for scheduling jobs.
 
         private:
 
+        /// <summary>
+        /// Schedule a coro return object. This extracts the coro promise and then schedules the promise.
+        /// </summary>
+        /// <typeparam name="R">Return object type.</typeparam>
+        /// <param name="job">Reference to the return object.</param>
+        /// <param name="tag">Tag to schedule to.</param>
+        /// <param name="parent">Pointer to parent.</param>
+        /// <param name="children">Number of children.</param>
+        /// <returns>Returns the number of scheduled children.</returns>
         template<typename R>
             requires is_coro_return<std::decay_t<R>>::value
         uint32_t schedule_job(R&& job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
