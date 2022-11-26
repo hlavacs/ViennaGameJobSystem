@@ -12,7 +12,7 @@
 
 using namespace std::chrono;
 
-using namespace simple_vgjs;
+using namespace vgjs;
 
 
 template<int BITS = 64>
@@ -35,7 +35,7 @@ struct TagSchedule {
             }
         }
         m_access.emplace_back( reads, writes );
-        return (int32_t)m_access.size() - 1 ;
+        return (int32_t)m_access.size() - 1 + m_offset;
     }
 
     int32_t& offset() { return m_offset; }
@@ -56,6 +56,11 @@ namespace test {
         std::cout << "F2\n";
         F1(1);
         F1(2);
+    }
+
+    VgjsCoroReturn<int> coro4() {
+        std::cout << "coro4\n";
+        co_return 10;
     }
 
     VgjsCoroReturn<int> coro3() {
@@ -102,11 +107,11 @@ namespace test {
         TagSchedule tag{100};
 
         co_await parallel(tag_t{ tag.get_tag(1,2) }, coro2());
-        co_await parallel(tag_t{ tag.get_tag(1,4) }, coro2());
-        co_await parallel(tag_t{ tag.get_tag(2,4) }, coro2());
+        co_await parallel(tag_t{ tag.get_tag(1,4) }, coro3());
+        co_await parallel(tag_t{ tag.get_tag(2,4) }, coro4());
 
         for (auto i = 0; i < tag.size(); ++i) {
-            co_await parallel(tag_t{i + tag.offset()});
+            co_await tag_t{i + tag.offset()};
         }
         tag.reset();
     }
@@ -118,7 +123,7 @@ namespace test {
 
 int main(int argc, char* argv[])
 {
-    VgjsJobSystem().schedule(test::coro());
+    VgjsJobSystem().schedule(test::coro_system());
 
     //std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::seconds>(10s));
 

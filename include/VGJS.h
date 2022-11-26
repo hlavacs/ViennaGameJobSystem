@@ -23,7 +23,7 @@
 #include <tuple>
 #include <numeric>
 
-namespace simple_vgjs {
+namespace vgjs {
 
     using namespace std::experimental;
 
@@ -52,11 +52,11 @@ namespace simple_vgjs {
         };
     };
 
-    using thread_count_t    = strong_type_t<int64_t, -1, 0>;
-    using thread_index_t    = strong_type_t<int64_t, -1, 1>;
-    using thread_id_t       = strong_type_t<int64_t, -1, 2>;
-    using thread_type_t     = strong_type_t<int64_t, -1, 3>;
-    using tag_t             = strong_type_t<int64_t, -1, 4>;
+    using thread_count_t    = strong_type_t<int64_t, -1l, 0>;
+    using thread_index_t    = strong_type_t<int64_t, -1l, 1>;
+    using thread_id_t       = strong_type_t<int64_t, -1l, 2>;
+    using thread_type_t     = strong_type_t<int64_t, -1l, 3>;
+    using tag_t             = strong_type_t<int64_t, -1l, 4>;
 
     //---------------------------------------------------------------------------------------------
     //Declaration of classes 
@@ -107,9 +107,6 @@ namespace simple_vgjs {
 
     template<typename T>
     struct is_coro_return<VgjsCoroReturn<T>> : std::true_type {}; //Is a coro return object class.
-
-    template<typename T>
-    concept is_tag = std::is_same_v< std::decay_t<T>, tag_t >; //Is a tag that can be scheduled.
 
     /// <summary>
     /// A wrapper for scheduling tuples of functions and coros.
@@ -596,7 +593,7 @@ namespace simple_vgjs {
         }
 
         template<typename T>
-            requires is_parent<std::decay_t<T>> || is_job< std::decay_t<T>> || is_coro_promise< std::decay_t<T>>
+            requires (is_parent<std::decay_t<T>> || is_job< std::decay_t<T>> || is_coro_promise< std::decay_t<T>>)
         uint32_t schedule_job(T* job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             if constexpr (is_coro_promise<T>) {
                 if (m_current_job && m_current_job->m_is_function) { //function is not allowed to schedule a coro
@@ -661,26 +658,21 @@ namespace simple_vgjs {
             return schedule_job(&job.promise(), tag, parent, children);
         }
 
-        template<typename T>
-            requires is_tag<std::decay_t<T>>
-        uint32_t schedule(T&& tg, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(tag_t tg, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             if (!m_tag_queues.contains(tg)) return 0;
 
             auto queue = m_tag_queues[tg].get();   //get the queue for this tag
-            uint32_t num_jobs = queue->size();
+            int32_t num_jobs = (int32_t)queue->size();
 
-            if (parent != nullptr) {
-                if (children < 0) children = num_jobs;     //if the number of children is not given, then use queue size
-                parent->m_children.fetch_add((int)children);    //add this number to the number of children of parent
-            }
+            if (parent != nullptr && children < 0) children = num_jobs;     //if the number of children is not given, then use queue size
 
             uint32_t num = num_jobs;        //schedule at most num_jobs, since someone could add more jobs now
             int i = 0;
             while (num > 0) {     //schedule all jobs from the tag queue
-                VgjsJobParent* job = queue->pop();
+                VgjsJobParentPointer job = queue->pop();
                 if (!job) return i;
-                job->m_parent = parent;
-                schedule_job(job);
+                schedule_job(job, tag_t{}, parent, children);
+                children = 0;
                 --num;
                 ++i;
             }
@@ -741,7 +733,7 @@ namespace simple_vgjs {
         }
 
         bool await_suspend(coroutine_handle<VgjsCoroPromise<T>> h) noexcept {
-            m_number = VgjsJobSystem().schedule_job(m_tag);
+            m_number = VgjsJobSystem().schedule(m_tag);
             return m_number > 0;     //if jobs were scheduled - await them
         }
 
@@ -765,7 +757,6 @@ namespace simple_vgjs {
                 return children.size();
             }
             if constexpr (std::is_same_v<std::decay_t<U>, tag_t>) { //if this is a tag
-                m_tag = children;
                 return 0;
             }
             return 1;   //if this is a std::function, Function, or Coro
@@ -788,7 +779,7 @@ namespace simple_vgjs {
                 decltype(auto) children = std::forward<T>(std::get<Idx>(std::forward<tt>(m_tuple)));
 
                 if constexpr (std::is_same_v<std::decay_t<T>, tag_t>) { //never schedule tags here
-                    return;
+                    m_tag = std::get<Idx>(m_tuple);
                 }
                 else {
                     VgjsJobSystem().schedule_job(std::forward<T>(children), m_tag, (VgjsJobParentPointer)&h.promise(), (int32_t)m_number);   //in first call the number of children is the total number of all jobs
