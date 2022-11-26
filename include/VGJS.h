@@ -531,7 +531,7 @@ namespace vgjs {
         /// If this is the last child job of the function, then it calls child_finished() for its parent, which can be a 
         /// function or a coro itself. 
         /// </summary>
-        /// <param name="job"></param>
+        /// <param name="job">Pointer to the job that finished.</param>
         void child_finished(VgjsJobParentPointer job) noexcept {
             uint32_t num = job->m_children.fetch_sub(1);        //one less child
             if (num == 1) {                                     //was it the last child?
@@ -563,7 +563,7 @@ namespace vgjs {
         /// <summary>
         /// Wait until the number of threads reaches a desired value.
         /// </summary>
-        /// <param name="desired"></param>
+        /// <param name="desired">Number of threads that should be finally reached..</param>
         void wait(int64_t desired = 0) {
             do {
                 auto num = m_thread_count.load();           //current number of threads
@@ -592,6 +592,15 @@ namespace vgjs {
             return schedule_job(&job.promise(), tag, parent, children);
         }
 
+        /// <summary>
+        /// Schedule any job.
+        /// </summary>
+        /// <typeparam name="T">Job type.</typeparam>
+        /// <param name="job">Pointer to job.</param>
+        /// <param name="tag">Tag to schedule to.</param>
+        /// <param name="parent">Parent of job.</param>
+        /// <param name="children">Number of children.</param>
+        /// <returns>Number of scheduled jobs.</returns>
         template<typename T>
             requires (is_parent<std::decay_t<T>> || is_job< std::decay_t<T>> || is_coro_promise< std::decay_t<T>>)
         uint32_t schedule_job(T* job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
@@ -617,12 +626,12 @@ namespace vgjs {
             }
 
             auto next_thread = job->m_index < 0 ? next_thread_index() : job->m_index;
-            if constexpr (is_job<T>) {
-                job->m_children = 1;
+            if constexpr (is_job<T>) {  //Schedule function
+                job->m_children = 1;    //A function is its own child
                 job->m_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
             }
-            if constexpr (is_coro_promise<T>) {  
-                job->m_children = 0;
+            if constexpr (is_coro_promise<T>) {  //Schedule coro
+                job->m_children = 0;    //A coro will call its final awaiter
                 job->m_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
             }
 
@@ -630,12 +639,30 @@ namespace vgjs {
             return 1l;
         }
 
+        /// <summary>
+        /// Schedule a function.
+        /// </summary>
+        /// <typeparam name="F">Function type.</typeparam>
+        /// <param name="f">Reference to function.</param>
+        /// <param name="tag">Tag to schedule to.</param>
+        /// <param name="parent">Parent of the job.</param>
+        /// <param name="children">Number of children</param>
+        /// <returns>Number of scheduled jobs.</returns>
         template<typename F>
             requires is_function<std::decay_t<F>>
         uint32_t schedule_job(F&& f, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             return schedule(std::forward<F>(f), thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
         }
 
+        /// <summary>
+        /// Schedule a vector containing functions or coros.
+        /// </summary>
+        /// <typeparam name="V">Vector type.</typeparam>
+        /// <param name="vector">Reference to the vector.</param>
+        /// <param name="tag">Tag to schedule to.</param>
+        /// <param name="parent">Parent of the jobs.</param>
+        /// <param name="children">Number of children.</param>
+        /// <returns>Number of scheduled jobs.</returns>
         template<typename V>
             requires is_vector<std::decay_t<V>>::value
         uint32_t schedule_job(V&& vector, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
@@ -645,6 +672,7 @@ namespace vgjs {
         }
 
         //---------------------------------------------------------------------------------------
+        //Public schedule functions
 
         public:
 

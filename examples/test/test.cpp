@@ -106,6 +106,8 @@ namespace test {
     VgjsCoroReturn<> coro_system() {
         TagSchedule tag{100};
 
+        std::cout << "coro - system \n";
+
         co_await parallel(tag_t{ tag.get_tag(1,2) }, coro2());
         co_await parallel(tag_t{ tag.get_tag(1,4) }, coro3());
         co_await parallel(tag_t{ tag.get_tag(2,4) }, coro4());
@@ -114,6 +116,8 @@ namespace test {
             co_await tag_t{i + tag.offset()};
         }
         tag.reset();
+
+        std::cout << "coro - system end\n";
     }
 
 };
