@@ -28,7 +28,7 @@ struct TagSchedule {
 
     int32_t get_tag( std::bitset<BITS> reads, std::bitset<BITS> writes ) {
         for (int32_t i = 0; i < m_access.size(); ++i) {
-            if ((m_access[i].m_reads & writes) != 0 || (m_access[i].m_writes & reads) != 0 || (m_access[i].m_writes & writes) != 0) {
+            if ((m_access[i].m_reads & writes) == 0 && (m_access[i].m_writes & reads) == 0 && (m_access[i].m_writes & writes) == 0) {
                 m_access[i].m_reads |= reads;
                 m_access[i].m_writes |= writes;
                 return i + m_offset;
