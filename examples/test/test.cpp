@@ -14,6 +14,39 @@ using namespace std::chrono;
 
 using namespace simple_vgjs;
 
+
+template<int BITS = 64>
+struct TagSchedule {
+
+    struct access_t {
+        std::bitset<BITS> m_reads;
+        std::bitset<BITS> m_writes;
+    };
+
+    std::vector<access_t> m_access;
+
+    tag_t get_tag( std::bitset<BITS> reads, std::bitset<BITS> writes ) {
+        for (int32_t i = 0; i < m_access.size(); ++i) {
+            if ((m_access[i].m_reads & writes) != 0 || (m_access[i].m_writes & reads) != 0 || (m_access[i].m_writes & writes) != 0) {
+                m_access[i].m_reads |= reads;
+                m_access[i].m_writes |= writes;
+                return tag_t{ i };
+            }
+        }
+        m_access.emplace_back( reads, writes );
+        return tag_t{ (int32_t)m_access.size() - 1 };
+    }
+
+    void reset() {
+        m_access.clear();
+    }
+
+    int32_t size() {
+        return (int32_t)m_access.size();
+    }
+};
+
+
 namespace test {
 
     VgjsJob FF{ []() {}, thread_index_t{-1}};
@@ -67,32 +100,23 @@ namespace test {
 
         co_return;
     }
-};
 
-template<int BITS = 64>
-struct TagSchedule {
+    VgjsCoroReturn<> coro_system() {
+        TagSchedule tag;
 
-    struct jobs_tag_t {
-        std::bitset<BITS> m_reads;
-        std::bitset<BITS> m_writes;
-        VgjsQueue<VgjsJobParent> m_jobs;
-    };
+        co_await parallel( tag.get_tag(1,2), coro2());
+        co_await parallel( tag.get_tag(1,3), coro2());
+        co_await parallel( tag.get_tag(2,3), coro2());
 
-    std::vector<jobs_tag_t> m_job_queues;
-
-    void schedule(VgjsJobParent&& job, std::bitset<BITS> reads, std::bitset<BITS> writes) {
-        for (auto &j : m_job_queues ) {
-            if ( (j.m_reads & writes) != 0 || (j.m_writes & reads) != 0 || (j.m_writes & writes) != 0 ) {
-                j.m_reads |= reads;
-                j.writes |= writes;
-                j.m_jobs.push_back( std::move(job) );
-                return;
-            }
+        for (auto i = 0; i < tag.size(); ++i) {
+            co_await parallel(tag_t{i});
         }
-        m_job_queues.emplace_back({ reads, writes });
-        m_job_queues[m_job_queues.size()-1].m_jobs.push_back(job);
+        tag.reset();
     }
+
 };
+
+
 
 
 int main(int argc, char* argv[])
