@@ -17,6 +17,7 @@ using namespace simple_vgjs;
 
 template<int BITS = 64>
 struct TagSchedule {
+    int32_t m_offset = 0;
 
     struct access_t {
         std::bitset<BITS> m_reads;
@@ -25,25 +26,21 @@ struct TagSchedule {
 
     std::vector<access_t> m_access;
 
-    tag_t get_tag( std::bitset<BITS> reads, std::bitset<BITS> writes ) {
+    int32_t get_tag( std::bitset<BITS> reads, std::bitset<BITS> writes ) {
         for (int32_t i = 0; i < m_access.size(); ++i) {
             if ((m_access[i].m_reads & writes) != 0 || (m_access[i].m_writes & reads) != 0 || (m_access[i].m_writes & writes) != 0) {
                 m_access[i].m_reads |= reads;
                 m_access[i].m_writes |= writes;
-                return tag_t{ i };
+                return i + m_offset;
             }
         }
         m_access.emplace_back( reads, writes );
-        return tag_t{ (int32_t)m_access.size() - 1 };
+        return (int32_t)m_access.size() - 1 ;
     }
 
-    void reset() {
-        m_access.clear();
-    }
-
-    int32_t size() {
-        return (int32_t)m_access.size();
-    }
+    int32_t& offset() { return m_offset; }
+    void reset() { m_access.clear(); }
+    int32_t size() { return (int32_t)m_access.size(); }
 };
 
 
@@ -102,14 +99,14 @@ namespace test {
     }
 
     VgjsCoroReturn<> coro_system() {
-        TagSchedule tag;
+        TagSchedule tag{100};
 
-        co_await parallel( tag.get_tag(1,2), coro2());
-        co_await parallel( tag.get_tag(1,3), coro2());
-        co_await parallel( tag.get_tag(2,3), coro2());
+        co_await parallel(tag_t{ tag.get_tag(1,2) }, coro2());
+        co_await parallel(tag_t{ tag.get_tag(1,4) }, coro2());
+        co_await parallel(tag_t{ tag.get_tag(2,4) }, coro2());
 
         for (auto i = 0; i < tag.size(); ++i) {
-            co_await parallel(tag_t{i});
+            co_await parallel(tag_t{i + tag.offset()});
         }
         tag.reset();
     }
