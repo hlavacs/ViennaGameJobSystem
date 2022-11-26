@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <chrono>
 #include <numeric>
+#include <bitset>
 
 #include "VGJS.h"
 
@@ -68,6 +69,30 @@ namespace test {
     }
 };
 
+template<int BITS = 64>
+struct TagSchedule {
+
+    struct jobs_tag_t {
+        std::bitset<BITS> m_reads;
+        std::bitset<BITS> m_writes;
+        VgjsQueue<VgjsJobParent> m_jobs;
+    };
+
+    std::vector<jobs_tag_t> m_job_queues;
+
+    void schedule(VgjsJobParent&& job, std::bitset<BITS> reads, std::bitset<BITS> writes) {
+        for (auto &j : m_job_queues ) {
+            if ( (j.m_reads & writes) != 0 || (j.m_writes & reads) != 0 || (j.m_writes & writes) != 0 ) {
+                j.m_reads |= reads;
+                j.writes |= writes;
+                j.m_jobs.push_back( std::move(job) );
+                return;
+            }
+        }
+        m_job_queues.emplace_back({ reads, writes });
+        m_job_queues[m_job_queues.size()-1].m_jobs.push_back(job);
+    }
+};
 
 
 int main(int argc, char* argv[])
