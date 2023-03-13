@@ -90,6 +90,12 @@ namespace vgjs {
     template<typename T>
     struct is_vector<std::vector<T>> : std::true_type {};
 
+    template<typename >
+    struct is_coro_return : std::false_type {}; //Is NOT a coro return object class.
+
+    template<typename T>
+    struct is_coro_return<VgjsCoroReturn<T>> : std::true_type {}; //Is a coro return object class.
+
     template<typename T>    //Concept of things that can get scheduled
     concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void()> > && (!is_coro_return<std::decay_t<T>>::value);
 
@@ -102,11 +108,6 @@ namespace vgjs {
     template<typename T>
     concept is_coro_promise = std::is_base_of_v<VgjsJobParent, std::decay_t<T>> && !is_job<T>; //Is a coro promise
 
-    template<typename >
-    struct is_coro_return : std::false_type {}; //Is NOT a coro return object class.
-
-    template<typename T>
-    struct is_coro_return<VgjsCoroReturn<T>> : std::true_type {}; //Is a coro return object class.
 
     /// <summary>
     /// A wrapper for scheduling tuples of functions and coros.
@@ -403,6 +404,7 @@ namespace vgjs {
         static inline std::vector<VgjsQueue<VgjsJobParent>> m_global_coro_queues;	//<each thread has its shared Coro queue, multiple produce, multiple consume
         static inline std::vector<VgjsQueue<VgjsJobParent>> m_local_coro_queues;	//<each thread has its own Coro queue, multiple produce, single consume
 
+        static inline std::mutex                                                                        m_tag_mutex;
         static inline std::unordered_map<tag_t, std::unique_ptr<VgjsQueue<VgjsJobParent>>, tag_t::hash> m_tag_queues;
 
         static inline thread_local VgjsJobParentPointer m_current_job{};    //A pointer to the current job of this thread.
@@ -435,7 +437,7 @@ namespace vgjs {
             if (cnt > 0) return;
 
             count = ( count <= 0 ? (int64_t)std::thread::hardware_concurrency() : count );
-            for (auto i = start; i < count; ++i) {
+            for (thread_index_t i = start; i < count; ++i) {
                 m_global_job_queues.emplace_back();    //global job queue
                 m_local_job_queues.emplace_back();     //local job queue
                 m_global_coro_queues.emplace_back();   //global coro queue
@@ -444,7 +446,7 @@ namespace vgjs {
             }
             m_cv = std::make_unique<std::condition_variable>();
 
-            for (auto i = start; i < count; ++i) {
+            for (thread_index_t i = start; i < count; ++i) {
                 m_threads.push_back(std::thread(&VgjsJobSystem::task, this, thread_index_t(i), count));	//spawn the pool threads
                 m_threads[i].detach();
             }
@@ -612,6 +614,8 @@ namespace vgjs {
             }
 
             if (tag >= 0) {
+                std::scoped_lock lock(m_tag_mutex);
+
                 if (!m_tag_queues.contains(tag)) {
                     m_tag_queues[tag] = std::make_unique<VgjsQueue<VgjsJobParent>>();
                 }
@@ -687,9 +691,13 @@ namespace vgjs {
         }
 
         uint32_t schedule(tag_t tg, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-            if (!m_tag_queues.contains(tg)) return 0;
+            VgjsQueue<VgjsJobParent> *queue;
+            {
+                std::scoped_lock lock(m_tag_mutex);
 
-            auto queue = m_tag_queues[tg].get();   //get the queue for this tag
+                if (!m_tag_queues.contains(tg)) return 0;
+                queue = m_tag_queues[tg].get();   //get the queue for this tag
+            }
             int32_t num_jobs = (int32_t)queue->size();
 
             if (parent != nullptr && children < 0) children = num_jobs;     //if the number of children is not given, then use queue size
