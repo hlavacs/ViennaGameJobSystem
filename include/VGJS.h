@@ -177,7 +177,7 @@ namespace vgjs {
 
         VgjsJob() noexcept : VgjsJobParent() {};
 
-        VgjsJob(is_function auto&& f = []() {}
+        VgjsJob(is_function auto&& f
             , thread_index_t index = thread_index_t{}
             , thread_type_t type = thread_type_t{}
             , thread_id_t id = thread_id_t{}
