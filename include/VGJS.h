@@ -910,7 +910,16 @@ namespace vgjs {
         awaitable_tuple( std::tuple<Ts&&...> tuple ) noexcept : m_tag{}, m_number{ 0 }, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
     };
 
-
+    /// <summary>
+    /// The final awaiter for coros.
+    /// 
+    /// The awaiter tests whether there is a parent (i.e. a coro) - if yes then the parent should destroy this coro.
+    /// The parent might need the return value, which is stored in the promise of this coro.
+    /// 
+    /// If there is no parent, because this coro was scheduled at the start from the main function,
+    /// then the coro destroys itself.
+    /// </summary>
+    /// <typeparam name="U">Coro type.</typeparam>
     template<typename U>
     struct final_awaiter : public suspend_always {
 
