@@ -627,11 +627,12 @@ namespace vgjs {
             }
 
             auto next_thread = job->m_index < 0 ? next_thread_index() : job->m_index;
-            job->m_children = 1;
 
             if constexpr (is_function_job<T>) {  //Schedule function
+                job->m_children = 1;
                 job->m_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
             } else {  //Schedule coro
+                job->m_children = 0;
                 job->m_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
             }
 
@@ -925,7 +926,7 @@ namespace vgjs {
 
             if (parent != nullptr) {          //if there is a parent
                 uint32_t num = parent->m_children.fetch_sub(1);        //one less child
-                if (num == 2) {                                             //was it the last child?
+                if (num == 1) {                                             //was it the last child?
                     VgjsJobSystem().schedule_job(parent, tag_t{}, parent->m_parent, 0);      //if last reschedule the parent coro
                 }
                 return true;        //leave destruction to parent coro
