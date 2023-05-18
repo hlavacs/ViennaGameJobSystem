@@ -148,8 +148,6 @@ namespace vgjs {
     /// A job is a function object that can be scheduled.
     /// </summary>
     struct VgjsJob : public VgjsJobParent {
-        //using VgjsJobParent;
-
         std::function<void()> m_function{ []() {} };  //The function that should be executed
 
         VgjsJob() noexcept : VgjsJobParent() {};
