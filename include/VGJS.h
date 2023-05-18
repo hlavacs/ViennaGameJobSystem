@@ -171,6 +171,8 @@ namespace vgjs {
     /// A job is a function object that can be scheduled.
     /// </summary>
     struct VgjsJob : public VgjsJobParent {
+        //using VgjsJobParent;
+
         std::function<void()> m_function{ []() {} };  //The function that should be executed
 
         VgjsJob() noexcept : VgjsJobParent() {};
@@ -593,6 +595,8 @@ namespace vgjs {
 
         /// <summary>
         /// Schedule any job.
+        /// This function is private and only called interally to put the jobs
+        /// into the respective queues.
         /// </summary>
         /// <typeparam name="T">Job type.</typeparam>
         /// <param name="job">Pointer to job.</param>
@@ -626,12 +630,11 @@ namespace vgjs {
             }
 
             auto next_thread = job->m_index < 0 ? next_thread_index() : job->m_index;
+            job->m_children = 1;
+
             if constexpr (is_function_job<T>) {  //Schedule function
-                job->m_children = 1;    //A function is its own child
                 job->m_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
-            }
-            if constexpr (is_coro_promise<T>) {  //Schedule coro
-                job->m_children = 0;    //A coro will call its final awaiter
+            } else {  //Schedule coro
                 job->m_index < 0 ? m_global_coro_queues[next_thread].push(job) : m_local_coro_queues[next_thread].push(job);
             }
 
@@ -644,7 +647,16 @@ namespace vgjs {
         //Public schedule functions
 
         public:
-
+        
+        /// <summary>
+        /// Schedule a tag. 
+        /// This means that all jobs that previously have been scheduled to this tag
+        /// will be put into the job queues.
+        /// </summary>
+        /// <param name="tg">Tag to schedule.</param>
+        /// <param name="parent">Parent to be used.</param>
+        /// <param name="children">Number of children.</param>
+        /// <returns>Number of jobs scheduled.</returns>
         uint32_t schedule(tag_t tg, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsQueue<VgjsJobParent> *queue;
             {
@@ -670,11 +682,27 @@ namespace vgjs {
             return i;
         };
 
+        /// <summary>
+        /// Schedule a coro.
+        /// </summary>
+        /// <param name="job">The coro to schedule.</param>
+        /// <param name="tag">The tag to schedule to.</param>
+        /// <param name="parent">The parent to be used.</param>
+        /// <param name="children">The number of children.</param>
+        /// <returns>Number of jobs scheduled.</returns>
         uint32_t schedule(is_coro_return auto&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             if (!job.handle() || job.handle().done()) return 0;
             return schedule_job(&job.promise(), tag, parent, children);
         }
 
+        /// <summary>
+        /// Schedule a std::function or similar.
+        /// </summary>
+        /// <param name="f">The function to schedule.</param>
+        /// <param name="tag">The tag to schedule to.</param>
+        /// <param name="parent">The parent to be used.</param>
+        /// <param name="children">The number of children.</param>
+        /// <returns>Number of jobs scheduled.</returns>
         uint32_t schedule(is_function auto && f, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
             if (job) { *job = VgjsJob{ std::forward<decltype(f)>(f) }; }
@@ -682,6 +710,14 @@ namespace vgjs {
             return schedule_job(job, tag, parent, children );
         }
 
+        /// <summary>
+        /// Schedule a VgjsJob.
+        /// </summary>
+        /// <param name="fj">The function job to be scheduled.</param>
+        /// <param name="tag">The tag to schedule to.</param>
+        /// <param name="parent">The parent to be used.</param>
+        /// <param name="children">The number of children.</param>
+        /// <returns>Number of jobs scheduled.</returns>
         uint32_t schedule(is_function_job auto&& fj, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
             if (job) { *job = fj; }
@@ -689,6 +725,14 @@ namespace vgjs {
             return schedule_job(job, tag, parent, children);
         }
 
+        /// <summary>
+        /// Schedule a vector of jobs.
+        /// </summary>
+        /// <param name="vector">The vector holding the jobs.</param>
+        /// <param name="tag">The tag to schedule to.</param>
+        /// <param name="parent">The parent to be used.</param>
+        /// <param name="children">The number of children.</param>
+        /// <returns>Number of jobs scheduled.</returns>
         uint32_t schedule(is_vector auto && vector, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             uint32_t sum = 0;
             std::ranges::for_each(vector, [&](auto&& v) { sum += schedule(std::forward<decltype(v)>(v), tag, parent, children); children = 0; });
@@ -699,7 +743,10 @@ namespace vgjs {
 
     //---------------------------------------------------------------------------------------------
 
-
+    /// <summary>
+    /// The awaitable for resuming on a different thread.
+    /// </summary>
+    /// <typeparam name="T">Coro type.</typeparam>
     template<typename T>
     struct awaitable_resume_on : suspend_always {
         thread_index_t m_index; //the thread index to use
@@ -708,7 +755,7 @@ namespace vgjs {
             return (m_index == system->m_index);
         }
 
-        void await_suspend(coroutine_handle<VgjsCoroPromise<T>> h) noexcept {
+        void await_suspend(coroutine_handle<VgjsCoroPromise<T>> h) noexcept { //reschedule on different thread
             h.promise().m_index = m_index;
             VgjsJobSystem()->schedule(&h.promise(), tag_t{}, (VgjsJobParentPointer)&h.promise().m_parent, -1);
         }
@@ -716,7 +763,10 @@ namespace vgjs {
         awaitable_resume_on(thread_index_t index) noexcept : m_index(index) {};
     };
 
-
+    /// <summary>
+    /// Awaitable for scheduling a tag. 
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     template<typename T>
     struct awaitable_tag : suspend_always {
         tag_t    m_tag;            //the tag to schedule
@@ -726,7 +776,7 @@ namespace vgjs {
             return m_tag < 0;
         }
 
-        bool await_suspend(coroutine_handle<VgjsCoroPromise<T>> h) noexcept {
+        bool await_suspend(coroutine_handle<VgjsCoroPromise<T>> h) noexcept { //schedule the tag to the jo system
             m_number = VgjsJobSystem().schedule(m_tag);
             return m_number > 0;     //if jobs were scheduled - await them
         }
@@ -738,7 +788,11 @@ namespace vgjs {
         awaitable_tag(tag_t tg) noexcept : m_tag{ tg } {};
     };
 
-
+    /// <summary>
+    /// Awaiter for scheduling a tuple full of jobs.
+    /// </summary>
+    /// <typeparam name="PT">The coro type.</typeparam>
+    /// <typeparam name="...Ts">The job types in the tuple.</typeparam>
     template<typename PT, typename... Ts>
     struct awaitable_tuple : suspend_always {
         tag_t                    m_tag;          //The tag to schedule to
@@ -766,7 +820,7 @@ namespace vgjs {
         }
 
         bool await_suspend(coroutine_handle<VgjsCoroPromise<PT>> h) noexcept {
-            auto g = [&]<std::size_t Idx>() {
+            auto g = [&]<std::size_t Idx>() {   //Schedule the respective tuple element
 
                 using tt = decltype(m_tuple);
                 using T = decltype(std::get<Idx>(std::forward<tt>(m_tuple)));
@@ -790,39 +844,66 @@ namespace vgjs {
             return m_tag.value < 0; //if tag value < 0 then schedule now, so return true to suspend
         }
 
-        template<typename T>
-        decltype(auto) get_val(T& t) {
+        //The get_val functions collect the return values from the jobs in the job tuple
+
+        /// <summary>
+        /// Catch all the rest, which is those that return void.
+        /// </summary>
+        /// <param name="t">Coro return object for void.</param>
+        /// <returns>Empty tuple.</returns>
+        decltype(auto) get_val(auto& t) {
             return std::make_tuple(); //ignored by std::tuple_cat
         }
 
+        /// <summary>
+        /// Get return values which are not from a vector of jobs.
+        /// </summary>
+        /// <typeparam name="T">Return value type.</typeparam>
+        /// <param name="t">Coro return object offering access to the return value.</param>
+        /// <returns>A tuple holding the</returns>
         template<typename T> requires (!std::is_void_v<T>)
         decltype(auto) get_val(VgjsCoroReturn<T>& t) {
             return std::make_tuple(t.get());
         }
 
+        /// <summary>
+        /// Get return values for a vector of jobs.
+        /// </summary>
+        /// <typeparam name="T">Return value type.</typeparam>
+        /// <param name="vec">Vector of coro return objects.</param>
+        /// <returns>Vector or return values from finshed jobs.</returns>
         template<typename T> requires (!std::is_void_v<T>)
         decltype(auto) get_val(std::vector<VgjsCoroReturn<T>>& vec) {
             std::vector<T> ret;
             ret.reserve(vec.size());
-            for (auto& coro : vec) { ret.push_back(coro.get()); }
+            for (auto&& coro : vec) { ret.push_back(std::move(coro.get())); }
             return std::make_tuple(std::move(ret));
         }
 
+        /// <summary>
+        /// Called when the coro resumes, i.e. all children have finished
+        /// and might return some value.
+        /// If no return values are defined, then there is no tuple
+        /// element for this particular job/vector of jobs.
+        /// If there is only one element in the job tuple, then the return
+        /// value is the value itself and not a tuple.
+        /// </summary>
+        /// <returns>A tuple holding the return values, or return value.</returns>
         decltype(auto) await_resume() {
             auto f = [&, this]<typename... Us>(Us&... args) {
                 return std::tuple_cat(get_val(args)...);
             };
             using rtype = decltype(std::apply(f, m_tuple));
 
-            if constexpr (std::tuple_size_v < rtype > == 0) {
+            if constexpr (std::tuple_size_v < rtype > == 0) {   //Job tuple is empty -> nothing to return
                 return;
             }
-            else if constexpr (std::tuple_size_v < rtype > == 1) {
+            else if constexpr (std::tuple_size_v < rtype > == 1) { //Only one element -> return value itself
                 auto ret = std::get<0>(std::apply(f, m_tuple));
                 return ret;
             }
             else {
-                return std::apply(f, m_tuple);
+                return std::apply(f, m_tuple);  //more than one element -> return tuple of elements
             }
         }
 
@@ -838,7 +919,7 @@ namespace vgjs {
 
             if (parent != nullptr) {          //if there is a parent
                 uint32_t num = parent->m_children.fetch_sub(1);        //one less child
-                if (num == 1) {                                             //was it the last child?
+                if (num == 2) {                                             //was it the last child?
                     VgjsJobSystem().schedule_job(parent, tag_t{}, parent->m_parent, 0);      //if last reschedule the parent coro
                 }
                 return true;        //leave destruction to parent coro
