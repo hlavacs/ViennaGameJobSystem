@@ -522,11 +522,8 @@ namespace vgjs {
             std::unique_lock<std::mutex> lk(*m_mutex[my_index]);
 
             while (!m_terminate) {  //Run until the job system is terminated
-                bool found1 = run_job(m_local_job_queues[my_index]);
-                bool found2 = run_coro(m_local_coro_queues[my_index]);
-                bool found3 = run_job(m_global_job_queues[my_index]);
-                bool found4 = run_coro(m_global_coro_queues[my_index]);
-                bool found = found1 || found2 || found3 || found4;
+                bool found = run_job(m_local_job_queues[my_index])  || run_coro(m_local_coro_queues[my_index]) ||
+                             run_job(m_global_job_queues[my_index]) || run_coro(m_global_coro_queues[my_index]);
                 int64_t loops = count;
                 while (!found && --loops > 0) {
                     other_index = (other_index + 1 == count ? 0 : other_index + 1);
