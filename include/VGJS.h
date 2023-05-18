@@ -142,22 +142,26 @@ namespace vgjs {
         thread_id_t            m_id{};               //unique identifier of the call
         VgjsJobParentPointer   m_parent{};           //parent job that created this job
         bool                   m_is_function{ true };//If true then this is a function, if false then a coroutine.
-        std::atomic<uint32_t>  m_children{};         //number of children this job is waiting for
+        std::atomic<uint32_t>  m_children{};         //number of children this job is waiting for. NO MOVE POSSIBLE!
 
         VgjsJobParent() = default;
         
         VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, VgjsJobParentPointer parent) noexcept
             : m_index{ index }, m_type{ type }, m_id{ id }, m_parent{ parent } {};
 
-        VgjsJobParent(const VgjsJobParent&& j) noexcept {
+        void copy_or_move(auto && j) {
             m_index = j.m_index;
             m_type = j.m_type;
             m_id = j.m_id;
             m_parent = j.m_parent;
             m_is_function = j.m_is_function;
+            m_is_function = std::forward<decltype(j)>(j).m_is_function; //copy or move
         }
-        VgjsJobParent& operator= (const VgjsJobParent& j) noexcept = default;
-        VgjsJobParent& operator= (VgjsJobParent&& j) noexcept = default;
+
+        VgjsJobParent(const VgjsJobParent& j) noexcept { copy_or_move(std::forward<decltype(j)>(j)); }
+        VgjsJobParent(VgjsJobParent&& j) noexcept { copy_or_move(std::forward<decltype(j)>(j)); }
+        VgjsJobParent& operator= (const VgjsJobParent& j) noexcept { copy_or_move(std::forward<decltype(j)>(j)); return *this; }
+        VgjsJobParent& operator= (VgjsJobParent&& j) noexcept { copy_or_move(std::forward<decltype(j)>(j)); return *this; }
         
         virtual void resume() = 0;
         virtual bool destroy() = 0; //Called when the object should be destroyed.
@@ -167,20 +171,20 @@ namespace vgjs {
     /// A job is a function object that can be scheduled.
     /// </summary>
     struct VgjsJob : public VgjsJobParent {
-        std::function<void()> m_function = []() {};  //The function that should be executed
+        std::function<void()> m_function{ []() {} };  //The function that should be executed
 
         VgjsJob() noexcept : VgjsJobParent() {};
 
         VgjsJob(is_function auto&& f = []() {}
-            , thread_index_t index = thread_index_t{ -1 }
+            , thread_index_t index = thread_index_t{}
             , thread_type_t type = thread_type_t{}
             , thread_id_t id = thread_id_t{}
             , VgjsJobParentPointer parent = nullptr) noexcept : m_function{ f }, VgjsJobParent(index, type, id, parent) {};
 
-        VgjsJob(const VgjsJob& j) noexcept = default;
-        VgjsJob(VgjsJob&& j) noexcept { m_function = std::move(j.m_function); };
-        VgjsJob& operator= (const VgjsJob& j) noexcept { m_function = j.m_function; return *this; };
-        VgjsJob& operator= (VgjsJob&& j) noexcept = default;
+        VgjsJob(const VgjsJob&) noexcept = default;
+        VgjsJob(VgjsJob&&) noexcept = default;
+        VgjsJob& operator= (const VgjsJob&) noexcept = default;
+        VgjsJob& operator= (VgjsJob&&) noexcept = default;
         void resume() noexcept { m_function(); }
         bool destroy() noexcept { return true; }
     };
@@ -586,19 +590,6 @@ namespace vgjs {
 
         private:
 
-        /// <summary>
-        /// Schedule a coro return object. This extracts the coro promise and then schedules the promise.
-        /// </summary>
-        /// <typeparam name="R">Return object type.</typeparam>
-        /// <param name="job">Reference to the return object.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Pointer to parent.</param>
-        /// <param name="children">Number of children.</param>
-        /// <returns>Returns the number of scheduled children.</returns>
-        uint32_t schedule_job(is_coro_return auto && job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
-            if (!job.handle() || job.handle().done()) return 0;
-            return schedule_job(&job.promise(), tag, parent, children);
-        }
 
         /// <summary>
         /// Schedule any job.
@@ -648,58 +639,11 @@ namespace vgjs {
             return 1l;
         }
 
-        /// <summary>
-        /// Schedule a function internally. 
-        /// This comes from a coro that schedules a tuple. 
-        /// Since no index etc. is given we can redirect to the 
-        /// public interface, which turns it into a VgjsJob and schedules it.
-        /// </summary>
-        /// <typeparam name="F">Function type.</typeparam>
-        /// <param name="f">Reference to function.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Parent of the job.</param>
-        /// <param name="children">Number of children</param>
-        /// <returns>Number of scheduled jobs.</returns>
-        uint32_t schedule_job(is_function auto && f, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
-            return schedule(f, tag, parent, children);
-        }
-
-        /// <summary>
-        /// Schedule a VgjsJob.
-        /// </summary>
-        /// <param name="j">Ref to the job.</param>
-        /// <param name="tag">Tag to schedule in.</param>
-        /// <param name="parent">Parent of the job.</param>
-        /// <param name="children">Number of children.</param>
-        /// <returns></returns>
-        uint32_t schedule_job(is_function_job auto&& j, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
-            return schedule_job(&j, tag, parent, children);
-        }
-
-        /// <summary>
-        /// Schedule a vector containing functions or coros.
-        /// </summary>
-        /// <typeparam name="V">Vector type.</typeparam>
-        /// <param name="vector">Reference to the vector.</param>
-        /// <param name="tag">Tag to schedule to.</param>
-        /// <param name="parent">Parent of the jobs.</param>
-        /// <param name="children">Number of children.</param>
-        /// <returns>Number of scheduled jobs.</returns>
-        uint32_t schedule_job(is_vector auto && vector, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
-            uint32_t sum = 0;
-            std::ranges::for_each(vector, [&](auto&& v) { sum += schedule_job(std::forward<decltype(v)>(v), tag, parent, children); children = 0;  });
-            return sum;
-        }
 
         //---------------------------------------------------------------------------------------
         //Public schedule functions
 
         public:
-
-        uint32_t schedule(is_coro_return auto&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
-            if (!job.handle() || job.handle().done()) return 0;
-            return schedule_job(&job.promise(), tag, parent, children);
-        }
 
         uint32_t schedule(tag_t tg, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsQueue<VgjsJobParent> *queue;
@@ -726,14 +670,22 @@ namespace vgjs {
             return i;
         };
 
+        uint32_t schedule(is_coro_return auto&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            if (!job.handle() || job.handle().done()) return 0;
+            return schedule_job(&job.promise(), tag, parent, children);
+        }
+
         uint32_t schedule(is_function auto && f, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
-            if (job) { *job = std::move(VgjsJob{ std::forward<decltype(f)>(f), thread_index_t{}, thread_type_t{}, thread_id_t{} }); }
-            if (!job) job = new VgjsJob{ std::forward<decltype(f)>(f), thread_index_t{}, thread_type_t{}, thread_id_t{} };
+            if (job) { *job = VgjsJob{ std::forward<decltype(f)>(f) }; }
+            if (!job) job = new VgjsJob{ std::forward<decltype(f)>(f) };
             return schedule_job(job, tag, parent, children );
         }
 
-        uint32_t schedule(is_function_job auto&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(is_function_job auto&& fj, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            VgjsJob* job = m_recycle_jobs.pop();
+            if (job) { *job = fj; }
+            if (!job) job = new VgjsJob( std::forward<decltype(fj)>(fj) );
             return schedule_job(job, tag, parent, children);
         }
 
@@ -824,7 +776,7 @@ namespace vgjs {
                     m_tag = std::get<Idx>(m_tuple);
                 }
                 else {
-                    VgjsJobSystem().schedule_job(std::forward<T>(children), m_tag, (VgjsJobParentPointer)&h.promise(), (int32_t)m_number);   //in first call the number of children is the total number of all jobs
+                    VgjsJobSystem().schedule(std::forward<T>(children), m_tag, (VgjsJobParentPointer)&h.promise(), (int32_t)m_number);   //in first call the number of children is the total number of all jobs
                     m_number = 0;                                               //after this always 0
                 }
             };
