@@ -108,6 +108,8 @@ namespace test {
 
         std::cout << "coro - system \n";
 
+        co_await parallel(coro());
+
         co_await parallel(tag_t{ tag.get_tag(1,2) }, coro2()(thread_index_t{0}));
         co_await parallel(tag_t{ tag.get_tag(1,4) }, coro3());
         co_await parallel(tag_t{ tag.get_tag(2,4) }, coro4());
