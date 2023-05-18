@@ -425,7 +425,7 @@ namespace vgjs {
             auto cnt = m_init_counter.fetch_add(1);
             if (cnt > 0) return;
 
-            count = (count <= 0 ? thread_count_t{ std::thread::hardware_concurrency() } : count);
+            count = (count <= 0 ? (int64_t)std::thread::hardware_concurrency() : count.m_value);
             for (thread_index_t i = start; i < count; ++i) {
                 m_global_job_queues.emplace_back();    //global job queue
                 m_local_job_queues.emplace_back();     //local job queue
