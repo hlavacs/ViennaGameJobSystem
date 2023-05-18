@@ -131,6 +131,7 @@ int main(int argc, char* argv[])
 
     //std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::seconds>(10s));
 
+    std::cout << "Enter any string: \n";
     std::string str;
     std::cin >> str;
     VgjsJobSystem().terminate();

@@ -85,19 +85,25 @@ namespace vgjs {
     //Concepts
 
     template<typename>
-    struct is_vector : std::false_type {};    //test whether a template parameter T is a std::pmr::vector
+    struct is_vector_s : std::false_type {};    //test whether a template parameter T is a std::pmr::vector
 
     template<typename T>
-    struct is_vector<std::vector<T>> : std::true_type {};
+    struct is_vector_s<std::vector<T>> : std::true_type {};
+
+    template<typename T>
+    concept is_vector = is_vector_s<std::decay_t<T>>::value;
 
     template<typename >
-    struct is_coro_return : std::false_type {}; //Is NOT a coro return object class.
+    struct is_coro_return_s : std::false_type {}; //Is NOT a coro return object class.
 
     template<typename T>
-    struct is_coro_return<VgjsCoroReturn<T>> : std::true_type {}; //Is a coro return object class.
+    struct is_coro_return_s<VgjsCoroReturn<T>> : std::true_type {}; //Is a coro return object class.
+
+    template<typename T>
+    concept is_coro_return = is_coro_return_s<std::decay_t<T>>::value;
 
     template<typename T>    //Concept of things that can get scheduled
-    concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void()> > && (!is_coro_return<std::decay_t<T>>::value);
+    concept is_function = std::is_convertible_v< std::decay_t<T>, std::function<void()> > && (!is_coro_return<T>);
 
     template<typename T>
     concept is_parent = std::is_same_v< std::decay_t<T>, VgjsJobParent >; //Is derived from job parent class
@@ -107,6 +113,9 @@ namespace vgjs {
 
     template<typename T>
     concept is_coro_promise = std::is_base_of_v<VgjsJobParent, std::decay_t<T>> && !is_job<T>; //Is a coro promise
+
+    template<typename T>
+    concept is_any_job = is_parent<T> || is_job<T> || is_coro_promise<T>;
 
 
     /// <summary>
@@ -587,9 +596,7 @@ namespace vgjs {
         /// <param name="parent">Pointer to parent.</param>
         /// <param name="children">Number of children.</param>
         /// <returns>Returns the number of scheduled children.</returns>
-        template<typename R>
-            requires is_coro_return<std::decay_t<R>>::value
-        uint32_t schedule_job(R&& job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
+        uint32_t schedule_job(is_coro_return auto && job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             if (!job.handle() || job.handle().done()) return 0;
             return schedule_job(&job.promise(), tag, parent, children);
         }
@@ -603,8 +610,7 @@ namespace vgjs {
         /// <param name="parent">Parent of job.</param>
         /// <param name="children">Number of children.</param>
         /// <returns>Number of scheduled jobs.</returns>
-        template<typename T>
-            requires (is_parent<std::decay_t<T>> || is_job< std::decay_t<T>> || is_coro_promise< std::decay_t<T>>)
+        template<typename T> requires is_any_job<T>
         uint32_t schedule_job(T* job, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             if constexpr (is_coro_promise<T>) {
                 if (m_current_job && m_current_job->m_is_function) { //function is not allowed to schedule a coro
@@ -652,10 +658,8 @@ namespace vgjs {
         /// <param name="parent">Parent of the job.</param>
         /// <param name="children">Number of children</param>
         /// <returns>Number of scheduled jobs.</returns>
-        template<typename F>
-            requires is_function<std::decay_t<F>>
-        uint32_t schedule_job(F&& f, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
-            return schedule(std::forward<F>(f), thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
+        uint32_t schedule_job(is_function auto && f, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
+            return schedule(std::forward<decltype(f)>(f), thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
         }
 
         /// <summary>
@@ -667,9 +671,7 @@ namespace vgjs {
         /// <param name="parent">Parent of the jobs.</param>
         /// <param name="children">Number of children.</param>
         /// <returns>Number of scheduled jobs.</returns>
-        template<typename V>
-            requires is_vector<std::decay_t<V>>::value
-        uint32_t schedule_job(V&& vector, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
+        uint32_t schedule_job(is_vector auto && vector, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
             uint32_t sum = 0;
             std::ranges::for_each(vector, [&](auto&& v) { sum += schedule_job(std::forward<decltype(v)>(v), tag, parent, children); children = 0;  });
             return sum;
@@ -680,9 +682,7 @@ namespace vgjs {
 
         public:
 
-        template<typename R>
-            requires is_coro_return<std::decay_t<R>>::value
-        uint32_t schedule(R&& job, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule( is_coro_return auto && job, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             if (!job.handle() || job.handle().done()) return 0;
             job.promise().m_index = index;
             job.promise().m_type = type;
@@ -715,9 +715,7 @@ namespace vgjs {
             return i;
         };
 
-        template<typename F>
-            requires is_function<std::decay_t<F>> 
-        uint32_t schedule(F&& f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(is_function auto && f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
             if (job) {
                 *job = std::move(VgjsJob{ std::forward<decltype(f)>(f), index, type, id });
@@ -728,14 +726,11 @@ namespace vgjs {
             return schedule_job(job, tag, parent, children );
         }
 
-        template<typename V>
-            requires is_vector<std::decay_t<V>>::value
-        uint32_t schedule(V&& vector, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(is_vector auto && vector, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             uint32_t sum = 0;
             std::ranges::for_each(vector, [&](auto&& v) { sum += schedule_job(std::forward<decltype(v)>(v), index, type, id, tag, parent, children); children = 0; });
             return sum;
         }
-
     };
 
 
@@ -789,7 +784,7 @@ namespace vgjs {
 
         template<typename U>
         size_t size(U& children) {
-            if constexpr (is_vector< std::decay_t<U> >::value) { //if this is a vector
+            if constexpr (is_vector<U>) {       //if this is a vector
                 return children.size();
             }
             if constexpr (std::is_same_v<std::decay_t<U>, tag_t>) { //if this is a tag
@@ -837,14 +832,12 @@ namespace vgjs {
             return std::make_tuple(); //ignored by std::tuple_cat
         }
 
-        template<typename T>
-            requires (!std::is_void_v<T>)
+        template<typename T> requires (!std::is_void_v<T>)
         decltype(auto) get_val(VgjsCoroReturn<T>& t) {
             return std::make_tuple(t.get());
         }
 
-        template<typename T>
-            requires (!std::is_void_v<T>)
+        template<typename T> requires (!std::is_void_v<T>)
         decltype(auto) get_val(std::vector<VgjsCoroReturn<T>>& vec) {
             std::vector<T> ret;
             ret.reserve(vec.size());
