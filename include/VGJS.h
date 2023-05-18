@@ -23,40 +23,17 @@
 #include <tuple>
 #include <numeric>
 
+#include "VSTY.h"
+
 namespace vgjs {
 
     using namespace std::experimental;
 
-    /// <summary>
-    /// A strong type must be explicitly created, and cannot be created by implicit conversion.
-    /// </summary>
-    /// <typeparam name="T">Value type.</typeparam>
-    /// <typeparam name="D">Default value.</typeparam>
-    /// <typeparam name="P">Phantom parameter to make type unique.</typeparam>
-    template<typename T, auto D, int64_t P>
-    struct strong_type_t {
-        T value{D};
-        strong_type_t() = default;
-        explicit strong_type_t(const T& v) noexcept { value = v; };
-        explicit strong_type_t(T&& v) noexcept { value = std::move(v); };
-        operator const T& () const { return value; }
-        operator T& () { return value; }
-        strong_type_t<T, D, P>& operator=(const T& v) noexcept { value = v; return *this; };
-        strong_type_t<T, D, P>& operator=(T&& v) noexcept { value = std::move(v); return *this; };
-        strong_type_t<T, D, P>& operator=(const strong_type_t<T, D, P>& v) noexcept { value = v.value; return *this; };
-        strong_type_t<T, D, P>& operator=(strong_type_t<T, D, P>&& v) noexcept { value = std::move(v.value); return *this; };
-        strong_type_t(const strong_type_t<T, D, P>& v) noexcept { value = v.value; };
-        strong_type_t(strong_type_t<T, D, P>&& v) noexcept { value = std::move(v.value); };
-        struct hash {
-            std::size_t operator()(const strong_type_t<T, D, P>& tag) const { return std::hash<T>()(tag.value); };
-        };
-    };
-
-    using thread_count_t    = strong_type_t<int64_t, -1l, 0>;
-    using thread_index_t    = strong_type_t<int64_t, -1l, 1>;
-    using thread_id_t       = strong_type_t<int64_t, -1l, 2>;
-    using thread_type_t     = strong_type_t<int64_t, -1l, 3>;
-    using tag_t             = strong_type_t<int64_t, -1l, 4>;
+    using thread_count_t    = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
+    using thread_index_t    = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
+    using thread_id_t       = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
+    using thread_type_t     = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
+    using tag_t             = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
 
     //---------------------------------------------------------------------------------------------
     //Declaration of classes 
@@ -450,7 +427,7 @@ namespace vgjs {
             auto cnt = m_init_counter.fetch_add(1);
             if (cnt > 0) return;
 
-            count = ( count <= 0 ? (int64_t)std::thread::hardware_concurrency() : count );
+            count = (count <= 0 ? thread_count_t{ std::thread::hardware_concurrency() } : count);
             for (thread_index_t i = start; i < count; ++i) {
                 m_global_job_queues.emplace_back();    //global job queue
                 m_local_job_queues.emplace_back();     //local job queue
@@ -526,7 +503,7 @@ namespace vgjs {
                              run_job(m_global_job_queues[my_index]) || run_coro(m_global_coro_queues[my_index]);
                 int64_t loops = count;
                 while (!found && --loops > 0) {
-                    other_index = (other_index + 1 == count ? 0 : other_index + 1);
+                    other_index = (other_index + 1 == count ? thread_index_t{0} : thread_index_t{ other_index + 1 });
                     if (my_index != other_index) {
                         found = ( run_job(m_global_job_queues[other_index]) || run_coro(m_global_coro_queues[other_index]) );
                     }
@@ -839,7 +816,7 @@ namespace vgjs {
 
             f(std::make_index_sequence<sizeof...(Ts)>{}); //call f and create an integer list going from 0 to sizeof(Ts)-1
 
-            return m_tag.value < 0; //if tag value < 0 then schedule now, so return true to suspend
+            return m_tag < 0; //if tag value < 0 then schedule now, so return true to suspend
         }
 
         //The get_val functions collect the return values from the jobs in the job tuple

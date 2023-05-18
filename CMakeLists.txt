@@ -18,8 +18,8 @@ endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_HOME_DIRECTORY}/bin)
 SET(INCLUDE ${CMAKE_HOME_DIRECTORY}/include)
-SET(HEADERS ${INCLUDE}/IntType.h ${INCLUDE}/VGJS.h ${INCLUDE}/VGJSCoro.h)
-include_directories (${INCLUDE})
+SET(HEADERS ${INCLUDE}/VGJS.h ${CMAKE_HOME_DIRECTORY}/ViennaStrongType/VSTY.h)
+include_directories (${INCLUDE} ViennaStrongType)
 
 add_subdirectory (examples/test)
 
