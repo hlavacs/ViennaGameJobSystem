@@ -109,13 +109,13 @@ namespace vgjs {
     concept is_parent = std::is_same_v< std::decay_t<T>, VgjsJobParent >; //Is derived from job parent class
 
     template<typename T>
-    concept is_job = std::is_same_v< std::decay_t<T>, VgjsJob >; //Is a job.
+    concept is_function_job = std::is_same_v< std::decay_t<T>, VgjsJob >; //Is a job.
 
     template<typename T>
-    concept is_coro_promise = std::is_base_of_v<VgjsJobParent, std::decay_t<T>> && !is_job<T>; //Is a coro promise
+    concept is_coro_promise = std::is_base_of_v<VgjsJobParent, std::decay_t<T>> && !is_function_job<T>; //Is a coro promise
 
     template<typename T>
-    concept is_any_job = is_parent<T> || is_job<T> || is_coro_promise<T>;
+    concept is_any_job = is_parent<T> || is_function_job<T> || is_coro_promise<T>;
 
 
     /// <summary>
@@ -171,8 +171,7 @@ namespace vgjs {
 
         VgjsJob() noexcept : VgjsJobParent() {};
 
-        template<typename F>
-        VgjsJob(F&& f = []() {}
+        VgjsJob(is_function auto&& f = []() {}
             , thread_index_t index = thread_index_t{ -1 }
             , thread_type_t type = thread_type_t{}
             , thread_id_t id = thread_id_t{}
@@ -636,7 +635,7 @@ namespace vgjs {
             }
 
             auto next_thread = job->m_index < 0 ? next_thread_index() : job->m_index;
-            if constexpr (is_job<T>) {  //Schedule function
+            if constexpr (is_function_job<T>) {  //Schedule function
                 job->m_children = 1;    //A function is its own child
                 job->m_index < 0 ? m_global_job_queues[next_thread].push(job) : m_local_job_queues[next_thread].push(job);
             }
@@ -650,7 +649,10 @@ namespace vgjs {
         }
 
         /// <summary>
-        /// Schedule a function.
+        /// Schedule a function internally. 
+        /// This comes from a coro that schedules a tuple. 
+        /// Since no index etc. is given we can redirect to the 
+        /// public interface, which turns it into a VgjsJob and schedules it.
         /// </summary>
         /// <typeparam name="F">Function type.</typeparam>
         /// <param name="f">Reference to function.</param>
@@ -659,7 +661,19 @@ namespace vgjs {
         /// <param name="children">Number of children</param>
         /// <returns>Number of scheduled jobs.</returns>
         uint32_t schedule_job(is_function auto && f, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
-            return schedule(std::forward<decltype(f)>(f), thread_index_t{}, thread_type_t{}, thread_id_t{}, tag, parent, children);
+            return schedule(f, tag, parent, children);
+        }
+
+        /// <summary>
+        /// Schedule a VgjsJob.
+        /// </summary>
+        /// <param name="j">Ref to the job.</param>
+        /// <param name="tag">Tag to schedule in.</param>
+        /// <param name="parent">Parent of the job.</param>
+        /// <param name="children">Number of children.</param>
+        /// <returns></returns>
+        uint32_t schedule_job(is_function_job auto&& j, tag_t tag, VgjsJobParentPointer parent, int32_t children) noexcept {
+            return schedule_job(&j, tag, parent, children);
         }
 
         /// <summary>
@@ -682,11 +696,8 @@ namespace vgjs {
 
         public:
 
-        uint32_t schedule( is_coro_return auto && job, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(is_coro_return auto&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             if (!job.handle() || job.handle().done()) return 0;
-            job.promise().m_index = index;
-            job.promise().m_type = type;
-            job.promise().m_id = id;
             return schedule_job(&job.promise(), tag, parent, children);
         }
 
@@ -715,20 +726,20 @@ namespace vgjs {
             return i;
         };
 
-        uint32_t schedule(is_function auto && f, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(is_function auto && f, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
-            if (job) {
-                *job = std::move(VgjsJob{ std::forward<decltype(f)>(f), index, type, id });
-            }
-            else {
-                if (!job) job = new VgjsJob{ std::forward<decltype(f)>(f), index, type, id };
-            }
+            if (job) { *job = std::move(VgjsJob{ std::forward<decltype(f)>(f), thread_index_t{}, thread_type_t{}, thread_id_t{} }); }
+            if (!job) job = new VgjsJob{ std::forward<decltype(f)>(f), thread_index_t{}, thread_type_t{}, thread_id_t{} };
             return schedule_job(job, tag, parent, children );
         }
 
-        uint32_t schedule(is_vector auto && vector, thread_index_t index = thread_index_t{}, thread_type_t type = thread_type_t{}, thread_id_t id = thread_id_t{}, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+        uint32_t schedule(is_function_job auto&& job, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
+            return schedule_job(job, tag, parent, children);
+        }
+
+        uint32_t schedule(is_vector auto && vector, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             uint32_t sum = 0;
-            std::ranges::for_each(vector, [&](auto&& v) { sum += schedule_job(std::forward<decltype(v)>(v), index, type, id, tag, parent, children); children = 0; });
+            std::ranges::for_each(vector, [&](auto&& v) { sum += schedule(std::forward<decltype(v)>(v), tag, parent, children); children = 0; });
             return sum;
         }
     };

@@ -89,7 +89,7 @@ namespace test {
         vec.emplace_back(coro2());
         vec.emplace_back(coro2());
         vec.emplace_back(coro2());
-        auto res3 = co_await parallel(vec, F2, F2);
+        auto res3 = co_await parallel(vec, VgjsJob{ F2 }, F2);
         std::cout << "coro - 4 \n";
 
         std::vector<void(*)()> vec2;
@@ -108,7 +108,7 @@ namespace test {
 
         std::cout << "coro - system \n";
 
-        co_await parallel(tag_t{ tag.get_tag(1,2) }, coro2());
+        co_await parallel(tag_t{ tag.get_tag(1,2) }, coro2()(thread_index_t{0}));
         co_await parallel(tag_t{ tag.get_tag(1,4) }, coro3());
         co_await parallel(tag_t{ tag.get_tag(2,4) }, coro4());
 
