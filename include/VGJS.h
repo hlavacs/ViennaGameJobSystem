@@ -718,7 +718,7 @@ namespace vgjs {
         /// <returns>Number of jobs scheduled.</returns>
         uint32_t schedule(is_function_job auto&& fj, tag_t tag = tag_t{}, VgjsJobParentPointer parent = m_current_job, int32_t children = -1) noexcept {
             VgjsJob* job = m_recycle_jobs.pop();
-            if (job) { *job = fj; }
+            if (job) { *job = std::forward<decltype(fj)>(fj); }
             if (!job) job = new VgjsJob( std::forward<decltype(fj)>(fj) );
             return schedule_job(job, tag, parent, children);
         }
