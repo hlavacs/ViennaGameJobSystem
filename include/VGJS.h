@@ -466,7 +466,7 @@ namespace vgjs {
         /// </summary>
         /// <param name="queue">The queue to test.</param>
         /// <returns>True, if a job was found and executed.</returns>
-        inline bool test_job(auto& queue) {
+        inline bool run_job(auto& queue) {
             m_current_job = (VgjsJobParentPointer)queue.pop();      //Pop a job.
             if (m_current_job) {
                 ((VgjsJobPointer)m_current_job)->m_function();      //Run it, but avoid virtual call.
@@ -483,7 +483,7 @@ namespace vgjs {
         /// </summary>
         /// <param name="queue">The queue to test.</param>
         /// <returns>True, if a job was found and executed.</returns>
-        inline bool test_coro(auto& queue) {
+        inline bool run_coro(auto& queue) {
             m_current_job = queue.pop();    //Pop a job
             if (m_current_job) {
                 m_current_job->resume();    //Resume the coroutine (virtual call)
@@ -508,16 +508,16 @@ namespace vgjs {
             std::unique_lock<std::mutex> lk(*m_mutex[my_index]);
 
             while (!m_terminate) {  //Run until the job system is terminated
-                bool found1 = test_job(m_local_job_queues[my_index]);
-                bool found2 = test_coro(m_local_coro_queues[my_index]);
-                bool found3 = test_job(m_global_job_queues[my_index]);
-                bool found4 = test_coro(m_global_coro_queues[my_index]);
+                bool found1 = run_job(m_local_job_queues[my_index]);
+                bool found2 = run_coro(m_local_coro_queues[my_index]);
+                bool found3 = run_job(m_global_job_queues[my_index]);
+                bool found4 = run_coro(m_global_coro_queues[my_index]);
                 bool found = found1 || found2 || found3 || found4;
                 int64_t loops = count;
                 while (!found && --loops > 0) {
                     other_index = (other_index + 1 == count ? 0 : other_index + 1);
                     if (my_index != other_index) {
-                        found = ( test_job(m_global_job_queues[other_index]) || test_coro(m_global_coro_queues[other_index]) );
+                        found = ( run_job(m_global_job_queues[other_index]) || run_coro(m_global_coro_queues[other_index]) );
                     }
                 }
 
