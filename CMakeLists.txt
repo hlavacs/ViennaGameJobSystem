@@ -17,9 +17,10 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_HOME_DIRECTORY}/bin)
-SET(INCLUDE ${CMAKE_HOME_DIRECTORY}/include)
-SET(HEADERS ${INCLUDE}/VGJS.h ${CMAKE_HOME_DIRECTORY}/ViennaStrongType/VSTY.h)
-include_directories (${INCLUDE} ViennaStrongType)
+SET(INCLUDE ${CMAKE_HOME_DIRECTORY}/include )
+SET(HEADERS ${INCLUDE}/VGJS.h ${CMAKE_HOME_DIRECTORY}/../ViennaStrongType/VSTY.h)
+
+include_directories (${CMAKE_HOME_DIRECTORY}/include ../ViennaStrongType)
 
 add_subdirectory (examples/test)
 
