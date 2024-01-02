@@ -78,6 +78,7 @@ namespace test {
 
     VgjsCoroReturn<> coro() {
         std::cout << "coro\n";
+
         /*int res = co_await coro2();
 
         std::cout << "coro - 2 \n";
@@ -91,7 +92,7 @@ namespace test {
         vec.emplace_back(coro2());
         vec.emplace_back(coro2());
         vec.emplace_back(coro2());
-        auto res3 = co_await parallel(vec, VgjsJob{ F2 }, F2);
+        co_await parallel(vec, VgjsJob{ F2 }, F2);
         std::cout << "coro - 4 \n";
 
         std::vector<void(*)()> vec2;
@@ -108,16 +109,16 @@ namespace test {
     VgjsCoroReturn<> coro_system() {
         TagSchedule tag{100};
 
-        std::cout << "coro - system \n";
+        std::cout << "coro - system start \n";
 
         co_await parallel(coro());
 
-        co_await parallel(tag_t{ tag.get_tag(1,2) }, coro2()(thread_index_t{0}));
-        co_await parallel(tag_t{ tag.get_tag(1,4) }, coro3());
-        co_await parallel(tag_t{ tag.get_tag(2,4) }, coro4());
+        //co_await parallel(tag_t{ tag.get_tag(1,2) }, coro2()(thread_index_t{0}));
+        //co_await parallel(tag_t{ tag.get_tag(1,4) }, coro3());
+        //co_await parallel(tag_t{ tag.get_tag(2,4) }, coro4());
 
         for (auto i = 0; i < tag.size(); ++i) {
-            co_await tag_t{i + tag.offset()};
+            //co_await tag_t{i + tag.offset()};
         }
         tag.reset();
 
@@ -131,6 +132,7 @@ namespace test {
 
 int main(int argc, char* argv[])
 {
+
     VgjsJobSystem().schedule(test::coro_system());
 
     //std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::seconds>(10s));

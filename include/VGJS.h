@@ -899,7 +899,7 @@ namespace vgjs {
     template<typename U>
     struct final_awaiter : public std::suspend_always {
 
-        bool await_suspends(std::coroutine_handle<VgjsCoroPromise<U>> h) noexcept { //called after suspending
+        bool await_suspend(std::coroutine_handle<VgjsCoroPromise<U>> h) noexcept { //called after suspending
             auto parent = h.promise().m_parent;
 
             if (parent != nullptr) {          //if there is a parent
