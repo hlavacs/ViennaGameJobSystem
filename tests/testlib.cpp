@@ -19,6 +19,8 @@ template<int BITS = 64>
 struct TagSchedule {
     int32_t m_offset = 0;
 
+    TagSchedule(int32_t i) : m_offset(i) {}
+
     struct access_t {
         std::bitset<BITS> m_reads;
         std::bitset<BITS> m_writes;

@@ -1,34 +1,19 @@
 
-cmake_minimum_required (VERSION 3.1.0)
-project (VGJS)
+cmake_minimum_required (VERSION 3.5.0)
+project (
+  "ViennaGameJobSystem"
+  VERSION 1.0
+  DESCRIPTION "A C++20 job system for games."
+  LANGUAGES CXX
+)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  set(CMAKE_CXX_FLAGS_RELEASE /O2)
-  add_compile_options(/await)
-  add_compile_options(/EHsc)
-  set(CMAKE_VS_PLATFORM_NAME "x64")
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
-    OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-    #clang++ *.cpp -g -std=c++20 -stdlib=libc++ -pthread -fcoroutines-ts -o a.out
-    add_compile_options(-pthread)
-    add_compile_options(-stdlib=libc++)
-    add_compile_options(-fcoroutines-ts)
-elseif(CMAKE_COMPILER_IS_GNUCXX)
-endif()
+# enforce C++20 standard
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_HOME_DIRECTORY}/bin)
-SET(INCLUDE ${CMAKE_HOME_DIRECTORY}/include )
-SET(HEADERS ${INCLUDE}/VGJS.h ${CMAKE_HOME_DIRECTORY}/../ViennaStrongType/VSTY.h)
+add_subdirectory(extern)
 
-include_directories (${CMAKE_HOME_DIRECTORY}/include ../ViennaStrongType)
-
-add_subdirectory (examples/test)
-
-find_package(Doxygen)
-if (DOXYGEN_FOUND)
-  set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "README.md")
-  doxygen_add_docs(doxygen
-    ${CMAKE_SOURCE_DIR}/README.md
-    ${CMAKE_SOURCE_DIR}/include
-  )
-endif(DOXYGEN_FOUND)
+if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+  include(CTest)
+  add_subdirectory(tests)
+endif ()

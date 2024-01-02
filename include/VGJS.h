@@ -22,18 +22,19 @@
 #include <utility>
 #include <tuple>
 #include <numeric>
+#include <coroutine>
 
 #include "VSTY.h"
 
 namespace vgjs {
 
-    using namespace std::experimental;
+    //using namespace std::experimental;
 
-    using thread_count_t    = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
-    using thread_index_t    = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
-    using thread_id_t       = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
-    using thread_type_t     = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
-    using tag_t             = vsty::strong_type_null_t<int64_t, vsty::counter<>, -1l>;
+    using thread_count_t    = vsty::strong_type_t<int64_t, vsty::counter<>, std::integral_constant<int64_t, -1>>;
+    using thread_index_t    = vsty::strong_type_t<int64_t, vsty::counter<>, std::integral_constant<int64_t, -1>>;
+    using thread_id_t       = vsty::strong_type_t<int64_t, vsty::counter<>, std::integral_constant<int64_t, -1>>;
+    using thread_type_t     = vsty::strong_type_t<int64_t, vsty::counter<>, std::integral_constant<int64_t, -1>>;
+    using tag_t             = vsty::strong_type_t<int64_t, vsty::counter<>, std::integral_constant<int64_t, -1>>;
 
     //---------------------------------------------------------------------------------------------
     //Declaration of classes 
@@ -126,6 +127,8 @@ namespace vgjs {
         VgjsJobParent(thread_index_t index, thread_type_t type, thread_id_t id, VgjsJobParentPointer parent) noexcept
             : m_index{ index }, m_type{ type }, m_id{ id }, m_parent{ parent } {};
 
+        virtual ~VgjsJobParent() {};
+
         void copy_or_move(auto && j) {
             m_index = j.m_index;
             m_type = j.m_type;
@@ -156,7 +159,7 @@ namespace vgjs {
             , thread_index_t index = thread_index_t{}
             , thread_type_t type = thread_type_t{}
             , thread_id_t id = thread_id_t{}
-            , VgjsJobParentPointer parent = nullptr) noexcept : m_function{ f }, VgjsJobParent(index, type, id, parent) {};
+            , VgjsJobParentPointer parent = nullptr) noexcept : VgjsJobParent(index, type, id, parent), m_function{ f } {};
 
         VgjsJob(const VgjsJob&) noexcept = default;
         VgjsJob(VgjsJob&&) noexcept = default;
@@ -178,13 +181,13 @@ namespace vgjs {
     template<typename T>
     class VgjsCoroPromiseBase : public VgjsJobParent {
     protected:
-        coroutine_handle<> m_handle{};    //Handle of the coroutine
+        std::coroutine_handle<> m_handle{};    //Handle of the coroutine
 
     public:
-        VgjsCoroPromiseBase(coroutine_handle<> handle) noexcept : m_handle{ handle } { m_is_function = false; };
+        VgjsCoroPromiseBase(std::coroutine_handle<> handle) noexcept : m_handle{ handle } { m_is_function = false; };
 
         auto unhandled_exception() noexcept -> void { std::terminate(); };
-        auto initial_suspend() noexcept -> suspend_always { return {}; };
+        auto initial_suspend() noexcept -> std::suspend_always { return {}; };
         auto final_suspend() noexcept -> final_awaiter<T> { return {}; };
         auto resume() noexcept -> void {
             if (m_handle && !m_handle.done()) {
@@ -219,7 +222,7 @@ namespace vgjs {
     private:
         T m_value{};   //<a local storage of the value, use if parent is a coroutine
     public:
-       VgjsCoroPromise() noexcept : VgjsCoroPromiseBase<T>(coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this)) {}
+       VgjsCoroPromise() noexcept : VgjsCoroPromiseBase<T>(std::coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this)) {}
        void return_value(T t) { this->m_value = t; }
        auto get_return_object() noexcept -> VgjsCoroReturn<T>;
        auto get() { return m_value; };
@@ -231,7 +234,7 @@ namespace vgjs {
     template<>
     class VgjsCoroPromise<void> : public VgjsCoroPromiseBase<void> {
     public:
-        VgjsCoroPromise() noexcept : VgjsCoroPromiseBase<void>(coroutine_handle<VgjsCoroPromise<void>>::from_promise(*this)) {} 
+        VgjsCoroPromise() noexcept : VgjsCoroPromiseBase<void>(std::coroutine_handle<VgjsCoroPromise<void>>::from_promise(*this)) {} 
         void return_void() noexcept {}
         auto get_return_object() noexcept -> VgjsCoroReturn<void>;
     };
@@ -249,11 +252,11 @@ namespace vgjs {
         using promise_type = VgjsCoroPromise<T>;
 
     private:
-        coroutine_handle<VgjsCoroPromise<T>> m_handle{};       //handle to Coro promise
+        std::coroutine_handle<VgjsCoroPromise<T>> m_handle{};       //handle to Coro promise
 
     public:
         VgjsCoroReturn() noexcept {};
-        VgjsCoroReturn(coroutine_handle<promise_type> h) noexcept : m_handle { h } {};
+        VgjsCoroReturn(std::coroutine_handle<promise_type> h) noexcept : m_handle { h } {};
         VgjsCoroReturn(const VgjsCoroReturn& rhs) noexcept = delete;
         VgjsCoroReturn(VgjsCoroReturn&& rhs) noexcept { m_handle = std::exchange(rhs.m_handle, {}); };
 
@@ -286,9 +289,9 @@ namespace vgjs {
     };
 
     template<typename T>
-    auto VgjsCoroPromise<T>::get_return_object() noexcept -> VgjsCoroReturn<T> { return { coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this) }; };
+    auto VgjsCoroPromise<T>::get_return_object() noexcept -> VgjsCoroReturn<T> { return { std::coroutine_handle<VgjsCoroPromise<T>>::from_promise(*this) }; };
 
-    auto VgjsCoroPromise<void>::get_return_object() noexcept -> VgjsCoroReturn<void> { return { coroutine_handle<VgjsCoroPromise<void>>::from_promise(*this) }; };
+    auto VgjsCoroPromise<void>::get_return_object() noexcept -> VgjsCoroReturn<void> { return { std::coroutine_handle<VgjsCoroPromise<void>>::from_promise(*this) }; };
 
     //---------------------------------------------------------------------------------------------
     //A general internally synchronized FIFO queue class
@@ -425,7 +428,7 @@ namespace vgjs {
             auto cnt = m_init_counter.fetch_add(1);
             if (cnt > 0) return;
 
-            count = (count <= 0 ? (int64_t)std::thread::hardware_concurrency() : count.m_value);
+            count = (count <= 0 ? (int64_t)std::thread::hardware_concurrency() : count);
             for (thread_index_t i = start; i < count; ++i) {
                 m_global_job_queues.emplace_back();    //global job queue
                 m_local_job_queues.emplace_back();     //local job queue
@@ -721,14 +724,14 @@ namespace vgjs {
     /// </summary>
     /// <typeparam name="T">Coro type.</typeparam>
     template<typename T>
-    struct awaitable_resume_on : suspend_always {
+    struct awaitable_resume_on : std::suspend_always {
         thread_index_t m_index; //the thread index to use
 
         bool await_ready() noexcept {   //do not go on with suspension if the job is already on the right thread
             return (m_index == system->m_index);
         }
 
-        void await_suspend(coroutine_handle<VgjsCoroPromise<T>> h) noexcept { //reschedule on different thread
+        void await_suspend(std::coroutine_handle<VgjsCoroPromise<T>> h) noexcept { //reschedule on different thread
             h.promise().m_index = m_index;
             VgjsJobSystem()->schedule(&h.promise(), tag_t{}, (VgjsJobParentPointer)&h.promise().m_parent, -1);
         }
@@ -741,7 +744,7 @@ namespace vgjs {
     /// </summary>
     /// <typeparam name="T"></typeparam>
     template<typename T>
-    struct awaitable_tag : suspend_always {
+    struct awaitable_tag : std::suspend_always {
         tag_t    m_tag;            //the tag to schedule
         int32_t  m_number = 0;     //Number of scheduled jobs
 
@@ -749,7 +752,7 @@ namespace vgjs {
             return m_tag < 0;
         }
 
-        bool await_suspend(coroutine_handle<VgjsCoroPromise<T>> h) noexcept { //schedule the tag to the jo system
+        bool await_suspend(std::coroutine_handle<VgjsCoroPromise<T>> h) noexcept { //schedule the tag to the jo system
             m_number = VgjsJobSystem().schedule(m_tag);
             return m_number > 0;     //if jobs were scheduled - await them
         }
@@ -767,7 +770,7 @@ namespace vgjs {
     /// <typeparam name="PT">The coro type.</typeparam>
     /// <typeparam name="...Ts">The job types in the tuple.</typeparam>
     template<typename PT, typename... Ts>
-    struct awaitable_tuple : suspend_always {
+    struct awaitable_tuple : std::suspend_always {
         tag_t                    m_tag;          //The tag to schedule to
         std::tuple<Ts&&...>      m_tuple;        //tuple with all children to start
         std::size_t              m_number;       //total number of all new children to schedule
@@ -792,7 +795,7 @@ namespace vgjs {
             return m_number == 0;   //nothing to be done -> do not suspend
         }
 
-        bool await_suspend(coroutine_handle<VgjsCoroPromise<PT>> h) noexcept {
+        bool await_suspend(std::coroutine_handle<VgjsCoroPromise<PT>> h) noexcept {
             auto g = [&]<std::size_t Idx>() {   //Schedule the respective tuple element
 
                 using tt = decltype(m_tuple);
@@ -863,7 +866,7 @@ namespace vgjs {
         /// </summary>
         /// <returns>A tuple holding the return values, or return value.</returns>
         decltype(auto) await_resume() {
-            auto f = [&, this]<typename... Us>(Us&... args) {
+            auto f = [&]<typename... Us>(Us&... args) {
                 return std::tuple_cat(get_val(args)...);
             };
             using rtype = decltype(std::apply(f, m_tuple));
@@ -880,7 +883,7 @@ namespace vgjs {
             }
         }
 
-        awaitable_tuple( std::tuple<Ts&&...> tuple ) noexcept : m_tag{}, m_number{ 0 }, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)) {};
+        awaitable_tuple( std::tuple<Ts&&...> tuple ) noexcept : m_tag{}, m_tuple(std::forward<std::tuple<Ts&&...>>(tuple)), m_number{ 0 } {};
     };
 
     /// <summary>
@@ -894,9 +897,9 @@ namespace vgjs {
     /// </summary>
     /// <typeparam name="U">Coro type.</typeparam>
     template<typename U>
-    struct final_awaiter : public suspend_always {
+    struct final_awaiter : public std::suspend_always {
 
-        bool await_suspend(coroutine_handle<VgjsCoroPromise<U>> h) noexcept { //called after suspending
+        bool await_suspends(std::coroutine_handle<VgjsCoroPromise<U>> h) noexcept { //called after suspending
             auto parent = h.promise().m_parent;
 
             if (parent != nullptr) {          //if there is a parent
