@@ -23,13 +23,13 @@ namespace vsty {
         strong_type_t() noexcept requires (std::is_same_v<D, void>) = default;					//default constructible
         strong_type_t() noexcept requires (!std::is_same_v<D, void>) { m_value = D::value; };	//explicit from a NULL value
         explicit strong_type_t(const T& v) noexcept { m_value = v; };	//explicit from type T
-        explicit strong_type_t(T&& v) noexcept { m_value = std::move(v); };	//explicit from type T
+        explicit strong_type_t(T&& v) noexcept { m_value = v; };	//explicit from type T
 
         strong_type_t( strong_type_t<T, P, D> const &) noexcept = default;		//copy constructible
         strong_type_t( strong_type_t<T, P, D>&&) noexcept = default;			//move constructible
 
         strong_type_t<T, P, D>& operator=(T const& v) noexcept { m_value = v; return *this; };		//copy assignable from type T
-        strong_type_t<T, P, D>& operator=(T&& v) noexcept { m_value = std::move(v); return *this; };	//copy assignable from type T
+        strong_type_t<T, P, D>& operator=(T&& v) noexcept { m_value = v; return *this; };	//copy assignable from type T
 
         strong_type_t<T, P, D>& operator=(strong_type_t<T, P, D> const&) noexcept = default;	//move assignable
         strong_type_t<T, P, D>& operator=(strong_type_t<T, P, D>&&) noexcept = default;			//move assignable
