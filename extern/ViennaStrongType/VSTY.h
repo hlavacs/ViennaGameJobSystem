@@ -65,6 +65,15 @@ namespace vsty {
 			return val;
 		}
 
+		auto get_bits_signed(const uint32_t first_bit, const uint32_t number_bits) const noexcept -> T requires std::unsigned_integral<T>  {
+			auto value = get_bits(first_bit, number_bits);
+			if( value & (1ull << (number_bits - 1))) {
+				value |= static_cast<T>(~0ull) << number_bits;
+			}
+			return value;
+		}
+
+
 		/***
 		* \brief Set  bits in the m_value
 		* \param value...value to set
@@ -74,7 +83,7 @@ namespace vsty {
 		void set_bits(const T&& value, const uint32_t first_bit, const uint32_t number_bits) requires std::unsigned_integral<T> {
 			uint32_t nbits = sizeof(T) * 8;
 			assert(first_bit + number_bits <= nbits);
-			assert(value < 1ull << number_bits);
+			//assert(static_cast<T>(abs(value)) < 1ull << number_bits);
 			if( number_bits >= nbits) { m_value = value; return; }
 
 			T umask = static_cast<T>(~0ull) << (first_bit + number_bits);

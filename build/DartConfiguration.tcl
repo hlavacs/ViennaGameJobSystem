@@ -4,14 +4,14 @@
 
 
 # Configuration directories and files
-SourceDirectory: C:/data/GitHub/ViennaGameJobSystem
-BuildDirectory: C:/data/GitHub/ViennaGameJobSystem/build
+SourceDirectory: D:/data/GitHub/ViennaGameJobSystem
+BuildDirectory: D:/data/GitHub/ViennaGameJobSystem/build
 
 # Where to place the cost data store
 CostDataFile: 
 
 # Site is something like machine.domain, i.e. pragmatic.crd
-Site: LAPTOP-GMOS5MGU
+Site: DESKTOP-QCHMISS
 
 # Build name is osname-revision-compiler, i.e. Linux-2.4.2-2smp-c++
 BuildName: Win32-MSBuild
@@ -27,7 +27,7 @@ SubmitInactivityTimeout:
 NightlyStartTime: 00:00:00 EDT
 
 # Commands for the build/test/submit cycle
-ConfigureCommand: "C:/Program Files/CMake/bin/cmake.exe" "C:/data/GitHub/ViennaGameJobSystem"
+ConfigureCommand: "C:/Program Files/CMake/bin/cmake.exe" "D:/data/GitHub/ViennaGameJobSystem"
 MakeCommand: "C:\Program Files\CMake\bin\cmake.exe" --build . --config "${CTEST_CONFIGURATION_TYPE}"
 DefaultCTestConfigurationType: Release
 
