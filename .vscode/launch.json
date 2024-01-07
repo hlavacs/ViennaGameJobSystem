@@ -8,7 +8,7 @@
             "name": "(Windows) Launch",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/tests/Debug/testlib.exe",  
+            "program": "${workspaceFolder}/build/tests/testlib.exe",  
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
